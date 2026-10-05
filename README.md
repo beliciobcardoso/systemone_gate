@@ -170,6 +170,8 @@ systemone-gate doctor
 
 **Timeout:** o padrão é 30 s por chamada. No primeiro uso após inicialização a Ollama carrega o modelo em memória (o Nimble tem 9,5 GB) e pode demorar mais; aumente com `SYSTEMONE_TIMEOUT` (segundos, número positivo), por exemplo `SYSTEMONE_TIMEOUT=120 systemone-gate triage "..."`. Um valor inválido encerra a CLI com código 2. O endpoint pode ser trocado com `OLLAMA_SYSTEMONE_URL`.
 
+**Confiança mínima (opt-in):** `SYSTEMONE_MIN_CONFIDENCE` (0 a 1) trata como indeterminado, e aplica a política `*_ON_ERROR`, o veredito cuja `confidence` seja menor que o mínimo; vem desligada (`0`) e sem valor sugerido porque não há calibração e as confianças observadas são baixas em todas as respostas (0,03 a 0,27), então qualquer mínimo alto bloquearia ou avisaria sempre.
+
 ---
 
 ### Perfis de rubrica (`diff` e `triage`)

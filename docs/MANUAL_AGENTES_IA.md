@@ -302,6 +302,7 @@ print(f"Causa-raiz identificada: {root_cause}")
 > **Política de decisão única:** CLI, hook e este snippet usam `systemone_gate.policy`. Ajuste via variáveis de ambiente:
 > `SYSTEMONE_GUARD_DANGER_THRESHOLD` (padrão 1.5), `SYSTEMONE_DIFF_RISK_THRESHOLD` (1.85), `SYSTEMONE_DIFF_BREAKING_THRESHOLD` (0.65),
 > `SYSTEMONE_GUARD_ON_ERROR` e `SYSTEMONE_DIFF_ON_ERROR` (`allow` = libera com aviso, padrão; `block` = bloqueia se o Ollama falhar ou responder fora do formato).
+> `SYSTEMONE_MIN_CONFIDENCE` (0 a 1, padrão `0` = desligado): com valor > 0, um veredito cuja `confiança` informada pelo modelo seja menor que o mínimo é tratado como indeterminado e segue a política `*_ON_ERROR` da superfície (`allow` = libera com aviso; `block` = bloqueia). Vereditos de regras determinísticas nunca são afetados; confiança ausente não penaliza.
 > Esses limiares **não são calibrados** com dados reais; trate-os como pontos de partida.
 
 ---

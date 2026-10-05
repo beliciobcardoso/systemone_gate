@@ -68,9 +68,9 @@
 | DEF-08 | Timeout fixo de 30 s | Defeito | Confiabilidade | S3 | Should | Estático (+ cold start medido) | 🟡 Parcial (#12) |
 | DEF-09 | Hook ignora `core.hooksPath` | Defeito | Compatibilidade | S3 | Could | Estático | ✅ Resolvido (#11) |
 | FAL-04 | Latência real ~200 ms vs. "<15 ms" prometido | Falha | Eficiência | S3 | Should | Medido | ✅ Resolvido (#16) |
-| FAL-05 | Confiança do modelo baixa (0,03–0,27) | Falha | Adequação funcional | S3 | Should | Medido | ⬜ Aberto |
+| FAL-05 | Confiança do modelo baixa (0,03–0,27) | Falha | Adequação funcional | S3 | Should | Medido | 🟡 Parcial (#22) |
 | FAL-06 | Hook usa modelo 0.8B para code review | Falha | Adequação funcional | S3 | Should | Estático | ✅ Resolvido (#17) |
-| DT-03 | Erro retornado como `dict` misturado ao sucesso | Dívida | Manutenibilidade | S3 | Should | Estático | ⬜ Aberto |
+| DT-03 | Erro retornado como `dict` misturado ao sucesso | Dívida | Manutenibilidade | S3 | Should | Estático | 🟡 Mitigado (#7) |
 | DT-04 | Tools MCP exigem que o agente cole diff/log | Dívida | Eficiência | S3 | Should | Estático | ✅ Resolvido (#18) |
 | DT-06 | Sem CI, lint, type-check, formatação | Dívida | Manutenibilidade | S3 | Should | Reproduzido (ausência) | ⬜ Aberto (CI ⛔ descartado) |
 | DT-07 | Rubricas enviesadas para C/redes (mosquitto) | Dívida | Adequação funcional | S3 | Should | Estático | 🟡 Parcial (#21) |
@@ -153,6 +153,7 @@
 - **Esforço:** S
 
 ### FAL-05 · Confiança do modelo baixa; calibração não demonstrada
+- **Status:** 🟡 **Parcial** em [#22](https://github.com/beliciobcardoso/systemone_gate/pull/22) — `SYSTEMONE_MIN_CONFIDENCE` ignora vereditos de baixa confiança conforme a política de erro, mas é **opt-in** (padrão 0): sem calibração não há limiar defensável. Observado: a confiança real de um comando simples foi 0,59.
 - **Evidência:** **Medido** — campo `confidence` entre 0,03 e 0,27 em todas as respostas.
 - **Classificação:** Falha · Adequação funcional · S3 · Should
 - **Problema:** o código ignora `confidence`. Decisões com confiança de 3% são tratadas como firmes.
@@ -299,6 +300,7 @@
 - **Esforço:** M (junto com DT-01)
 
 ### DT-03 · Erro retornado como `dict` misturado ao sucesso
+- **Status:** 🟡 **Mitigado** por [#7](https://github.com/beliciobcardoso/systemone_gate/pull/7) — `evaluate_*` da política trata erro e resposta inválida; o retorno em `dict` do client foi mantido de propósito, por compatibilidade com quem usa a biblioteca.
 - **Local:** `client.py:54-63`
 - **Quadrante:** Deliberada · Prudente (simplicidade na v0.1)
 - **Classificação:** Dívida (design) · Manutenibilidade · S3 · Should

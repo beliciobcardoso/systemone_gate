@@ -14,6 +14,7 @@ from systemone_gate.policy import (
     decide_on_error,
     evaluate_command,
     evaluate_diff,
+    is_low_confidence,
     parse_command_check,
     parse_diff_review,
 )
@@ -291,3 +292,163 @@ def test_evaluate_diff_paths():
     blocking = diff_res(1.9, "breaking_change", {"breaking_change": 0.9})
     assert evaluate_diff(blocking, CFG).action == "block"
     assert evaluate_diff(diff_res(), CFG).action == "allow"
+
+
+# ---------------------------------------------------------------- min_confidence
+
+MINC = PolicyConfig(min_confidence=0.5)
+MINC_BLOCK = PolicyConfig(min_confidence=0.5, diff_on_error="block", guard_on_error="block")
+
+
+def with_conf(res, **confs):
+    for key, value in confs.items():
+        res["answers"][key]["confidence"] = value
+    return res
+
+
+def test_parse_diff_confidence_is_minimum_of_present_values():
+    res = with_conf(diff_res(), risk_level=0.4, breaking_change=0.2)
+    assert parse_diff_review(res).confidence == 0.2
+    assert parse_diff_review(with_conf(diff_res(), risk_level=0.1)).confidence == 0.1
+    assert parse_diff_review(with_conf(diff_res(), breaking_change=1)).confidence == 1.0
+
+
+def test_parse_diff_confidence_missing_is_none():
+    assert parse_diff_review(diff_res()).confidence is None
+
+
+@pytest.mark.parametrize("bad", ["0.3", float("nan"), float("inf"), True, None, -0.1, 1.5, [0.2]])
+def test_parse_diff_confidence_invalid_ignored(bad):
+    res = with_conf(diff_res(), risk_level=bad)
+    assert parse_diff_review(res).confidence is None
+    res = with_conf(diff_res(), risk_level=bad, breaking_change=0.3)
+    assert parse_diff_review(res).confidence == 0.3
+
+
+def test_parse_command_confidence_minimum_and_missing():
+    res = with_conf(cmd_res(), is_destructive=0.25, danger_score=0.05)
+    assert parse_command_check(res).confidence == 0.05
+    assert parse_command_check(cmd_res()).confidence is None
+    assert parse_command_check(with_conf(cmd_res(), is_destructive="x", danger_score=False)).confidence is None
+    assert parse_command_check(with_conf(cmd_res(), danger_score=0.4)).confidence == 0.4
+
+
+def test_confidence_tolerates_extra_keys_and_does_not_affect_equality_of_old_fields():
+    res = with_conf(diff_res(1.2, "breaking_change", {"breaking_change": 0.7}), risk_level=0.2)
+    res["answers"]["risk_level"]["extra"] = {"a": 1}
+    review = parse_diff_review(res)
+    assert (review.risk_score, review.breaking_choice) == (1.2, "breaking_change")
+
+
+DIFF_GRID = [(r, b) for r in (0.0, 1.0, 1.85, 1.9, 2.0) for b in (0.0, 0.65, 0.7, 1.0)]
+CMD_GRID = [(c, d, s) for c in ("safe", "destructive_or_risky") for d in (0.0, 1.5, 1.51, 2.0)
+            for s in ("model", "rules")]
+
+
+@pytest.mark.parametrize("risk,breaking", DIFF_GRID)
+@pytest.mark.parametrize("conf", [None, 0.0, 0.03, 0.9])
+def test_min_zero_diff_identical_to_previous_behavior(risk, breaking, conf):
+    review = DiffReview(risk, "breaking_change", {"breaking_change": breaking}, conf)
+    expected_block = risk > 1.85 and breaking > 0.65
+    decision = decide_diff(review, CFG)
+    assert decision.action == ("block" if expected_block else "allow")
+    assert decision.warning is None
+    assert decision == decide_diff(DiffReview(risk, "breaking_change", {"breaking_change": breaking}), CFG)
+
+
+@pytest.mark.parametrize("choice,danger,source", CMD_GRID)
+@pytest.mark.parametrize("conf", [None, 0.0, 0.03, 0.9])
+def test_min_zero_command_identical_to_previous_behavior(choice, danger, source, conf):
+    decision = decide_command(CommandCheck(choice, danger, source, conf), CFG)
+    assert decision == decide_command(CommandCheck(choice, danger, source), CFG)
+    assert decision.warning is None
+
+
+def test_diff_below_min_allow_mode_allows_with_warning():
+    review = DiffReview(2.0, "breaking_change", {"breaking_change": 0.9}, 0.27)
+    d = decide_diff(review, MINC)
+    assert d.action == "allow"
+    assert d.warning == "confiança 0.27 abaixo do mínimo 0.50; veredito do modelo ignorado"
+
+
+def test_diff_below_min_block_mode_blocks():
+    review = DiffReview(0.1, "safe", {"breaking_change": 0.0}, 0.27)
+    d = decide_diff(review, MINC_BLOCK)
+    assert d.action == "block"
+    assert d.reasons == ("confiança 0.27 abaixo do mínimo 0.50; veredito do modelo ignorado",)
+    assert d.warning is None
+
+
+def test_diff_at_or_above_min_uses_verdict():
+    review = DiffReview(2.0, "breaking_change", {"breaking_change": 0.9}, 0.5)
+    assert decide_diff(review, MINC).action == "block"
+    assert decide_diff(DiffReview(0.1, "safe", {}, 0.5), MINC_BLOCK) == Decision("allow", ())
+    assert decide_diff(DiffReview(0.1, "safe", {}, 0.49), MINC_BLOCK).action == "block"
+
+
+def test_diff_unknown_confidence_uses_verdict():
+    review = DiffReview(2.0, "breaking_change", {"breaking_change": 0.9}, None)
+    assert decide_diff(review, MINC).action == "block"
+    assert decide_diff(DiffReview(0.1, "safe", {}, None), MINC_BLOCK) == Decision("allow", ())
+
+
+def test_command_below_min_modes():
+    check = CommandCheck("destructive_or_risky", 1.9, "model", 0.1)
+    allowed = decide_command(check, MINC)
+    assert allowed.action == "allow"
+    assert allowed.warning == "confiança 0.10 abaixo do mínimo 0.50; veredito do modelo ignorado"
+    blocked = decide_command(CommandCheck("safe", 0.0, "model", 0.1), MINC_BLOCK)
+    assert blocked.action == "block" and "abaixo do mínimo" in blocked.reasons[0]
+
+
+def test_command_modes_are_per_surface():
+    cfg = PolicyConfig(min_confidence=0.5, guard_on_error="block")
+    assert decide_command(CommandCheck("safe", 0.0, "model", 0.1), cfg).action == "block"
+    assert decide_diff(DiffReview(0.0, "safe", {}, 0.1), cfg).action == "allow"
+
+
+@pytest.mark.parametrize("conf", [None, 0.0, 0.01, 1.0])
+def test_rules_source_never_indeterminate(conf):
+    d = decide_command(CommandCheck("destructive_or_risky", 2.0, "rules", conf), MINC)
+    assert d == Decision("block", ("comando casou com regra determinística",))
+
+
+def test_evaluate_applies_min_confidence_end_to_end():
+    res = with_conf(cmd_res("destructive_or_risky", 1.9), is_destructive=0.2, danger_score=0.3)
+    assert evaluate_command(res, CFG).action == "block"
+    assert evaluate_command(res, MINC).warning.startswith("confiança 0.20")
+    assert evaluate_command(res, MINC_BLOCK).action == "block"
+    rules = cmd_res("destructive_or_risky", 2.0, source="rules")
+    rules = with_conf(rules, is_destructive=1.0, danger_score=1.0)
+    assert evaluate_command(rules, MINC).action == "block"
+    dres = with_conf(diff_res(2.0, "breaking_change", {"breaking_change": 0.9}), risk_level=0.2)
+    assert evaluate_diff(dres, CFG).action == "block"
+    assert evaluate_diff(dres, MINC).action == "allow"
+    assert evaluate_diff(dres, MINC).warning is not None
+
+
+def test_is_low_confidence_helper():
+    assert is_low_confidence(0.1, MINC) is True
+    assert is_low_confidence(0.5, MINC) is False
+    assert is_low_confidence(None, MINC) is False
+    assert is_low_confidence(0.0, CFG) is False
+
+
+def test_min_confidence_default_and_validation():
+    assert CFG.min_confidence == 0.0
+    assert PolicyConfig(min_confidence=1).min_confidence == 1
+    for bad in (-0.01, 1.01, float("nan"), float("inf"), True, "0.5", None):
+        with pytest.raises(ValueError, match="min_confidence"):
+            PolicyConfig(min_confidence=bad)
+
+
+def test_from_env_min_confidence():
+    assert PolicyConfig.from_env({"SYSTEMONE_MIN_CONFIDENCE": "0.4"}).min_confidence == 0.4
+    assert PolicyConfig.from_env({"SYSTEMONE_MIN_CONFIDENCE": "0"}).min_confidence == 0.0
+    assert PolicyConfig.from_env({"SYSTEMONE_MIN_CONFIDENCE": "1"}).min_confidence == 1.0
+
+
+@pytest.mark.parametrize("value", ["abc", "nan", "inf", "-0.1", "1.1", ""])
+def test_from_env_min_confidence_invalid(value):
+    with pytest.raises(ValueError, match="SYSTEMONE_MIN_CONFIDENCE"):
+        PolicyConfig.from_env({"SYSTEMONE_MIN_CONFIDENCE": value})
