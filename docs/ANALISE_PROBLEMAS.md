@@ -62,11 +62,11 @@
 | DT-05 | Zero testes automatizados | Dívida | Manutenibilidade | S2 | Must | Reproduzido (ausência) | ✅ Resolvido (#5) |
 | DT-01 | Política de decisão dentro do handler da CLI | Dívida | Manutenibilidade | S2 | Should | Estático | ✅ Resolvido (#7) |
 | DT-02 | Três políticas de bloqueio divergentes | Dívida | Manutenibilidade | S2 | Must | Estático | ✅ Resolvido (#7) |
-| DEF-05 | `.git` como arquivo (worktree/submodule) quebra `install-hook` | Defeito | Portabilidade | S3 | Should | Estático | ⬜ Aberto |
+| DEF-05 | `.git` como arquivo (worktree/submodule) quebra `install-hook` | Defeito | Portabilidade | S3 | Should | Estático | ✅ Resolvido (#11) |
 | DEF-06 | `HTTPError` rotulado como "Failed to connect" | Defeito | Usabilidade | S3 | Should | Estático | ✅ Resolvido (#12) |
 | DEF-07 | MCP: JSON inválido ignorado e erro sem `isError` | Defeito | Confiabilidade | S3 | Should | Estático | ⬜ Aberto |
 | DEF-08 | Timeout fixo de 30 s | Defeito | Confiabilidade | S3 | Should | Estático (+ cold start medido) | 🟡 Parcial (#12) |
-| DEF-09 | Hook ignora `core.hooksPath` | Defeito | Compatibilidade | S3 | Could | Estático | ⬜ Aberto |
+| DEF-09 | Hook ignora `core.hooksPath` | Defeito | Compatibilidade | S3 | Could | Estático | ✅ Resolvido (#11) |
 | FAL-04 | Latência real ~200 ms vs. "<15 ms" prometido | Falha | Eficiência | S3 | Should | Medido | ⬜ Aberto |
 | FAL-05 | Confiança do modelo baixa (0,03–0,27) | Falha | Adequação funcional | S3 | Should | Medido | ⬜ Aberto |
 | FAL-06 | Hook usa modelo 0.8B para code review | Falha | Adequação funcional | S3 | Should | Estático | ⬜ Aberto |
@@ -220,6 +220,7 @@
 - **Esforço:** M
 
 ### DEF-05 · `.git` como arquivo quebra `install-hook`
+- **Status:** ✅ **Resolvido** em [#11](https://github.com/beliciobcardoso/systemone_gate/pull/11) — o diretório de hooks vem de `git rev-parse --git-path hooks`; funciona em `git worktree` e submódulos.
 - **Local:** `hooks.py:31` (`os.path.isdir(".git")`)
 - **Evidência:** Estático
 - **Classificação:** Defeito · Portabilidade · S3 · Should
@@ -254,6 +255,7 @@
 - **Esforço:** S
 
 ### DEF-09 · Hook ignora `core.hooksPath`
+- **Status:** ✅ **Resolvido** em [#11](https://github.com/beliciobcardoso/systemone_gate/pull/11), junto com o DEF-05 — respeita `core.hooksPath` (relativo e absoluto). `uninstall` fora de um repositório agora imprime o erro no stderr (antes retornava False em silêncio).
 - **Local:** `hooks.py:44`
 - **Evidência:** Estático
 - **Classificação:** Defeito · Compatibilidade · S3 · Could

@@ -11,6 +11,10 @@ from typing import Optional
 
 HOOK_MARKER = "SystemOne Gate"
 PYTHON_PLACEHOLDER = "@@PYTHON@@"
+GIT_TIMEOUT_SECONDS = 10
+GIT_NOT_FOUND_MESSAGE = (
+    "❌ Erro: Diretório .git não encontrado. Certifique-se de estar dentro de um repositório Git."
+)
 
 PRE_COMMIT_TEMPLATE = """#!/bin/sh
 # SystemOne Gate Git Pre-Commit Hook
@@ -55,22 +59,49 @@ def _is_ours(hook_path: str) -> bool:
         return HOOK_MARKER in f.read()
 
 def find_git_root(start_path: Optional[str] = None) -> Optional[str]:
+    """Walk up from start_path looking for a ``.git`` entry.
+
+    ``.git`` is a directory in regular clones but a *file* in linked worktrees
+    and submodules, so existence (not isdir) is what matters. Hook installation
+    does not rely on this: it asks git itself (see _resolve_hooks_dir).
+    """
     curr = os.path.abspath(start_path or os.getcwd())
     while True:
-        if os.path.isdir(os.path.join(curr, ".git")):
+        if os.path.exists(os.path.join(curr, ".git")):
             return curr
         parent = os.path.dirname(curr)
         if parent == curr:
             return None
         curr = parent
 
+def _resolve_hooks_dir(repo_path: Optional[str] = None) -> Optional[str]:
+    """Ask git where hooks live (honors worktrees, submodules, core.hooksPath).
+
+    `git rev-parse --git-path hooks` prints a path relative to the -C directory
+    unless it is already absolute, so it is joined against that directory
+    manually (works on old gits without --path-format=absolute).
+    """
+    base = os.path.abspath(repo_path or os.getcwd())
+    try:
+        result = subprocess.run(
+            ["git", "-C", base, "rev-parse", "--git-path", "hooks"],
+            capture_output=True,
+            text=True,
+            timeout=GIT_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.SubprocessError):
+        result = None
+    output = result.stdout.strip() if result is not None and result.returncode == 0 else ""
+    if not output:
+        print(GIT_NOT_FOUND_MESSAGE, file=sys.stderr)
+        return None
+    return os.path.normpath(os.path.join(base, output))
+
 def install_git_hook(repo_path: Optional[str] = None, hook_name: str = "pre-commit") -> bool:
-    git_root = find_git_root(repo_path)
-    if not git_root:
-        print("❌ Erro: Diretório .git não encontrado. Certifique-se de estar dentro de um repositório Git.", file=sys.stderr)
+    hooks_dir = _resolve_hooks_dir(repo_path)
+    if not hooks_dir:
         return False
 
-    hooks_dir = os.path.join(git_root, ".git", "hooks")
     os.makedirs(hooks_dir, exist_ok=True)
     target_hook = os.path.join(hooks_dir, hook_name)
     backup_path = f"{target_hook}.backup"
@@ -94,10 +125,10 @@ def install_git_hook(repo_path: Optional[str] = None, hook_name: str = "pre-comm
     return True
 
 def uninstall_git_hook(repo_path: Optional[str] = None, hook_name: str = "pre-commit") -> bool:
-    git_root = find_git_root(repo_path)
-    if not git_root:
+    hooks_dir = _resolve_hooks_dir(repo_path)
+    if not hooks_dir:
         return False
-    target_hook = os.path.join(git_root, ".git", "hooks", hook_name)
+    target_hook = os.path.join(hooks_dir, hook_name)
     if not os.path.exists(target_hook):
         print(f"Aviso: Hook '{hook_name}' não encontrado em {target_hook}")
         return False

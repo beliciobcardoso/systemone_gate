@@ -179,3 +179,152 @@ def test_uninstall_missing_hook_warns_and_returns_false(repo, capsys):
 
 def test_uninstall_outside_git_repo_returns_false(tmp_path):
     assert hooks.uninstall_git_hook(str(tmp_path)) is False
+
+
+# --- DEF-05 / DEF-09: hooks directory resolved by git itself ---
+
+def git(cwd, *args, check=True):
+    return subprocess.run(
+        ["git", "-C", str(cwd), *args], env=_git_env(), capture_output=True, text=True, check=check
+    )
+
+
+def commit_all(cwd, message="c"):
+    git(cwd, "add", "-A")
+    return git(cwd, "commit", "-q", "-m", message, check=False)
+
+
+@pytest.fixture
+def committed_repo(repo):
+    (repo / "a.txt").write_text("a", encoding="utf-8")
+    assert commit_all(repo, "init").returncode == 0
+    return repo
+
+
+def test_install_from_linked_worktree_uses_shared_hooks_dir_and_hook_runs(committed_repo, tmp_path):
+    wt = tmp_path / "wt"
+    git(committed_repo, "worktree", "add", "-q", str(wt), "-b", "other")
+    assert (wt / ".git").is_file()
+
+    assert hooks.install_git_hook(str(wt)) is True
+
+    shared = hook_path(committed_repo)
+    assert shared.exists()
+    (wt / "b.txt").write_text("b", encoding="utf-8")
+    result = commit_all(wt, "from worktree")
+    assert result.returncode == 0
+    assert WARNING in result.stderr
+
+    assert hooks.uninstall_git_hook(str(wt)) is True
+    assert not shared.exists()
+
+
+def test_install_from_submodule_where_dot_git_is_a_file(committed_repo, tmp_path):
+    sub_src = tmp_path / "sub_src.git"
+    subprocess.run(["git", "init", "-q", "--bare", str(sub_src)], check=True, env=_git_env())
+    seed = tmp_path / "seed"
+    subprocess.run(["git", "clone", "-q", str(sub_src), str(seed)], check=True, env=_git_env())
+    git(seed, "config", "user.email", "t@t.t")
+    git(seed, "config", "user.name", "T")
+    (seed / "s.txt").write_text("s", encoding="utf-8")
+    assert commit_all(seed, "seed").returncode == 0
+    git(seed, "push", "-q", "origin", "HEAD")
+    git(committed_repo, "-c", "protocol.file.allow=always", "submodule", "add", "-q", str(sub_src), "mod")
+    sub = committed_repo / "mod"
+    assert (sub / ".git").is_file()
+
+    assert hooks.find_git_root(str(sub)) == str(sub)
+    assert hooks.install_git_hook(str(sub)) is True
+
+    hooks_dir = git(sub, "rev-parse", "--git-path", "hooks").stdout.strip()
+    installed = os.path.join(str(sub), hooks_dir, "pre-commit")
+    assert os.path.exists(installed)
+    assert not hook_path(committed_repo).exists()
+    assert hooks.uninstall_git_hook(str(sub)) is True
+    assert not os.path.exists(installed)
+
+
+def test_core_hooks_path_relative_installs_and_uninstalls_there(repo):
+    git(repo, "config", "core.hooksPath", ".husky")
+    original = "#!/bin/sh\necho husky\n"
+    husky = repo / ".husky" / "pre-commit"
+    husky.parent.mkdir()
+    husky.write_text(original, encoding="utf-8")
+    os.chmod(husky, 0o755)
+
+    assert hooks.install_git_hook(str(repo)) is True
+    assert "SystemOne Gate" in husky.read_text(encoding="utf-8")
+    assert (repo / ".husky" / "pre-commit.backup").read_text(encoding="utf-8") == original
+    assert not hook_path(repo).exists()
+
+    assert hooks.uninstall_git_hook(str(repo)) is True
+    assert husky.read_text(encoding="utf-8") == original
+    assert not hook_path(repo).exists()
+
+
+def test_core_hooks_path_relative_is_resolved_against_repo_root_from_subdir(repo):
+    git(repo, "config", "core.hooksPath", ".husky")
+    sub = repo / "pkg" / "deep"
+    sub.mkdir(parents=True)
+
+    assert hooks.install_git_hook(str(sub)) is True
+    assert (repo / ".husky" / "pre-commit").exists()
+    assert not (sub / ".husky").exists()
+
+
+def test_core_hooks_path_absolute_outside_repo(repo, tmp_path):
+    shared = tmp_path / "shared_hooks"
+    git(repo, "config", "core.hooksPath", str(shared))
+
+    assert hooks.install_git_hook(str(repo)) is True
+    target = shared / "pre-commit"
+    assert target.exists()
+    assert not hook_path(repo).exists()
+
+    assert hooks.uninstall_git_hook(str(repo)) is True
+    assert not target.exists()
+
+
+def test_install_outside_repo_prints_portuguese_error(tmp_path, capsys):
+    assert hooks.install_git_hook(str(tmp_path)) is False
+    assert "Diretório .git não encontrado" in capsys.readouterr().err
+
+
+def test_git_not_installed_returns_false_without_raising(repo, monkeypatch, capsys):
+    monkeypatch.setenv("PATH", str(repo))
+    assert hooks.install_git_hook(str(repo)) is False
+    assert "Diretório .git não encontrado" in capsys.readouterr().err
+    assert hooks.uninstall_git_hook(str(repo)) is False
+
+
+@pytest.mark.parametrize("exc", [FileNotFoundError(), subprocess.TimeoutExpired("git", 1), OSError("boom")])
+def test_subprocess_failures_return_false(repo, monkeypatch, capsys, exc):
+    def boom(*args, **kwargs):
+        raise exc
+
+    monkeypatch.setattr(hooks.subprocess, "run", boom)
+    assert hooks.install_git_hook(str(repo)) is False
+    assert "Diretório .git não encontrado" in capsys.readouterr().err
+
+
+def test_find_git_root_accepts_dot_git_file(tmp_path):
+    root = tmp_path / "proj"
+    nested = root / "a" / "b"
+    nested.mkdir(parents=True)
+    (root / ".git").write_text("gitdir: /elsewhere\n", encoding="utf-8")
+    assert hooks.find_git_root(str(nested)) == str(root)
+
+
+def test_find_git_root_returns_none_outside_repo(tmp_path):
+    assert hooks.find_git_root(str(tmp_path)) is None
+
+
+def test_find_git_root_default_start_uses_cwd(repo, monkeypatch):
+    monkeypatch.chdir(repo)
+    assert hooks.find_git_root() == str(repo)
+
+
+def test_install_defaults_to_cwd(repo, monkeypatch):
+    monkeypatch.chdir(repo)
+    assert hooks.install_git_hook() is True
+    assert hook_path(repo).exists()
