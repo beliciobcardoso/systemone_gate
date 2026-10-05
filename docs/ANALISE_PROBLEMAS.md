@@ -43,7 +43,7 @@
 - **Infraestrutura válida:** o endpoint `/v1/systemone` e os modelos existem e respondem no formato esperado (HTTP 200, `choice`/`score`/`probabilities`). A premissa do projeto se sustenta.
 - **Problema central (S1):** o guard de comandos **aprova `rm -rf /`** (P(destrutivo)=0,23) e `dd … of=/dev/sda`, `DROP TABLE`. Nenhum cruzaria o limiar de bloqueio. Docs e `.cursorrules` instruem agentes a confiar nele justamente para esses comandos.
 - **Progresso (atualizado em 2026-10-05, `dev` @ `6355092`):** dos 12 itens S1/S2, **9 resolvidos** (SEG-01, DEF-01, DEF-02, DEF-03, DEF-04, FAL-02, DT-05, DT-01, DT-02), **1 mitigado** (FAL-01) e **2 parciais** (FAL-03, SEG-02), via PRs [#3](https://github.com/beliciobcardoso/systemone_gate/pull/3) a [#8](https://github.com/beliciobcardoso/systemone_gate/pull/8); mais DOC-03 e DOC-04 (S3). Legenda: ✅ Resolvido · 🟡 Parcial/Mitigado · ⬜ Aberto · ⛔ Descartado por decisão do usuário. **Convenção:** o status é atualizado na mesma branch que resolve o item.
-- **Totais:** 44 itens — 9 defeitos, 6 falhas de produto, 11 dívidas técnicas, 3 de segurança, 7 de documentação, 3 riscos e 5 de higiene (agrupados). Só 2 são S1, 10 são S2 e 4 são hipóteses não testadas (SEG-02, DOC-05, DOC-06, RSK-02).
+- **Totais:** 47 itens — 11 defeitos, 6 falhas de produto, 11 dívidas técnicas, 3 de segurança, 8 de documentação, 3 riscos e 5 de higiene (agrupados). Só 2 são S1, 10 são S2 e 4 são hipóteses não testadas (SEG-02, DOC-05, DOC-06, RSK-02).
 - **Maior alavancagem:** (1) rebaixar/reestruturar o guard, (2) tornar o hook seguro por padrão (fail-open real), (3) criar testes, (4) centralizar a política de decisão.
 
 ### Visão geral
@@ -67,6 +67,8 @@
 | DEF-07 | MCP: JSON inválido ignorado e erro sem `isError` | Defeito | Confiabilidade | S3 | Should | Estático | ✅ Resolvido (#13) |
 | DEF-08 | Timeout fixo de 30 s | Defeito | Confiabilidade | S3 | Should | Estático (+ cold start medido) | 🟡 Parcial (#12) |
 | DEF-09 | Hook ignora `core.hooksPath` | Defeito | Compatibilidade | S3 | Could | Estático | ✅ Resolvido (#11) |
+| DEF-10 | `hook-guard` sai com 2 (bloqueia tudo) se `SYSTEMONE_TIMEOUT`/`OLLAMA_SYSTEMONE_URL` forem inválidos | Defeito | Confiabilidade | S2 | Must | Reproduzido | ✅ Resolvido (`fix/hook_guard_env_and_aggregate`) |
+| DEF-11 | `TypeError` na agregação do diff quando o modelo devolve `score` não numérico | Defeito | Confiabilidade | S3 | Should | Reproduzido | ✅ Resolvido (`fix/hook_guard_env_and_aggregate`) |
 | FAL-04 | Latência real ~200 ms vs. "<15 ms" prometido | Falha | Eficiência | S3 | Should | Medido | ✅ Resolvido (#16) |
 | FAL-05 | Confiança do modelo baixa (0,03–0,27) | Falha | Adequação funcional | S3 | Should | Medido | 🟡 Parcial (#22) |
 | FAL-06 | Hook usa modelo 0.8B para code review | Falha | Adequação funcional | S3 | Should | Estático | ✅ Resolvido (#17) |
@@ -89,6 +91,7 @@
 | RSK-03 | Privacidade: diffs/comandos podem conter segredos | Risco | Segurança | S3 | Should | Estático | ✅ Resolvido (#19) |
 | DT-11 | `AGENTS.md` exige CI verde, testes e cobertura que não existem | Dívida | Manutenibilidade | S3 | Should | Estático | ✅ Resolvido (#10) |
 | DOC-07 | Hook sugere `--no-verify`, que `AGENTS.md` proíbe | Doc. | Usabilidade | S3 | Should | Estático | ✅ Resolvido (#17) |
+| DOC-08 | "Ultra-fast"/"Ultrarrápido" ainda no README, no docstring do pacote e no manual | Doc. | — | S4 | Should | Estático | ✅ Resolvido (`fix/hook_guard_env_and_aggregate`) |
 | HIG-01..05 | Higiene (ver §9) | — | — | S4 | Won't | Estático | ✅ Resolvido (#14) |
 
 ---
@@ -266,6 +269,24 @@
 - **Classificação:** Defeito · Compatibilidade · S3 · Could
 - **Solução:** coberta por DEF-05 (`git rev-parse --git-path hooks`).
 - **Esforço:** incluso em DEF-05
+
+### DEF-10 · `hook-guard` sai com 2 se a configuração do Ollama for inválida
+- **Status:** ✅ **Resolvido** em `fix/hook_guard_env_and_aggregate`. `_dispatch` trata `hook-guard`, `install-hook` e `uninstall-hook` antes de construir o `SystemOneClient`; os comandos que falam com o Ollama (`diff`, `triage`, `guard`, `doctor`, `mcp`) continuam saindo com 2 em configuração inválida.
+- **Local:** `cli.py` (`_dispatch`)
+- **Evidência:** **Reproduzido** — `echo '{"tool_name":"Bash","tool_input":{"command":"ls"}}' | SYSTEMONE_TIMEOUT=abc systemone-gate hook-guard` saía com 2; sem a variável, saía com 0.
+- **Classificação:** Defeito · Confiabilidade · **S2** · Must
+- **Problema:** o `SystemOneClient()` era criado antes de qualquer subcomando e valida `SYSTEMONE_TIMEOUT` e `OLLAMA_SYSTEMONE_URL`. Para o `PreToolUse` do Claude Code, exit 2 **bloqueia** a chamada: uma variável de ambiente inválida e sem relação com o hook (que é offline e não usa o modelo) barrava todos os comandos Bash do agente. Surgiu junto com o SEG-01 (#8), que declarava o hook independente do Ollama.
+- **Solução:** construir o cliente só nos subcomandos que o usam. Testes: `hook-guard` com timeout inválido, esquema inválido e host remoto sem `SYSTEMONE_ALLOW_REMOTE` ainda libera `ls` (exit 0) e bloqueia `rm -rf /` (exit 2).
+- **Esforço:** S
+
+### DEF-11 · `TypeError` na agregação do diff com resposta não numérica
+- **Status:** ✅ **Resolvido** em `fix/hook_guard_env_and_aggregate`. `review_staged` valida `risk_level.score` e `breaking_change.probabilities.breaking_change` de cada arquivo; um valor não numérico (string, `null`, `NaN`, booleano) ou uma seção com tipo errado vira `{"error": "resposta inválida do modelo para <arquivo>: campo '...' malformado"}`, que segue a política `SYSTEMONE_DIFF_ON_ERROR`. Campos ausentes continuam tolerados, como antes.
+- **Local:** `diff_review.py` (`_aggregate`, `_risk_score`, `_breaking_prob`)
+- **Evidência:** **Reproduzido** — `_aggregate([{"risk_level": {"score": "x"}}, {"risk_level": {"score": 1.0}}])` levanta `TypeError: '>' not supported between instances of 'float' and 'str'`.
+- **Classificação:** Defeito · Confiabilidade · S3 · Should
+- **Problema:** o `max()` comparava valores de tipos diferentes. O MCP absorvia a exceção em `_dispatch_tool`, mas a CLI (`handle_diff`, usada pelo pre-commit) não: o usuário via um traceback em vez do aviso fail-open.
+- **Solução:** validar na borda, antes de agregar (mesma ideia do DEF-03). Testes parametrizados com 8 formas malformadas e um teste da CLI (aviso + exit 0).
+- **Esforço:** S
 
 ---
 
@@ -467,6 +488,13 @@
 - **Classificação:** Inconsistência entre produto e política do repositório · Usabilidade · S3 · Should
 - **Problema:** a própria mensagem do hook instrui a burlar a verificação, contra a regra do projeto. Para agentes que seguem `AGENTS.md`, o hook bloqueando um commit legítimo (ver DEF-02) não tem saída permitida.
 - **Solução:** tornar o hook fail-open (DEF-02) e oferecer bypass explícito e auditável (`SYSTEMONE_SKIP=1 git commit`) em vez de `--no-verify`, que desliga *todos* os hooks do repositório. Ajustar `AGENTS.md` para citar esse bypass.
+- **Esforço:** S
+
+### DOC-08 · Alegação "ultra-fast" remanescente
+- **Status:** ✅ **Resolvido** em `fix/hook_guard_env_and_aggregate` — removida do `README.md` (título), do docstring de `systemone_gate/__init__.py` e da skill de exemplo do manual (§1). O PR #35 havia removido só a do `pyproject.toml`.
+- **Local:** `README.md:3`, `systemone_gate/__init__.py:3`, `docs/MANUAL_AGENTES_IA.md:85`
+- **Evidência:** Estático (as medições do README mostram ≈145-165 ms no `tev1:0.8b` e ≈390-410 ms no `nimble`, o que não sustenta "ultra-rápido").
+- **Classificação:** Documentação enganosa · S4 · Should (mesma natureza do DOC-02)
 - **Esforço:** S
 
 ---

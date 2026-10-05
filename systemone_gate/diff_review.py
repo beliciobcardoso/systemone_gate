@@ -7,6 +7,7 @@ model verdicts worst-case, reporting exactly what was and was not inspected.
 Pure logic: no printing, no I/O besides the injected client.
 """
 
+import math
 import posixpath
 import re
 from dataclasses import dataclass
@@ -162,6 +163,28 @@ def _risk_score(answers: Dict[str, Any]) -> float:
     return score
 
 
+def _is_number(value: Any) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+
+
+def _answers_problem(answers: Dict[str, Any]) -> Optional[str]:
+    """Why the fields read by `_aggregate` cannot be compared, or None. Absent fields are tolerated."""
+    risk = answers.get("risk_level")
+    if risk is not None and (not isinstance(risk, dict) or ("score" in risk and not _is_number(risk["score"]))):
+        return "risk_level.score"
+    breaking = answers.get("breaking_change")
+    if breaking is None:
+        return None
+    if not isinstance(breaking, dict):
+        return "breaking_change"
+    probs = breaking.get("probabilities")
+    if probs is None:
+        return None
+    if not isinstance(probs, dict) or ("breaking_change" in probs and not _is_number(probs["breaking_change"])):
+        return "breaking_change.probabilities"
+    return None
+
+
 def _aggregate(per_file_answers: List[Dict[str, Any]]) -> Dict[str, Any]:
     riskiest = max(per_file_answers, key=_risk_score)
     breakiest = max(per_file_answers, key=_breaking_prob)
@@ -208,6 +231,9 @@ def review_staged(client: Any, diff_text: str, model: Optional[str],
         answers = res.get("answers") if isinstance(res, dict) else None
         if not isinstance(answers, dict):
             return {"error": f"resposta inválida do modelo para {fd.path}"}
+        problem = _answers_problem(answers)
+        if problem:
+            return {"error": f"resposta inválida do modelo para {fd.path}: campo '{problem}' malformado"}
         answers_list.append(answers)
 
     coverage = {

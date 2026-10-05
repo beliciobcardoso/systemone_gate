@@ -82,7 +82,7 @@ Crie `~/.gemini/config/skills/systemone-gate/SKILL.md`:
 ```markdown
 ---
 name: systemone-gate
-description: Ultra-fast local decision gate using Ollama System One (Nimble & Tev1). Use for real-time error triage, pre-commit diff risk review, and command safety.
+description: Local decision gate using Ollama System One (Nimble & Tev1). Use for real-time error triage, pre-commit diff risk review, and command safety.
 ---
 
 Quando houver falha de compilação, erro de testes ou necessidade de avaliar o risco de um patch antes do commit, acione a ferramenta `systemone_triage_error` ou `systemone_review_diff`.

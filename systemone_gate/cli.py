@@ -233,6 +233,24 @@ def _resolve_diff_model(args: argparse.Namespace) -> str:
     return os.environ.get(DIFF_MODEL_ENV) or DEFAULT_DIFF_MODEL
 
 def _dispatch(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
+    # Commands that never talk to Ollama run before the client is built: an invalid SYSTEMONE_TIMEOUT or
+    # OLLAMA_SYSTEMONE_URL must not make them fail (for hook-guard, exit 2 would block every Bash call).
+    if args.command == "install-hook":
+        sys.exit(0 if install_git_hook(args.repo) else 1)
+
+    elif args.command == "uninstall-hook":
+        sys.exit(0 if uninstall_git_hook(args.repo) else 1)
+
+    elif args.command == "hook-guard":
+        code, message = run_pretooluse(sys.stdin.read())
+        if message:
+            print(message, file=sys.stderr)
+        sys.exit(code)
+
+    elif args.command is None:
+        parser.print_help()
+        sys.exit(0)
+
     try:
         client = SystemOneClient()
     except ValueError as e:
@@ -251,20 +269,6 @@ def _dispatch(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None
     elif args.command == "guard":
         cmd_msg = " ".join(args.cmd_text)
         sys.exit(handle_guard(client, cmd_msg, model="tev1:0.8b"))
-
-    elif args.command == "install-hook":
-        success = install_git_hook(args.repo)
-        sys.exit(0 if success else 1)
-
-    elif args.command == "uninstall-hook":
-        success = uninstall_git_hook(args.repo)
-        sys.exit(0 if success else 1)
-
-    elif args.command == "hook-guard":
-        code, message = run_pretooluse(sys.stdin.read())
-        if message:
-            print(message, file=sys.stderr)
-        sys.exit(code)
 
     elif args.command == "doctor":
         sys.exit(run_doctor_cli(client.endpoint, args.model, not args.no_smoke, client.timeout))
