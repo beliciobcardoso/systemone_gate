@@ -34,6 +34,11 @@ ENV_DIFF_BREAKING = "SYSTEMONE_DIFF_BREAKING_THRESHOLD"
 ENV_GUARD_DANGER = "SYSTEMONE_GUARD_DANGER_THRESHOLD"
 ENV_DIFF_ON_ERROR = "SYSTEMONE_DIFF_ON_ERROR"
 ENV_GUARD_ON_ERROR = "SYSTEMONE_GUARD_ON_ERROR"
+ENV_MIN_CONFIDENCE = "SYSTEMONE_MIN_CONFIDENCE"
+
+# Opt-in: 0.0 disables the check. Deliberately NOT a "good" value: there is no
+# calibration data and observed confidences are low across the board.
+DEFAULT_MIN_CONFIDENCE = 0.0
 
 INVALID_RESPONSE_PREFIX = "resposta inválida: "
 
@@ -60,6 +65,13 @@ def _env_float(environ: Mapping[str, str], name: str, default: float) -> float:
     return value
 
 
+def _env_confidence(environ: Mapping[str, str]) -> float:
+    value = _env_float(environ, ENV_MIN_CONFIDENCE, DEFAULT_MIN_CONFIDENCE)
+    if not 0.0 <= value <= 1.0:
+        raise ValueError(f"{ENV_MIN_CONFIDENCE} deve estar entre 0 e 1, recebido: {environ[ENV_MIN_CONFIDENCE]!r}")
+    return value
+
+
 @dataclass(frozen=True)
 class PolicyConfig:
     diff_risk_threshold: float = DEFAULT_DIFF_RISK_THRESHOLD
@@ -67,8 +79,13 @@ class PolicyConfig:
     guard_danger_threshold: float = DEFAULT_GUARD_DANGER_THRESHOLD
     diff_on_error: str = ACTION_ALLOW
     guard_on_error: str = ACTION_ALLOW
+    min_confidence: float = DEFAULT_MIN_CONFIDENCE
 
     def __post_init__(self) -> None:
+        if not _is_finite_real(self.min_confidence) or not 0.0 <= self.min_confidence <= 1.0:
+            raise ValueError(
+                f"min_confidence deve ser um número finito entre 0 e 1, recebido: {self.min_confidence!r}"
+            )
         _validate_on_error("diff_on_error", self.diff_on_error)
         _validate_on_error("guard_on_error", self.guard_on_error)
 
@@ -85,6 +102,7 @@ class PolicyConfig:
             guard_danger_threshold=_env_float(env, ENV_GUARD_DANGER, DEFAULT_GUARD_DANGER_THRESHOLD),
             diff_on_error=diff_on_error,
             guard_on_error=guard_on_error,
+            min_confidence=_env_confidence(env),
         )
 
 
@@ -93,6 +111,7 @@ class DiffReview:
     risk_score: float
     breaking_choice: str
     breaking_probs: Mapping[str, float] = field(default_factory=dict)
+    confidence: Optional[float] = None
 
 
 @dataclass(frozen=True)
@@ -100,6 +119,7 @@ class CommandCheck:
     choice: str
     danger_score: float
     source: str = SOURCE_MODEL
+    confidence: Optional[float] = None
 
 
 @dataclass(frozen=True)
@@ -153,6 +173,16 @@ def _probabilities(section: Dict[str, Any], key: str) -> Dict[str, float]:
     return {str(name): float(prob) for name, prob in probs.items()}
 
 
+def _min_confidence(*sections: Dict[str, Any]) -> Optional[float]:
+    """Lowest valid confidence in [0, 1] among the sections; None if there is none."""
+    values = [
+        float(c)
+        for c in (section.get("confidence") for section in sections)
+        if _is_finite_real(c) and 0.0 <= c <= 1.0
+    ]
+    return min(values) if values else None
+
+
 def parse_diff_review(res: Any) -> DiffReview:
     risk = _section(res, "risk_level")
     breaking = _section(res, "breaking_change")
@@ -160,6 +190,7 @@ def parse_diff_review(res: Any) -> DiffReview:
         risk_score=_score(risk, "risk_level"),
         breaking_choice=_choice(breaking, "breaking_change"),
         breaking_probs=_probabilities(breaking, "breaking_change"),
+        confidence=_min_confidence(risk, breaking),
     )
 
 
@@ -170,12 +201,27 @@ def parse_command_check(res: Any) -> CommandCheck:
         choice=_choice(destructive, "is_destructive"),
         danger_score=_score(danger, "danger_score"),
         source=str(res.get("source", SOURCE_MODEL)),
+        confidence=_min_confidence(destructive, danger),
     )
 
 
 # ---------------------------------------------------------------- decisions
 
+def is_low_confidence(confidence: Optional[float], cfg: PolicyConfig) -> bool:
+    """True when the check is enabled, the confidence is known and below the minimum."""
+    return cfg.min_confidence > 0 and confidence is not None and confidence < cfg.min_confidence
+
+
+def _low_confidence_message(confidence: float, cfg: PolicyConfig) -> str:
+    return (
+        f"confiança {confidence:.2f} abaixo do mínimo {cfg.min_confidence:.2f}; "
+        "veredito do modelo ignorado"
+    )
+
+
 def decide_diff(review: DiffReview, cfg: PolicyConfig) -> Decision:
+    if is_low_confidence(review.confidence, cfg):
+        return decide_on_error(SURFACE_DIFF, _low_confidence_message(review.confidence, cfg), cfg)
     breaking_prob = review.breaking_probs.get(CHOICE_BREAKING, 0.0)
     if review.risk_score > cfg.diff_risk_threshold and breaking_prob > cfg.diff_breaking_threshold:
         reason = (
@@ -189,6 +235,8 @@ def decide_diff(review: DiffReview, cfg: PolicyConfig) -> Decision:
 def decide_command(check: CommandCheck, cfg: PolicyConfig) -> Decision:
     if check.source == SOURCE_RULES:
         return Decision(ACTION_BLOCK, ("comando casou com regra determinística",))
+    if is_low_confidence(check.confidence, cfg):
+        return decide_on_error(SURFACE_GUARD, _low_confidence_message(check.confidence, cfg), cfg)
     if check.choice == CHOICE_DESTRUCTIVE and check.danger_score > cfg.guard_danger_threshold:
         reason = f"destrutivo com perigo {check.danger_score:.2f} > {cfg.guard_danger_threshold}"
         return Decision(ACTION_BLOCK, (reason,))

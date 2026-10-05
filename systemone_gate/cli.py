@@ -23,6 +23,7 @@ from .policy import (
     PolicyConfig,
     evaluate_command,
     evaluate_diff,
+    is_low_confidence,
     parse_command_check,
     parse_diff_review,
 )
@@ -37,10 +38,13 @@ def _try_parse(parser, res):
     except InvalidResponse:
         return None
 
+def _confidence_suffix(confidence: Optional[float]) -> str:
+    return "" if confidence is None else f" (confiança {confidence:.2f})"
+
 def _print_diff_report(review: DiffReview, res: dict) -> None:
     risk_info = res["answers"]["risk_level"]
     print("\n------------------ Relatório de Impacto ------------------")
-    print(f"📊 Nível de Risco Técnico: {review.risk_score:.2f} / 2.0")
+    print(f"📊 Nível de Risco Técnico: {review.risk_score:.2f} / 2.0{_confidence_suffix(review.confidence)}")
     legend = risk_info.get("legend")
     level_probs = risk_info.get("probabilities")
     if isinstance(legend, dict) and isinstance(level_probs, dict):
@@ -86,7 +90,7 @@ def handle_diff(client: SystemOneClient, model: str, max_lines: int = DEFAULT_MA
         _print_diff_report(review, res)
 
     if decision.action == ACTION_BLOCK:
-        if review is not None:
+        if review is not None and not is_low_confidence(review.confidence, cfg):
             print("❌ [BLOQUEIO ATIVADO] Risco crítico e quebra de contrato identificados!", file=sys.stderr)
         else:
             print(f"❌ [BLOQUEIO ATIVADO] {'; '.join(decision.reasons)}", file=sys.stderr)
@@ -124,11 +128,11 @@ def handle_guard(client: SystemOneClient, command_text: str, model: str) -> int:
     check = _try_parse(parse_command_check, res)
     if check is not None:
         print(f"🛡️  Comando: {command_text}")
-        print(f"• Destrutivo: {check.choice}")
+        print(f"• Destrutivo: {check.choice}{_confidence_suffix(check.confidence)}")
         print(f"• Pontuação de perigo: {check.danger_score:.2f} / 2.0")
 
     if decision.action == ACTION_BLOCK:
-        if check is not None:
+        if check is not None and not is_low_confidence(check.confidence, cfg):
             print("❌ [COMANDO BLOQUEADO] Risco destrutivo elevado!", file=sys.stderr)
         else:
             print(f"❌ [COMANDO BLOQUEADO] {'; '.join(decision.reasons)}", file=sys.stderr)
