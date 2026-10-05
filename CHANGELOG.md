@@ -7,7 +7,14 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Fixed
+
+- `systemone-gate hook-guard`, `install-hook` and `uninstall-hook` no longer fail when `SYSTEMONE_TIMEOUT` or `OLLAMA_SYSTEMONE_URL` is invalid. Before, `hook-guard` exited with 2, which makes the Claude Code `PreToolUse` hook block every Bash call even though the hook never talks to Ollama.
+- A non-numeric `risk_level.score` or `breaking_change` probability in a per-file review no longer raises `TypeError` (a traceback in the pre-commit hook); it is reported as an invalid model response and follows `SYSTEMONE_DIFF_ON_ERROR`.
+
 ### Changed
+
+- Removed the leftover "ultra-fast" claims from the README title, the package docstring and the manual's example skill.
 
 - The package description in `pyproject.toml` no longer says "ultra-fast", which the latency measurements do not support (#35).
 

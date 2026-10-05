@@ -1,6 +1,6 @@
 # 🛡️ SystemOne Gate
 
-> **Motor de Decisão Ultrarrápido, Local e com Custo Zero para Agentes de IA e Desenvolvedores de Software.**  
+> **Motor de Decisão Local e com Custo Zero para Agentes de IA e Desenvolvedores de Software.**  
 > Baseado na arquitetura **System One** (estilo JEV da TypeSafe AI), executado 100% offline via **Ollama 0.35+**.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)

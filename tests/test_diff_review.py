@@ -253,6 +253,30 @@ def test_malformed_response_becomes_error():
         assert res == {"error": "resposta inválida do modelo para a.py"}
 
 
+@pytest.mark.parametrize("answers", [
+    {"risk_level": {"score": "high"}, "breaking_change": {"probabilities": {}}},
+    {"risk_level": {"score": None}},
+    {"risk_level": {"score": float("nan")}},
+    {"risk_level": {"score": True}},
+    {"risk_level": "high"},
+    {"breaking_change": {"probabilities": {"breaking_change": "0.9"}}},
+    {"breaking_change": {"probabilities": [0.9]}},
+    {"breaking_change": "breaking_change"},
+])
+def test_non_numeric_fields_become_error_not_typeerror(answers):
+    client = StubClient([{"answers": answers}, answer(0.1, 0.1)])
+    res = review_staged(client, make_file_diff("a.py", ["1"]) + make_file_diff("b.py", ["2"]), "m")
+    assert res["error"].startswith("resposta inválida do modelo para a.py: campo '")
+
+
+def test_cli_non_numeric_score_warns_and_exits_zero(monkeypatch, capsys):
+    bad = {"answers": {"risk_level": {"score": "high"}}}
+    code = run_cli(monkeypatch, make_file_diff("a.py", ["x"]) + make_file_diff("b.py", ["y"]),
+                   StubClient([bad, answer(0.1, 0.1)]))
+    assert code == 0
+    assert "malformado" in capsys.readouterr().err
+
+
 def test_only_ignored_files_approves():
     diff = make_file_diff("yarn.lock", ["x"]) + (
         "diff --git a/i.png b/i.png\nBinary files a/i.png and b/i.png differ\n"
