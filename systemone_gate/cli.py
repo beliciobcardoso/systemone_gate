@@ -3,6 +3,7 @@ Command Line Interface (CLI) for SystemOne Gate.
 Provides dev tools and can start the MCP server directly.
 """
 
+import os
 import sys
 import subprocess
 import json
@@ -12,6 +13,7 @@ from typing import List, Optional
 
 from .claude_hook import run_pretooluse
 from .client import SystemOneClient
+from .doctor import run_cli as run_doctor_cli
 from .diff_review import DEFAULT_MAX_LINES_PER_FILE, format_coverage, review_staged
 from .hooks import install_git_hook, uninstall_git_hook
 from .mcp_server import run_mcp_server
@@ -29,6 +31,9 @@ from .policy import (
 )
 
 EXIT_CONFIG_ERROR = 2
+DEFAULT_DIFF_MODEL = "tev1:0.8b"
+DIFF_MODEL_ENV = "SYSTEMONE_DIFF_MODEL"
+NIMBLE_MODEL = "nimble"
 GIT_DIFF_TIMEOUT_SECONDS = 30
 PROFILE_HELP = f"Perfil de rubrica (padrão: env SYSTEMONE_PROFILE ou {DEFAULT_PROFILE})"
 
@@ -151,7 +156,7 @@ def handle_guard(client: SystemOneClient, command_text: str, model: str) -> int:
 def main(argv: Optional[List[str]] = None):
     parser = argparse.ArgumentParser(
         prog="systemone-gate",
-        description="Gatekeeper e motor de triagem local ultrarrápido para agentes de IA e desenvolvedores."
+        description="Gatekeeper e motor de triagem local de baixa latência para agentes de IA e desenvolvedores."
     )
     parser.add_argument("--plain", action="store_true",
                         help="Saída apenas ASCII (sem emoji); também via SYSTEMONE_PLAIN=1")
@@ -159,7 +164,11 @@ def main(argv: Optional[List[str]] = None):
 
     # diff
     p_diff = subparsers.add_parser("diff", help="Inspeciona alterações staged (git diff --cached)")
-    p_diff.add_argument("--nimble", action="store_true", help="Usa Nimble (9B) em vez do Tev1 padrão")
+    diff_model = p_diff.add_mutually_exclusive_group()
+    diff_model.add_argument("--nimble", action="store_true", help="Atalho para --model nimble (9B)")
+    diff_model.add_argument(
+        "--model", default=None,
+        help=f"Modelo Ollama (padrão: {DEFAULT_DIFF_MODEL}; também via {DIFF_MODEL_ENV})")
     p_diff.add_argument("--profile", choices=PROFILES, default=None, help=PROFILE_HELP)
 
     # triage
@@ -183,6 +192,11 @@ def main(argv: Optional[List[str]] = None):
     # hook-guard
     subparsers.add_parser("hook-guard", help="Hook PreToolUse do Claude Code: bloqueia comandos catastróficos (offline, sem modelo)")
 
+    # doctor
+    p_doctor = subparsers.add_parser("doctor", help="Valida o backend Ollama (versão, modelos e contrato do endpoint)")
+    p_doctor.add_argument("--model", action="append", default=None, help="Modelo a verificar (repetível; padrão: tev1:0.8b e nimble)")
+    p_doctor.add_argument("--no-smoke", action="store_true", help="Pula o teste de contrato (POST /v1/systemone)")
+
     # mcp
     subparsers.add_parser("mcp", help="Inicia o servidor MCP stdio (para Claude Desktop, Cursor, Antigravity)")
 
@@ -192,6 +206,14 @@ def main(argv: Optional[List[str]] = None):
     with output_ctx:
         _dispatch(parser, args)
 
+def _resolve_diff_model(args: argparse.Namespace) -> str:
+    """--model / --nimble > SYSTEMONE_DIFF_MODEL (non-empty) > default."""
+    if args.model:
+        return args.model
+    if args.nimble:
+        return NIMBLE_MODEL
+    return os.environ.get(DIFF_MODEL_ENV) or DEFAULT_DIFF_MODEL
+
 def _dispatch(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
     try:
         client = SystemOneClient()
@@ -200,8 +222,9 @@ def _dispatch(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None
         sys.exit(2)
 
     if args.command == "diff":
-        model = "nimble" if args.nimble else "tev1:0.8b"
-        sys.exit(handle_diff(client, model=model, profile=args.profile))
+        if args.model is not None and not args.model.strip():
+            parser.error("--model não pode ser vazio")
+        sys.exit(handle_diff(client, model=_resolve_diff_model(args), profile=args.profile))
 
     elif args.command == "triage":
         err_msg = " ".join(args.error_text)
@@ -224,6 +247,9 @@ def _dispatch(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None
         if message:
             print(message, file=sys.stderr)
         sys.exit(code)
+
+    elif args.command == "doctor":
+        sys.exit(run_doctor_cli(client.endpoint, args.model, not args.no_smoke, client.timeout))
 
     elif args.command == "mcp":
         run_mcp_server()

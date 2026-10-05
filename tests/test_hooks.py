@@ -35,8 +35,9 @@ def hook_path(repo, name="pre-commit"):
     return repo / ".git" / "hooks" / name
 
 
-def run_hook(repo, pythonpath=None):
+def run_hook(repo, pythonpath=None, extra_env=None):
     env = _git_env()
+    env.update(extra_env or {})
     if pythonpath is not None:
         env["PYTHONPATH"] = pythonpath
     return subprocess.run(
@@ -328,3 +329,46 @@ def test_install_defaults_to_cwd(repo, monkeypatch):
     monkeypatch.chdir(repo)
     assert hooks.install_git_hook() is True
     assert hook_path(repo).exists()
+
+
+SKIP_WARNING = "[SystemOne Gate] verificação ignorada (SYSTEMONE_SKIP)."
+
+
+def test_skip_env_bypasses_only_our_check_with_warning(repo):
+    hooks.install_git_hook(str(repo))
+    result = run_hook(repo, pythonpath=WORKTREE_ROOT, extra_env={"SYSTEMONE_SKIP": "1"})
+    assert result.returncode == 0
+    assert SKIP_WARNING in result.stderr
+    assert CHECK_RAN_MARKER not in result.stdout
+
+
+def test_skip_runs_before_package_import_check(repo):
+    hooks.install_git_hook(str(repo))
+    result = run_hook(repo, extra_env={"SYSTEMONE_SKIP": "1"})
+    assert SKIP_WARNING in result.stderr
+    assert WARNING not in result.stderr
+
+
+@pytest.mark.parametrize("value", ["0", ""])
+def test_skip_env_zero_or_empty_does_not_skip(repo, value):
+    hooks.install_git_hook(str(repo))
+    result = run_hook(repo, pythonpath=WORKTREE_ROOT, extra_env={"SYSTEMONE_SKIP": value})
+    assert result.returncode == 0
+    assert SKIP_WARNING not in result.stderr
+    assert CHECK_RAN_MARKER in result.stdout
+
+
+def test_skip_does_not_bypass_failing_original_hook(repo):
+    write_foreign(repo, "#!/bin/sh\necho foreign-ran\nexit 3\n")
+    hooks.install_git_hook(str(repo))
+    result = run_hook(repo, pythonpath=WORKTREE_ROOT, extra_env={"SYSTEMONE_SKIP": "1"})
+    assert result.returncode == 3
+    assert "foreign-ran" in result.stdout
+    assert SKIP_WARNING not in result.stderr
+
+
+def test_hint_targets_this_hook_only_and_never_mentions_no_verify():
+    script = hooks.render_hook_script(sys.executable)
+    assert "--no-verify" not in script
+    assert "SYSTEMONE_SKIP=1 git commit" in script
+    assert "APENAS esta verificação" in script

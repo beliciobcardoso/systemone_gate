@@ -285,3 +285,33 @@ def test_cli_diff_profile_flag_and_bad_env(fake, sub_env, repo_root, tmp_path):
     assert bad.returncode == 2
     assert "Configuração inválida" in bad.stderr
     assert len(fake.requests) == 1
+
+
+# --- combinação de --model/--nimble com --profile (resolução do merge dos PRs #17 e #21) ---
+
+@pytest.mark.parametrize(
+    "argv, expected_model",
+    [
+        (["diff", "--model", "foo", "--profile", "web-backend"], "foo"),
+        (["diff", "--nimble", "--profile", "generic"], "nimble"),
+        (["diff", "--profile", "web-backend"], "tev1:0.8b"),
+    ],
+)
+def test_diff_forwards_resolved_model_and_profile(monkeypatch, argv, expected_model):
+    from systemone_gate import cli
+
+    for var in ("SYSTEMONE_DIFF_MODEL", "SYSTEMONE_PROFILE", "SYSTEMONE_TIMEOUT"):
+        monkeypatch.delenv(var, raising=False)
+    seen = {}
+
+    def fake_handle_diff(client, model, *args, **kwargs):
+        seen["model"] = model
+        seen["profile"] = kwargs.get("profile")
+        return 0
+
+    monkeypatch.setattr(cli, "handle_diff", fake_handle_diff)
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(argv)
+    assert exit_info.value.code == 0
+    assert seen["model"] == expected_model
+    assert seen["profile"] == argv[argv.index("--profile") + 1]

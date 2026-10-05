@@ -80,12 +80,12 @@ def test_tools_list(mcp):
     tools = mcp.call("tools/list")["result"]["tools"]
     assert sorted(t["name"] for t in tools) == sorted([
         "systemone_triage_error", "systemone_review_diff",
-        "systemone_command_guard", "systemone_query"])
+        "systemone_command_guard", "systemone_query", "systemone_review_staged"])
     for t in tools:
         schema = t["inputSchema"]
         assert schema["type"] == "object"
         assert t["description"]
-        assert set(schema["required"]) <= set(schema["properties"])
+        assert set(schema.get("required", [])) <= set(schema["properties"])
 
 
 def test_unknown_method_returns_32601(mcp):

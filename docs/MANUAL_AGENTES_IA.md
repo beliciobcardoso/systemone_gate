@@ -14,13 +14,13 @@ O **SystemOne Gate** atua como o sistema reflexo / córtex motor de baixa latên
 flowchart LR
     Agent[Agente de IA Generativo] --> |Verificação / Gating| Gate[SystemOne Gate]
     Gate --> |Ollama /v1/systemone| Engine[Nimble 9B / Tev1 0.8B]
-    Engine --> |Probabilidades Calibradas em <15ms| Gate
+    Engine --> |Probabilidades do modelo (baixa latência local; veja README, Desempenho medido)| Gate
     Gate --> |Aprovação / Alerta Estruturado| Agent
 ```
 
 * **Zero custo de tokens na nuvem:** 100% executado na GPU/CPU local.
 * **Privacidade total:** Nenhum código ou diff sai da sua máquina.
-* **Saída determinística:** Sem alucinação de texto prolixo; apenas probabilidades numéricas e rótulos tipados (`choice` e `score`).
+* **Saída estruturada:** Sem texto prolixo; apenas probabilidades numéricas do modelo (não calibradas; veja o campo `confidence`) e rótulos tipados (`choice` e `score`).
 
 ---
 
@@ -42,7 +42,7 @@ Antes de configurar qualquer agente, certifique-se de que o backend local do Oll
    ```
 3. **Baixe os modelos necessários**:
    ```bash
-   ollama pull tev1:0.8b  # Modelo de reflexo rápido (<15ms, 811MB)
+   ollama pull tev1:0.8b  # Modelo leve de reflexo rápido (811MB; latência medida no README)
    ollama pull nimble     # Modelo de precisão para código (9B, 9.5GB)
    ```
 4. **Instale o pacote localmente**:
@@ -122,6 +122,8 @@ Registre via CLI. O `--` é obrigatório para separar as opções do `claude mcp
 claude mcp add systemone-gate -e PYTHONPATH=/caminho/para/systemone_gate -- python3 -m systemone_gate.mcp_server
 ```
 O escopo padrão é `local` (privado, salvo em `~/.claude.json`). Use `--scope project` para gravar em `.mcp.json` na raiz do projeto (versionável) ou `--scope user` para todos os projetos (`~/.claude.json`). O `.mcp.json` tem o mesmo formato `mcpServers` (`command`/`args`/`env`) do Claude Desktop acima. O arquivo `.claude/config.json` não é usado para isso.
+
+**Dica de custo (`systemone_review_staged`):** com a mudança já em `git add`, chame `systemone_review_staged` (sem argumentos obrigatórios). O servidor roda `git diff --cached` no seu diretório de trabalho, revisa por arquivo e retorna risco, `coverage` e `decision` (allow/block), sem que o agente precise colar o diff como argumento do `systemone_review_diff`. O diretório de trabalho do servidor MCP precisa ser o repositório (configure o `cwd` no cliente, se necessário).
 
 ---
 
@@ -243,15 +245,26 @@ No VS Code com a extensão **Cline** ou **Roo Code**:
 
 ## 6. Aider (AI Pair Programming CLI)
 
-O Aider roda comandos de terminal nativamente. Você pode configurar o Aider para executar o `systemone-gate diff` automaticamente antes de cada commit.
+O Aider cria os commits por conta própria (`auto-commits`, padrão ligado) e, por padrão, **pula os hooks de pré-commit** (usa `--no-verify`). Por isso o fluxo suportado é: instalar o hook do SystemOne Gate (veja a seção 8) e habilitar no Aider a opção que faz os commits rodarem os hooks.
 
-No arquivo `.aider.conf.yml` na raiz do seu projeto:
+1. Instale o hook na raiz do repositório:
 
-```yaml
-# Executa a verificação local do SystemOne Gate antes de commitar
-lint-cmd: "python3 -m systemone_gate.cli diff"
-auto-commits: true
-```
+   ```bash
+   systemone-gate install-hook
+   ```
+
+2. No arquivo `.aider.conf.yml` na raiz do projeto:
+
+   ```yaml
+   # Faz os commits do Aider executarem os hooks git (padrão: false, que usa --no-verify)
+   git-commit-verify: true
+   ```
+
+   Equivalentes: flag `--git-commit-verify` ou variável `AIDER_GIT_COMMIT_VERIFY=true`. Fonte: https://aider.chat/docs/config/options.html e https://aider.chat/docs/git.html.
+
+Não use `lint-cmd` com `systemone_gate.cli diff`: o Aider anexa os nomes dos arquivos editados ao comando de lint (o subcomando `diff` não aceita esses argumentos) e, enquanto o Aider edita, `git diff --cached` está vazio porque o commit só acontece depois.
+
+> Se o hook bloquear (exit != 0), o commit do Aider falha; trate o motivo exibido ou ajuste a política (seção 7).
 
 ---
 

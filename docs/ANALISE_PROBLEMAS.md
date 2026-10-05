@@ -67,28 +67,28 @@
 | DEF-07 | MCP: JSON inválido ignorado e erro sem `isError` | Defeito | Confiabilidade | S3 | Should | Estático | ✅ Resolvido (#13) |
 | DEF-08 | Timeout fixo de 30 s | Defeito | Confiabilidade | S3 | Should | Estático (+ cold start medido) | 🟡 Parcial (#12) |
 | DEF-09 | Hook ignora `core.hooksPath` | Defeito | Compatibilidade | S3 | Could | Estático | ✅ Resolvido (#11) |
-| FAL-04 | Latência real ~200 ms vs. "<15 ms" prometido | Falha | Eficiência | S3 | Should | Medido | ⬜ Aberto |
+| FAL-04 | Latência real ~200 ms vs. "<15 ms" prometido | Falha | Eficiência | S3 | Should | Medido | ✅ Resolvido (#16) |
 | FAL-05 | Confiança do modelo baixa (0,03–0,27) | Falha | Adequação funcional | S3 | Should | Medido | ⬜ Aberto |
-| FAL-06 | Hook usa modelo 0.8B para code review | Falha | Adequação funcional | S3 | Should | Estático | ⬜ Aberto |
+| FAL-06 | Hook usa modelo 0.8B para code review | Falha | Adequação funcional | S3 | Should | Estático | ✅ Resolvido (#17) |
 | DT-03 | Erro retornado como `dict` misturado ao sucesso | Dívida | Manutenibilidade | S3 | Should | Estático | ⬜ Aberto |
-| DT-04 | Tools MCP exigem que o agente cole diff/log | Dívida | Eficiência | S3 | Should | Estático | ⬜ Aberto |
+| DT-04 | Tools MCP exigem que o agente cole diff/log | Dívida | Eficiência | S3 | Should | Estático | ✅ Resolvido (#18) |
 | DT-06 | Sem CI, lint, type-check, formatação | Dívida | Manutenibilidade | S3 | Should | Reproduzido (ausência) | ⬜ Aberto (CI ⛔ descartado) |
 | DT-07 | Rubricas enviesadas para C/redes (mosquitto) | Dívida | Adequação funcional | S3 | Should | Estático | 🟡 Parcial (#21) |
-| SEG-03 | `OLLAMA_SYSTEMONE_URL` sem validação de esquema/host | Segurança | Segurança | S3 | Could | Estático | ⬜ Aberto |
-| DOC-01 | Config do Aider quebrada | Doc. | Usabilidade | S3 | Must | Reproduzido | ⬜ Aberto |
-| DOC-02 | Alegações não sustentadas (<15 ms, calibrado, determinístico) | Doc. | — | S3 | Must | Medido | ⬜ Aberto |
+| SEG-03 | `OLLAMA_SYSTEMONE_URL` sem validação de esquema/host | Segurança | Segurança | S3 | Could | Estático | ✅ Resolvido (#19) |
+| DOC-01 | Config do Aider quebrada | Doc. | Usabilidade | S3 | Must | Reproduzido | ✅ Resolvido (#16) |
+| DOC-02 | Alegações não sustentadas (<15 ms, calibrado, determinístico) | Doc. | — | S3 | Must | Medido | ✅ Resolvido (#16) |
 | DOC-03 | Docs mandam usar guard para `rm -rf`/`prune`/reset | Doc. | Segurança | S3 | Must | Medido | ✅ Resolvido (#8) |
 | DOC-04 | Exemplos com comportamento oposto na mesma falha | Doc. | Confiabilidade | S3 | Should | Estático | ✅ Resolvido (#7) |
-| RSK-01 | Dependência de endpoint/modelos de terceiros sem contrato versionado | Risco | Compatibilidade | S3 | Should | Estático | ⬜ Aberto |
+| RSK-01 | Dependência de endpoint/modelos de terceiros sem contrato versionado | Risco | Compatibilidade | S3 | Should | Estático | ✅ Resolvido (#20) |
 | DT-08 | Código morto (`--tev`, `route_task`, `uninstall`) | Dívida | Manutenibilidade | S4 | Could | Estático | ✅ Resolvido (#14) |
 | DT-09 | Magic numbers e metadados placeholder | Dívida | Manutenibilidade | S4 | Could | Estático | ✅ Resolvido (#14) |
 | DT-10 | Sem tipos de domínio (dicts por toda parte) | Dívida | Manutenibilidade | S4 | Could | Estático | 🟡 Parcial (#7) |
 | DOC-05 | `claude mcp add` provavelmente sem `--` / caminho de config | Doc. | Usabilidade | S4 | Could | **Hipótese** | ✅ Resolvido (#15) |
 | DOC-06 | Versões de modelos/caminhos de IDEs não verificáveis | Doc. | — | S4 | Could | **Hipótese** | 🟡 Parcial (#15) |
 | RSK-02 | Rubricas em português vs. modelo possivelmente treinado em inglês | Risco | Adequação funcional | S3 | Could | **Hipótese** | ⬜ Aberto |
-| RSK-03 | Privacidade: diffs/comandos podem conter segredos | Risco | Segurança | S3 | Should | Estático | ⬜ Aberto |
+| RSK-03 | Privacidade: diffs/comandos podem conter segredos | Risco | Segurança | S3 | Should | Estático | ✅ Resolvido (#19) |
 | DT-11 | `AGENTS.md` exige CI verde, testes e cobertura que não existem | Dívida | Manutenibilidade | S3 | Should | Estático | ✅ Resolvido (#10) |
-| DOC-07 | Hook sugere `--no-verify`, que `AGENTS.md` proíbe | Doc. | Usabilidade | S3 | Should | Estático | ⬜ Aberto |
+| DOC-07 | Hook sugere `--no-verify`, que `AGENTS.md` proíbe | Doc. | Usabilidade | S3 | Should | Estático | ✅ Resolvido (#17) |
 | HIG-01..05 | Higiene (ver §9) | — | — | S4 | Won't | Estático | 🟡 Parcial (#14) |
 
 ---
@@ -145,6 +145,7 @@
 - **Esforço:** M
 
 ### FAL-04 · Latência real vs. promessa
+- **Status:** ✅ **Resolvido** em [#16](https://github.com/beliciobcardoso/systemone_gate/pull/16) — a alegação "<15 ms" foi trocada por números medidos nesta máquina (tev1 ≈145-165 ms, nimble ≈380-420 ms por chamada quente; regras determinísticas ≈40-50 µs) e `benchmarks/latency.py` permite reproduzir. A partida a frio do nimble varia (≈12-47 s).
 - **Local:** `README.md`, `docs/MANUAL_AGENTES_IA.md`, `mcp_server.py` (descrição da tool)
 - **Evidência:** **Medido** — 180–260 ms por chamada quente (HTTP + Python incluídos); 4,4 s na chamada fria do `tev1:0.8b`.
 - **Classificação:** Falha (requisito não atendido) · Eficiência de desempenho · S3 · Should
@@ -159,6 +160,7 @@
 - **Esforço:** S
 
 ### FAL-06 · Hook usa o modelo menor para code review
+- **Status:** ✅ **Resolvido** em [#17](https://github.com/beliciobcardoso/systemone_gate/pull/17) — `diff --model`, `--nimble` e `SYSTEMONE_DIFF_MODEL` escolhem o modelo; o padrão continua `tev1:0.8b` e está documentado como **não calibrado**.
 - **Local:** `cli.py:132` (`"nimble" if args.nimble else "tev1:0.8b"`); `hooks.py:15` (sem `--nimble`)
 - **Evidência:** Estático
 - **Classificação:** Falha · Adequação funcional · S3 · Should
@@ -305,6 +307,7 @@
 - **Esforço:** M
 
 ### DT-04 · Tools MCP exigem que o agente cole diff/log como argumento
+- **Status:** ✅ **Resolvido** em [#18](https://github.com/beliciobcardoso/systemone_gate/pull/18) — nova tool `systemone_review_staged` lê `git diff --cached` no servidor, sem o agente repassar o diff. Não foi criada tool que leia caminhos arbitrários (risco de segurança).
 - **Local:** `mcp_server.py` (`systemone_review_diff`, `systemone_triage_error`)
 - **Quadrante:** Inadvertida · Prudente
 - **Classificação:** Dívida (arquitetura) · Eficiência · S3 · Should
@@ -396,6 +399,7 @@
 - **Esforço:** S (casos de teste) · M (mitigação)
 
 ### SEG-03 · `OLLAMA_SYSTEMONE_URL` sem validação
+- **Status:** ✅ **Resolvido** em [#19](https://github.com/beliciobcardoso/systemone_gate/pull/19) — só `http`/`https`; host remoto exige `SYSTEMONE_ALLOW_REMOTE=1` e emite um aviso; a senha da URL é ocultada nas mensagens.
 - **Local:** `client.py:19`
 - **Evidência:** Estático
 - **Classificação:** Segurança · S3 · Could · CWE-73/CWE-918
@@ -408,6 +412,7 @@
 ## 7. Documentação
 
 ### DOC-01 · Config do Aider quebrada
+- **Status:** ✅ **Resolvido** em [#16](https://github.com/beliciobcardoso/systemone_gate/pull/16) — o §6 do manual usa `git-commit-verify: true` (opção do Aider confirmada na doc oficial) com o hook de pre-commit instalado, no lugar do `lint-cmd` quebrado. O Aider não foi executado.
 - **Local:** `docs/MANUAL_AGENTES_IA.md` §6
 - **Evidência:** **Reproduzido** — `diff foo.py` → `unrecognized arguments: foo.py`, exit 2. Além disso `git diff --cached` está vazio durante a edição do Aider.
 - **Classificação:** Defeito de documentação · Usabilidade · S3 · Must
@@ -415,6 +420,7 @@
 - **Esforço:** S
 
 ### DOC-02 · Alegações não sustentadas
+- **Status:** ✅ **Resolvido** em [#16](https://github.com/beliciobcardoso/systemone_gate/pull/16) — removidos "<15 ms", "probabilidades calibradas" e "saída determinística" (do modelo). Observado, não garantido: 20 chamadas idênticas deram respostas idênticas nesta máquina.
 - **Evidência:** **Medido** — "<15 ms" (real ~200 ms), "probabilidades calibradas" (sem prova; `confidence` 0,03–0,27), "saída determinística" (não verificado).
 - **Classificação:** Documentação enganosa · S3 · Must
 - **Solução:** substituir por números medidos e data/hardware; remover "calibradas" e "determinística" até haver evidência (benchmark de FAL-01/03).
@@ -451,6 +457,7 @@
 - **Esforço:** M
 
 ### DOC-07 · Hook sugere `--no-verify`, proibido pelo `AGENTS.md`
+- **Status:** ✅ **Resolvido** em [#17](https://github.com/beliciobcardoso/systemone_gate/pull/17) — a dica agora é `SYSTEMONE_SKIP=1 git commit`, que pula só a verificação do SystemOne (os outros hooks continuam valendo); `--no-verify` saiu do texto.
 - **Local:** `hooks.py:21` ("para forçar o commit … use: git commit --no-verify") × `AGENTS.md:51` ("Proibido `--no-verify`")
 - **Evidência:** Estático
 - **Classificação:** Inconsistência entre produto e política do repositório · Usabilidade · S3 · Should
@@ -464,9 +471,9 @@
 
 | ID | Risco | Evidência | Sev. | Mitigação |
 |---|---|---|---|---|
-| **RSK-01** | O projeto depende do endpoint `/v1/systemone` e dos modelos `nimble`/`tev1`, sem contrato versionado (modelos de terceiros; a API pode mudar entre versões do Ollama). | Estático | S3 | Detectar versão (`/api/version`) e capacidade `decision` (`/api/tags`) na inicialização; teste de contrato local contra Ollama real (opcional); fixar versão mínima testada no README. |
+| **RSK-01** | O projeto depende do endpoint `/v1/systemone` e dos modelos `nimble`/`tev1`, sem contrato versionado (modelos de terceiros; a API pode mudar entre versões do Ollama). | Estático | S3 | Detectar versão (`/api/version`) e capacidade `decision` (`/api/tags`) na inicialização; teste de contrato local contra Ollama real (opcional); fixar versão mínima testada no README.  **Status:** ✅ **Resolvido** em [#20](https://github.com/beliciobcardoso/systemone_gate/pull/20) — `systemone-gate doctor` verifica alcance, versão mínima (0.35.0), modelos com capacidade `decision` e o formato da resposta; o teste de contrato roda só com `pytest -m contract`. |
 | **RSK-02** | Rubricas em português para modelos possivelmente treinados em inglês podem degradar a precisão. | **Hipótese** | S3 | Benchmark A/B pt × en nas mesmas rubricas; adotar o idioma com melhor resultado. |
-| **RSK-03** | Diffs e comandos podem conter segredos; mesmo local, ficam em logs/memória do Ollama e (via MCP) no contexto do agente de nuvem. | Estático | S3 | Redação de padrões de segredo antes de enviar (`AKIA…`, `ghp_…`, `-----BEGIN`); documentar o fluxo de dados real; evitar logar payloads. |
+| **RSK-03** | Diffs e comandos podem conter segredos; mesmo local, ficam em logs/memória do Ollama e (via MCP) no contexto do agente de nuvem. | Estático | S3 | Redação de padrões de segredo antes de enviar (`AKIA…`, `ghp_…`, `-----BEGIN`); documentar o fluxo de dados real; evitar logar payloads.  **Status:** ✅ **Resolvido** em [#19](https://github.com/beliciobcardoso/systemone_gate/pull/19) — `redact.py` oculta 11 tipos de segredo antes de enviar ao modelo (ligado por padrão; `SYSTEMONE_REDACT=0` desliga). É correspondência de padrões, **melhor esforço**, não garantia. |
 
 ---
 
