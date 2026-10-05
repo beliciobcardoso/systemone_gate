@@ -10,6 +10,7 @@ import sys
 import traceback
 from typing import Any, Dict
 
+from . import __version__
 from .client import SystemOneClient
 from .diff_review import review_staged
 from .policy import PolicyConfig, evaluate_diff
@@ -254,7 +255,7 @@ def run_mcp_server():
                     },
                     "serverInfo": {
                         "name": "systemone-gate",
-                        "version": "0.1.0"
+                        "version": __version__
                     }
                 }
             })
