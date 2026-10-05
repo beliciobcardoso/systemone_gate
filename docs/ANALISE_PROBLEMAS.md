@@ -85,7 +85,7 @@
 | DT-10 | Sem tipos de domínio (dicts por toda parte) | Dívida | Manutenibilidade | S4 | Could | Estático | 🟡 Parcial (#7) |
 | DOC-05 | `claude mcp add` provavelmente sem `--` / caminho de config | Doc. | Usabilidade | S4 | Could | **Hipótese** | ✅ Resolvido (#15) |
 | DOC-06 | Versões de modelos/caminhos de IDEs não verificáveis | Doc. | — | S4 | Could | **Hipótese** | 🟡 Parcial (#15) |
-| RSK-02 | Rubricas em português vs. modelo possivelmente treinado em inglês | Risco | Adequação funcional | S3 | Could | **Hipótese** | ⬜ Aberto |
+| RSK-02 | Rubricas em português vs. modelo possivelmente treinado em inglês | Risco | Adequação funcional | S3 | Could | **Hipótese** | ✅ Resolvido (#25) |
 | RSK-03 | Privacidade: diffs/comandos podem conter segredos | Risco | Segurança | S3 | Should | Estático | ✅ Resolvido (#19) |
 | DT-11 | `AGENTS.md` exige CI verde, testes e cobertura que não existem | Dívida | Manutenibilidade | S3 | Should | Estático | ✅ Resolvido (#10) |
 | DOC-07 | Hook sugere `--no-verify`, que `AGENTS.md` proíbe | Doc. | Usabilidade | S3 | Should | Estático | ✅ Resolvido (#17) |
@@ -161,6 +161,7 @@
 - **Esforço:** S
 
 ### FAL-06 · Hook usa o modelo menor para code review
+- **Achado (RSK-02, [#25](https://github.com/beliciobcardoso/systemone_gate/pull/25)):** o `tev1:0.8b`, padrão do hook, **não discrimina risco de diff** (acerta 36-39% do nível de risco, contra 33% do acaso; 33-53% de `breaking_change`, contra 56% de quem responde sempre `safe`), e o `nimble` acerta 72-75% e 69%. Trocar o padrão do hook para `nimble` é uma **decisão pendente do usuário** (custo: partida a frio de 12 a 72 s).
 - **Status:** ✅ **Resolvido** em [#17](https://github.com/beliciobcardoso/systemone_gate/pull/17) — `diff --model`, `--nimble` e `SYSTEMONE_DIFF_MODEL` escolhem o modelo; o padrão continua `tev1:0.8b` e está documentado como **não calibrado**.
 - **Local:** `cli.py:132` (`"nimble" if args.nimble else "tev1:0.8b"`); `hooks.py:15` (sem `--nimble`)
 - **Evidência:** Estático
@@ -475,7 +476,7 @@
 | ID | Risco | Evidência | Sev. | Mitigação |
 |---|---|---|---|---|
 | **RSK-01** | O projeto depende do endpoint `/v1/systemone` e dos modelos `nimble`/`tev1`, sem contrato versionado (modelos de terceiros; a API pode mudar entre versões do Ollama). | Estático | S3 | Detectar versão (`/api/version`) e capacidade `decision` (`/api/tags`) na inicialização; teste de contrato local contra Ollama real (opcional); fixar versão mínima testada no README.  **Status:** ✅ **Resolvido** em [#20](https://github.com/beliciobcardoso/systemone_gate/pull/20) — `systemone-gate doctor` verifica alcance, versão mínima (0.35.0), modelos com capacidade `decision` e o formato da resposta; o teste de contrato roda só com `pytest -m contract`. |
-| **RSK-02** | Rubricas em português para modelos possivelmente treinados em inglês podem degradar a precisão. | **Hipótese** | S3 | Benchmark A/B pt × en nas mesmas rubricas; adotar o idioma com melhor resultado. |
+| **RSK-02** | Rubricas em português para modelos possivelmente treinados em inglês podem degradar a precisão. | **Hipótese** | S3 | Benchmark A/B pt × en nas mesmas rubricas; adotar o idioma com melhor resultado.  **Status:** ✅ **Resolvido** em [#25](https://github.com/beliciobcardoso/systemone_gate/pull/25) — hipótese testada: **sem diferença detectável entre rubricas pt e en** (35 casos de triagem e 36 de diff, 2 modelos; menor p = 0,189), então o português foi mantido. O experimento está em `docs/BENCHMARK_RUBRIC_LANGUAGE.md`; os rótulos foram escritos por um LLM e o n é pequeno. |
 | **RSK-03** | Diffs e comandos podem conter segredos; mesmo local, ficam em logs/memória do Ollama e (via MCP) no contexto do agente de nuvem. | Estático | S3 | Redação de padrões de segredo antes de enviar (`AKIA…`, `ghp_…`, `-----BEGIN`); documentar o fluxo de dados real; evitar logar payloads.  **Status:** ✅ **Resolvido** em [#19](https://github.com/beliciobcardoso/systemone_gate/pull/19) — `redact.py` oculta 11 tipos de segredo antes de enviar ao modelo (ligado por padrão; `SYSTEMONE_REDACT=0` desliga). É correspondência de padrões, **melhor esforço**, não garantia. |
 
 ---

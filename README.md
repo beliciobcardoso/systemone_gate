@@ -42,10 +42,10 @@ Medido em 2026-10-05 com `SystemOneClient` (chamadas sequenciais, Ollama local, 
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | `tev1:0.8b` | rubrica guard, comando curto | 162,6 ms | 170,1 ms | 150,2 / 170,8 ms | ~3-4 s |
 | `tev1:0.8b` | rubrica diff-risk, diff de ~100 linhas | 143,2 ms | 160,5 ms | 133,3 / 166,2 ms | - |
-| `nimble:latest` | rubrica guard, comando curto | 391,6 ms | 401,2 ms | 366,3 / 409,0 ms | ~12-47 s |
+| `nimble:latest` | rubrica guard, comando curto | 391,6 ms | 401,2 ms | 366,3 / 409,0 ms | ~12-72 s |
 | `nimble:latest` | rubrica diff-risk, diff de ~100 linhas | 405,1 ms | 423,7 ms | 377,1 / 428,7 ms | - |
 
-\* Primeira chamada após `ollama stop <modelo>` (modelo descarregado da memória). A faixa do `nimble` vem de duas medições independentes que divergiram (≈11,8 s com a máquina ociosa e ≈46,5 s numa execução com carga concorrente no Ollama); o valor real varia com o cache de disco do sistema e com a carga da máquina. Em parte desses casos o `SYSTEMONE_TIMEOUT` padrão de 30 s não basta para a primeira chamada do `nimble`.
+\* Primeira chamada após `ollama stop <modelo>` (modelo descarregado da memória). A faixa do `nimble` vem de duas medições independentes que divergiram (≈11,8 s com a máquina ociosa, ≈46,5 s numa execução com carga concorrente no Ollama e ≈72 s na primeira chamada do benchmark de rubricas); o valor real varia com o cache de disco do sistema e com a carga da máquina. Em parte desses casos o `SYSTEMONE_TIMEOUT` padrão de 30 s não basta para a primeira chamada do `nimble`.
 
 * A latência depende de hardware, de o modelo já estar residente na memória e do tamanho do payload; não extrapole estes números para outra máquina. O diff de teste usa linhas curtas porque o endpoint rejeita entradas acima de ~2050 tokens.
 * A camada de **regras determinísticas** (`guard_rules.evaluate_command`, offline, sem modelo) é o caminho rápido: ~40-50 µs por chamada (1000 chamadas, mesma máquina). O veredito do modelo é uma heurística adicional, não a barreira de segurança.
@@ -162,7 +162,7 @@ systemone-gate doctor
 
 **Diagnóstico (`doctor`):** o SystemOne Gate depende de um endpoint de terceiros sem contrato versionado, então este é o caminho rápido para investigar erros como "Failed to connect" ou HTTP 404. O comando verifica, em ordem: (1) se o Ollama responde em `/api/version`; (2) se a versão é **>= 0.35.0** (mínimo exigido; antes disso `/v1/systemone` não existe); (3) se os modelos `tev1:0.8b` e `nimble` estão instalados e com a capability `decision` (use `--model NOME`, repetível, para trocar a lista); (4) um teste de contrato com uma chamada mínima a `/v1/systemone` (pule com `--no-smoke`). Imprime um checklist (✅/⚠️/❌) e sai com 0 se tudo obrigatório passou, 1 se houve falha e 2 para configuração inválida (ex.: `SYSTEMONE_TIMEOUT`).
 
-**Modelo do pre-commit hook:** o hook usa `tev1:0.8b` por padrão (rápido, porém menos preciso). Esse padrão **não foi calibrado nem validado por benchmark**. Para usar o Nimble no hook, rode `SYSTEMONE_DIFF_MODEL=nimble git commit ...` ou exporte `SYSTEMONE_DIFF_MODEL=nimble` no shell.
+**Modelo do pre-commit hook:** o hook usa `tev1:0.8b` por padrão (rápido, porém menos preciso). Esse padrão **não foi calibrado nem validado por benchmark**. Para usar o Nimble no hook, rode `SYSTEMONE_DIFF_MODEL=nimble git commit ...` ou exporte `SYSTEMONE_DIFF_MODEL=nimble` no shell. **Medido no benchmark de rubricas** ([`docs/BENCHMARK_RUBRIC_LANGUAGE.md`](docs/BENCHMARK_RUBRIC_LANGUAGE.md), 36 diffs rotulados por um LLM, uma máquina): o `tev1:0.8b` **não discriminou o risco do diff** (acerta 36-39% do nível de risco, contra 33% do acaso, e 33-53% de `breaking_change`, contra 56% de quem responde sempre `safe`), enquanto o `nimble` acertou 72-75% do risco e 69% do `breaking_change`. Se a revisão do diff importa, prefira `SYSTEMONE_DIFF_MODEL=nimble`.
 
 **Ignorar o hook:** `SYSTEMONE_SKIP=1 git commit ...` pula apenas a verificação do SystemOne Gate (os demais hooks continuam valendo). Evite `git commit --no-verify`, que desativa todos os hooks.
 

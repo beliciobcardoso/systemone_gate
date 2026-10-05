@@ -23,6 +23,7 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - `diff --model` option and `SYSTEMONE_DIFF_MODEL` to choose the review model of the pre-commit hook (the default stays `tev1:0.8b`), and `SYSTEMONE_SKIP=1` to skip only this hook's check (#17).
 - `benchmarks/latency.py` to reproduce the latency measurements (#16).
 - Local quality tooling: `ruff` (E, F, W, I, B, FA102) and `mypy` configured in `pyproject.toml`, plus `scripts/check.sh` that runs lint, format check on new files, types and tests. There is intentionally no CI (#24).
+- A/B benchmark of Portuguese versus English rubrics (`benchmarks/rubric_language.py`, `docs/BENCHMARK_RUBRIC_LANGUAGE.md`): no detectable difference at about 35 cases per task, so the rubrics stay in Portuguese. It also found that `tev1:0.8b` does not discriminate diff risk (#25).
 - `AGENTS.md` with git workflow rules (#1) and a problem analysis report (`docs/ANALISE_PROBLEMAS.md`) with classified findings and a fix plan (#2).
 
 ### Changed
@@ -36,6 +37,7 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - The pre-commit hint suggests `SYSTEMONE_SKIP=1` instead of `git commit --no-verify` (#17).
 - Latency claims replaced with measured numbers and a "Desempenho medido" section; the "calibrated probabilities" and "deterministic output" claims were removed from the docs (#16).
 - Source and tests now pass `ruff` and `mypy` (imports sorted, unused imports and long lines removed, return and `Optional` types annotated) with no behavior change (#24).
+- Documentation: the cold-start range of `nimble` is now about 12-72 s, and the README reports how well each model discriminated diff risk (#25).
 - Integration manual checked against vendor documentation; claims that could not be confirmed are marked as unverified (#15).
 - Serena project settings (`.serena/project.yml`) are versioned, while its cache and local settings stay ignored (865822a).
 - Documentation: the green-CI requirement was dropped from the git workflow (#10) and resolved items were marked in the problem analysis report (#9).
