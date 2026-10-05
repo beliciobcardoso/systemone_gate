@@ -56,7 +56,7 @@ def test_guard_default_is_fast_model_triage_is_nimble(fake, client):
 
 def test_connection_refused_returns_error_dict(client, closed_port_url):
     res = client(closed_port_url).evaluate("s", QUESTIONS)
-    assert set(res) == {"error", "model"}
+    assert {"error", "model"} <= set(res)  # error_kind is additive
     assert res["model"] == "nimble"
     assert closed_port_url in res["error"]
 
@@ -85,12 +85,12 @@ def test_schema_divergent_response_is_passed_through(fake, client):
     assert "answers" not in res and "error" not in res  # callers must .get("answers")
 
 
-@pytest.mark.xfail(strict=True, reason="DEF-06: HTTPError (e.g. 404) is reported as 'Failed to connect'")
 def test_http_404_error_identifies_http_problem(fake, client):
     fake.status = 404
     res = client(fake.url).evaluate("s", QUESTIONS)
     assert "404" in res["error"]
     assert "Failed to connect" not in res["error"]  # an HTTP answer is not a connection failure
+    assert res["error_kind"] == "http" and res["status"] == 404
 
 
 def test_env_var_sets_default_endpoint():

@@ -5,7 +5,9 @@ Supports Nimble (9B), Tev1 (0.8B, 4B) and Jev-compatible decision endpoints.
 
 import copy
 import json
+import math
 import os
+import socket
 import urllib.request
 import urllib.error
 from typing import Dict, Any, Optional
@@ -35,18 +37,68 @@ RULES_VERDICT_ANSWERS = {
 
 DEFAULT_ENDPOINT = os.environ.get("OLLAMA_SYSTEMONE_URL", "http://localhost:11434/v1/systemone")
 
+DEFAULT_TIMEOUT = 30.0
+TIMEOUT_ENV_VAR = "SYSTEMONE_TIMEOUT"
+HTTP_ERROR_BODY_CAP = 500  # bytes of the server's error body kept in messages
+
+
+def _validate_timeout(value: Any, source: str) -> float:
+    """Returns a positive finite float or raises ValueError naming the source."""
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"{source} inválido: {value!r} (esperado número positivo de segundos)") from None
+    if not math.isfinite(number) or number <= 0:
+        raise ValueError(f"{source} inválido: {value!r} (esperado número positivo de segundos)")
+    return number
+
+
+def _resolve_timeout(explicit: Optional[float]) -> float:
+    """constructor arg -> env SYSTEMONE_TIMEOUT -> DEFAULT_TIMEOUT."""
+    if explicit is not None:
+        return _validate_timeout(explicit, "timeout")
+    raw = os.environ.get(TIMEOUT_ENV_VAR)
+    if raw is None:
+        return DEFAULT_TIMEOUT
+    return _validate_timeout(raw, TIMEOUT_ENV_VAR)
+
+
+def _http_error_text(err: urllib.error.HTTPError) -> str:
+    """Server-provided error text: JSON "error" string if any, else a bounded raw snippet."""
+    try:
+        raw = err.read(HTTP_ERROR_BODY_CAP)
+    except Exception:
+        return ""
+    snippet = raw.decode("utf-8", errors="replace").strip()
+    try:
+        parsed = json.loads(snippet)
+    except ValueError:
+        return snippet
+    if isinstance(parsed, dict) and isinstance(parsed.get("error"), str):
+        return parsed["error"]
+    return snippet
+
+
+def _is_timeout(exc: BaseException) -> bool:
+    if isinstance(exc, (socket.timeout, TimeoutError)):
+        return True
+    return isinstance(exc, urllib.error.URLError) and isinstance(exc.reason, (socket.timeout, TimeoutError))
+
 class SystemOneClient:
     """
     High-level Python client for Ollama System One.
     Provides methods for error triage, diff assessment, and command safety guarding.
     """
 
-    def __init__(self, endpoint: str = DEFAULT_ENDPOINT, default_model: str = "nimble", fast_model: str = "tev1:0.8b"):
+    def __init__(self, endpoint: str = DEFAULT_ENDPOINT, default_model: str = "nimble", fast_model: str = "tev1:0.8b",
+                 timeout: Optional[float] = None):
+        self.timeout = _resolve_timeout(timeout)  # fail fast on invalid SYSTEMONE_TIMEOUT
         self.endpoint = endpoint
         self.default_model = default_model
         self.fast_model = fast_model
 
-    def evaluate(self, state: str, questions: Dict[str, Any], model: Optional[str] = None, timeout: int = 30) -> Dict[str, Any]:
+    def evaluate(self, state: str, questions: Dict[str, Any], model: Optional[str] = None,
+                 timeout: Optional[float] = None) -> Dict[str, Any]:
         """
         Sends an evaluation request to the System One endpoint.
         Returns the parsed response dictionary containing 'answers' and 'usage'.
@@ -64,20 +116,37 @@ class SystemOneClient:
             headers={"Content-Type": "application/json"}
         )
 
+        effective_timeout = self.timeout if timeout is None else timeout
         try:
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
+            with urllib.request.urlopen(req, timeout=effective_timeout) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
                 return data
-        except urllib.error.URLError as e:
-            return {
-                "error": f"Failed to connect to Ollama at {self.endpoint}: {e}",
-                "model": selected_model
-            }
+        except urllib.error.HTTPError as e:  # before URLError: HTTPError is a subclass
+            return self._http_error(e, selected_model)
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            return self._error("Resposta inválida do Ollama (JSON malformado)", "invalid_response", selected_model)
         except Exception as e:
-            return {
-                "error": f"Unexpected error during evaluation: {e}",
-                "model": selected_model
-            }
+            if _is_timeout(e):
+                return self._error(
+                    f"Timeout após {effective_timeout:g}s aguardando {self.endpoint} "
+                    f"(no primeiro uso o modelo pode estar carregando; aumente {TIMEOUT_ENV_VAR})",
+                    "timeout", selected_model)
+            if isinstance(e, urllib.error.URLError):
+                return self._error(f"Failed to connect to Ollama at {self.endpoint}: {e}", "connection", selected_model)
+            return self._error(f"Unexpected error during evaluation: {e}", "unexpected", selected_model)
+
+    @staticmethod
+    def _error(message: str, kind: str, model: str, **extra: Any) -> Dict[str, Any]:
+        return {"error": message, "model": model, "error_kind": kind, **extra}
+
+    def _http_error(self, err: urllib.error.HTTPError, model: str) -> Dict[str, Any]:
+        detail = _http_error_text(err)
+        message = f"Ollama respondeu HTTP {err.code} em {self.endpoint}"
+        if detail:
+            message += f": {detail}"
+        if err.code == 404:
+            message += f" (endpoint /v1/systemone não encontrado (Ollama < 0.35?) ou modelo '{model}' ausente)"
+        return self._error(message, "http", model, status=err.code)
 
     def triage_error(self, error_text: str, model: Optional[str] = None) -> Dict[str, Any]:
         """Triages build, linker, or runtime errors using Nimble (9B)."""

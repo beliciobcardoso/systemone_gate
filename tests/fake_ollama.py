@@ -28,7 +28,8 @@ class _Handler(BaseHTTPRequestHandler):
             fake._stop.wait(cfg["delay"])
 
         if cfg["status"] is not None:
-            self._send(cfg["status"], b'{"error": "forced"}')
+            body_override = cfg["status_body"]
+            self._send(cfg["status"], b'{"error": "forced"}' if body_override is None else body_override)
             return
         if cfg["raw_body"] is not None:
             self._send(200, cfg["raw_body"])
@@ -69,6 +70,7 @@ class FakeOllama:
         self.status: Optional[int] = None
         self.delay: float = 0.0
         self.raw_body: Optional[bytes] = None
+        self.status_body: Optional[bytes] = None  # body sent with `status`; None = default JSON
         self.divergent: bool = False
         self._server: Optional[ThreadingHTTPServer] = None
         self._thread: Optional[threading.Thread] = None
@@ -79,6 +81,7 @@ class FakeOllama:
             "status": self.status,
             "delay": self.delay,
             "raw_body": self.raw_body,
+            "status_body": self.status_body,
             "divergent": self.divergent,
         }
 
