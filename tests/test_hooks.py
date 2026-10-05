@@ -31,6 +31,21 @@ def repo(tmp_path):
     return path
 
 
+@pytest.fixture
+def package_unavailable(tmp_path, monkeypatch):
+    """Make the hook's interpreter unable to import systemone_gate, whatever the test environment is.
+
+    The hook embeds sys.executable at install time. Relying on the real interpreter lacking the package
+    only works when the project is not pip-installed; with `pip install -e ".[dev]"` (the documented
+    setup) the import would succeed everywhere.
+    """
+    stub = tmp_path / "python-without-package"
+    stub.write_text("#!/bin/sh\nexit 1\n")
+    stub.chmod(0o755)
+    monkeypatch.setattr(sys, "executable", str(stub))
+    return stub
+
+
 def hook_path(repo, name="pre-commit"):
     return repo / ".git" / "hooks" / name
 
@@ -67,7 +82,7 @@ def test_fresh_install_creates_executable_hook_with_absolute_python(repo):
     assert "SystemOne Gate" in content
 
 
-def test_hook_skips_with_warning_when_package_unavailable(repo):
+def test_hook_skips_with_warning_when_package_unavailable(repo, package_unavailable):
     hooks.install_git_hook(str(repo))
     result = run_hook(repo)
     assert result.returncode == 0
@@ -202,7 +217,9 @@ def committed_repo(repo):
     return repo
 
 
-def test_install_from_linked_worktree_uses_shared_hooks_dir_and_hook_runs(committed_repo, tmp_path):
+def test_install_from_linked_worktree_uses_shared_hooks_dir_and_hook_runs(
+    committed_repo, tmp_path, package_unavailable
+):
     wt = tmp_path / "wt"
     git(committed_repo, "worktree", "add", "-q", str(wt), "-b", "other")
     assert (wt / ".git").is_file()
