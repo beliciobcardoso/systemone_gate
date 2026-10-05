@@ -135,9 +135,38 @@ No Cursor, você pode expor o SystemOne Gate tanto como ferramenta MCP de backgr
 ```markdown
 # Diretrizes de Gating e Validação Automática
 Antes de propor comandos destrutivos no terminal ou finalizar alterações grandes de arquitetura:
-1. Use a ferramenta MCP `systemone_command_guard` antes de sugerir comandos como `rm -rf`, `docker prune` ou resets no banco.
+1. A ferramenta MCP `systemone_command_guard` é apenas um AVISO heurístico (modelo de 0.8B erra comandos destrutivos óbvios); o veredito "safe" não autoriza nada. Para comandos como `rm -rf`, `docker prune` ou resets no banco, peça confirmação explícita ao usuário.
 2. Em caso de erros de compilação no terminal, consulte `systemone_triage_error` para identificar a causa raiz antes de tentar aplicar correções cegas.
 ```
+
+---
+
+### Enforcement real no Claude Code
+
+O `systemone_command_guard` depende do agente decidir chamá-lo e do modelo acertar: é um aviso, não uma barreira de segurança. Enforcement real precisa viver FORA do agente. No Claude Code, registre o hook `PreToolUse` em `~/.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "Bash", "hooks": [{ "type": "command", "command": "systemone-gate hook-guard" }] }
+    ]
+  }
+}
+```
+
+O `hook-guard` é determinístico, offline e não chama o modelo: comandos que casam com uma regra são bloqueados (exit 2) e o motivo é devolvido ao agente. Payload inválido não bloqueia, mas emite um aviso no stderr.
+
+As regras cobrem apenas padrões catastróficos e inequívocos (texto entre aspas passado como argumento não bloqueia):
+* `rm` recursivo em `/`, `~`, `$HOME` ou diretório de sistema (`/etc`, `/usr`, `/var`...), ou com `--no-preserve-root`;
+* `dd of=/dev/sdX`, `mkfs`/`mkswap` em `/dev/*` e redirecionamento `> /dev/sdX`;
+* fork bomb;
+* `chmod`/`chown -R` em `/` ou diretório de sistema;
+* `git push --force`/`-f` (ou `+main`) em `main`/`master` (`--force-with-lease` não bloqueia);
+* `DROP TABLE|DATABASE|SCHEMA`, `TRUNCATE` e `DELETE FROM` sem `WHERE`;
+* `curl`/`wget` com pipe para `sh`/`bash`.
+
+Fora disso, a decisão continua sendo humana. Não é um sandbox: variáveis expandidas em runtime, scripts e Makefiles não são analisados.
 
 ---
 
@@ -179,7 +208,6 @@ No VS Code com a extensão **Cline** ou **Roo Code**:
       },
       "disabled": false,
       "autoApprove": [
-        "systemone_command_guard",
         "systemone_triage_error",
         "systemone_review_diff"
       ]

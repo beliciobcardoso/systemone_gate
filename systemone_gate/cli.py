@@ -9,6 +9,7 @@ import json
 import argparse
 from typing import List
 
+from .claude_hook import run_pretooluse
 from .client import SystemOneClient
 from .hooks import install_git_hook, uninstall_git_hook
 from .mcp_server import run_mcp_server
@@ -122,6 +123,9 @@ def main(argv: List[str] = None):
     p_hook = subparsers.add_parser("install-hook", help="Instala o pre-commit hook no repositório Git atual")
     p_hook.add_argument("--repo", default=None, help="Caminho do repositório Git")
 
+    # hook-guard
+    subparsers.add_parser("hook-guard", help="Hook PreToolUse do Claude Code: bloqueia comandos catastróficos (offline, sem modelo)")
+
     # mcp
     subparsers.add_parser("mcp", help="Inicia o servidor MCP stdio (para Claude Desktop, Cursor, Antigravity)")
 
@@ -143,6 +147,12 @@ def main(argv: List[str] = None):
     elif args.command == "install-hook":
         success = install_git_hook(args.repo)
         sys.exit(0 if success else 1)
+
+    elif args.command == "hook-guard":
+        code, message = run_pretooluse(sys.stdin.read())
+        if message:
+            print(message, file=sys.stderr)
+        sys.exit(code)
 
     elif args.command == "mcp":
         run_mcp_server()
