@@ -7,10 +7,11 @@ Demonstra:
 3. Triagem de exceções de compilação
 """
 
-from systemone_gate import SystemOneClient
+from systemone_gate import PolicyConfig, SystemOneClient, evaluate_command
 
 def main():
     client = SystemOneClient()
+    policy = PolicyConfig.from_env()  # limiares/falha configuráveis via SYSTEMONE_* (não calibrados)
 
     print("=== 1. Roteamento de Tarefa ===")
     prompt = "Refatore a estrutura de sockets para usar epoll assíncrono"
@@ -30,10 +31,10 @@ def main():
     ]
     for cmd in commands:
         res = client.guard_command(cmd)
-        is_dest = res.get("answers", {}).get("is_destructive", {}).get("choice", "safe")
-        danger = res.get("answers", {}).get("danger_score", {}).get("score", 0.0)
-        status = "❌ BLOQUEADO" if (is_dest != "safe" and danger > 1.4) else "✅ PERMITIDO"
-        print(f"[{status}] Comando: '{cmd}' | Destrutivo: {is_dest} | Perigo: {danger:.2f}")
+        decision = evaluate_command(res, policy)
+        status = "❌ BLOQUEADO" if decision.action == "block" else "✅ PERMITIDO"
+        detail = "; ".join(decision.reasons) or decision.warning or "sem ressalvas"
+        print(f"[{status}] Comando: '{cmd}' | {detail}")
 
     print("\n=== 3. Triagem de Erro de Build ===")
     error_trace = "undefined reference to `mqtt3_db_open` in mosquitto.c:45"

@@ -209,9 +209,10 @@ auto-commits: true
 Você pode importar a biblioteca diretamente dentro do código dos seus agentes para criar nós de roteamento e guardrails:
 
 ```python
-from systemone_gate import SystemOneClient
+from systemone_gate import PolicyConfig, SystemOneClient, evaluate_command
 
 client = SystemOneClient()
+policy = PolicyConfig.from_env()
 
 # 1. Roteamento de agente (qual especialista deve resolver o prompt?)
 routing = client.route_task("Precisamos otimizar os locks na fila de mensagens do broker MQTT")
@@ -222,14 +223,22 @@ print(f"Especialista: {specialist} | Complexidade: {complexity:.2f}")
 
 # 2. Guardrail antes de rodar tool de bash
 cmd_check = client.guard_command("rm -rf /tmp/mosquitto.db && make clean")
-if cmd_check["answers"]["is_destructive"]["choice"] == "destructive_or_risky":
-    raise PermissionError("Comando bloqueado pelo SystemOne Gate por alto risco!")
+decision = evaluate_command(cmd_check, policy)  # trata erro do Ollama e resposta inválida
+if decision.warning:
+    print(f"Aviso do SystemOne Gate: {decision.warning}")
+if decision.action == "block":
+    raise PermissionError(f"Comando bloqueado pelo SystemOne Gate: {'; '.join(decision.reasons)}")
 
 # 3. Triagem de erro
 triage = client.triage_error("undefined reference to mqtt3_db_open")
 root_cause = triage["answers"]["root_cause"]["choice"]
 print(f"Causa-raiz identificada: {root_cause}")
 ```
+
+> **Política de decisão única:** CLI, hook e este snippet usam `systemone_gate.policy`. Ajuste via variáveis de ambiente:
+> `SYSTEMONE_GUARD_DANGER_THRESHOLD` (padrão 1.5), `SYSTEMONE_DIFF_RISK_THRESHOLD` (1.85), `SYSTEMONE_DIFF_BREAKING_THRESHOLD` (0.65),
+> `SYSTEMONE_GUARD_ON_ERROR` e `SYSTEMONE_DIFF_ON_ERROR` (`allow` = libera com aviso, padrão; `block` = bloqueia se o Ollama falhar ou responder fora do formato).
+> Esses limiares **não são calibrados** com dados reais; trate-os como pontos de partida.
 
 ---
 
