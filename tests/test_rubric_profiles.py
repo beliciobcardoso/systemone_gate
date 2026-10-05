@@ -7,7 +7,6 @@ import pytest
 
 from systemone_gate import rubrics
 from systemone_gate.cli import main
-from systemone_gate.client import SystemOneClient
 from systemone_gate.diff_review import review_staged
 
 ORIGINAL_DIFF = {

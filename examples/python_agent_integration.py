@@ -9,6 +9,7 @@ Demonstra:
 
 from systemone_gate import PolicyConfig, SystemOneClient, evaluate_command
 
+
 def main():
     client = SystemOneClient()
     policy = PolicyConfig.from_env()  # limiares/falha configuráveis via SYSTEMONE_* (não calibrados)

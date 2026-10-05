@@ -100,6 +100,7 @@ def test_env_var_sets_default_endpoint():
         "print(json.dumps(client.DEFAULT_ENDPOINT))\n"
     )
     import os
+
     from conftest import REPO_ROOT
     env = dict(os.environ, OLLAMA_SYSTEMONE_URL="http://example.invalid:1/x", PYTHONPATH=REPO_ROOT)
     out = subprocess.run([sys.executable, "-c", code], cwd=REPO_ROOT, env=env,

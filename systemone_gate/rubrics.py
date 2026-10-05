@@ -101,7 +101,10 @@ def _web_backend_diff() -> Dict[str, Any]:
     return {
         "risk_level": {
             "type": "score",
-            "instructions": "Avalie o nível de risco técnico deste diff de um serviço backend web (API, banco de dados):",
+            "instructions": (
+                "Avalie o nível de risco técnico deste diff de um serviço backend web (API, banco de "
+                "dados):"
+            ),
             "criteria": [
                 "Baixo: documentação, comentários, testes ou refatoração cosmética sem mudança de comportamento",
                 "Médio: novo endpoint ou caso de uso isolado, correção simples de bug com baixo acoplamento",
@@ -140,7 +143,10 @@ def _web_backend_triage() -> Dict[str, Any]:
     return {
         "root_cause": {
             "type": "choice",
-            "instructions": "Qual é a causa-raiz principal desta falha ou erro de build/teste/execução do serviço backend?",
+            "instructions": (
+                "Qual é a causa-raiz principal desta falha ou erro de build/teste/execução do serviço "
+                "backend?"
+            ),
             "criteria": {
                 "compilation_or_type_error": None,
                 "dependency_or_environment": None,

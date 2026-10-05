@@ -72,7 +72,7 @@
 | FAL-06 | Hook usa modelo 0.8B para code review | Falha | Adequação funcional | S3 | Should | Estático | ✅ Resolvido (#17) |
 | DT-03 | Erro retornado como `dict` misturado ao sucesso | Dívida | Manutenibilidade | S3 | Should | Estático | 🟡 Mitigado (#7) |
 | DT-04 | Tools MCP exigem que o agente cole diff/log | Dívida | Eficiência | S3 | Should | Estático | ✅ Resolvido (#18) |
-| DT-06 | Sem CI, lint, type-check, formatação | Dívida | Manutenibilidade | S3 | Should | Reproduzido (ausência) | ⬜ Aberto (CI ⛔ descartado) |
+| DT-06 | Sem CI, lint, type-check, formatação | Dívida | Manutenibilidade | S3 | Should | Reproduzido (ausência) | 🟡 Parcial (#24) |
 | DT-07 | Rubricas enviesadas para C/redes (mosquitto) | Dívida | Adequação funcional | S3 | Should | Estático | 🟡 Parcial (#21) |
 | SEG-03 | `OLLAMA_SYSTEMONE_URL` sem validação de esquema/host | Segurança | Segurança | S3 | Could | Estático | ✅ Resolvido (#19) |
 | DOC-01 | Config do Aider quebrada | Doc. | Usabilidade | S3 | Must | Reproduzido | ✅ Resolvido (#16) |
@@ -333,6 +333,7 @@
 - **Esforço:** L
 
 ### DT-06 · Sem CI, lint, type-check ou formatação
+- **Status:** 🟡 **Parcial** em [#24](https://github.com/beliciobcardoso/systemone_gate/pull/24) — `ruff` (E, F, W, I, B, FA102) e `mypy` configurados e sem pendências, com `scripts/check.sh` local e seção "Desenvolvimento" no README; 138 achados do ruff e 24 do mypy foram corrigidos sem mudar comportamento. **Formatação não imposta a todo o código:** reformatar tudo mudaria ~1.240 linhas (30 de 38 arquivos), então `ruff format --check` vale só para arquivos novos (`FORMAT_ALL=1` verifica tudo). O `mypy` roda com `python_version = 3.10` (o mypy 2.x não aceita 3.9); o piso 3.9 é protegido por `target-version` e FA102, mas **nunca foi executado em um Python 3.9 real**. CI segue descartado por decisão do usuário.
 - **Status:** ⛔ **CI descartado** por decisão do usuário (o projeto não precisa de CI). Lint, type-check e formatação **locais** seguem ⬜ abertos: a decisão cobre só o CI.
 - **Quadrante:** Inadvertida · Imprudente
 - **Classificação:** Dívida (processo) · Manutenibilidade · S3 · Should

@@ -1,11 +1,13 @@
+import dataclasses
+
 import pytest
 
 from systemone_gate.cli import main
 from systemone_gate.doctor import (
+    FAIL,
     MIN_OLLAMA_VERSION,
     OK,
     WARN,
-    FAIL,
     derive_base_url,
     parse_version,
     run_doctor,
@@ -246,9 +248,9 @@ def test_smoke_runs_after_warnings(fake):
 def test_report_is_frozen(fake):
     _healthy(fake)
     report = run_doctor(fake.url, smoke=False, timeout=SHORT)
-    with pytest.raises(Exception):
+    with pytest.raises(dataclasses.FrozenInstanceError):
         report.checks = ()
-    with pytest.raises(Exception):
+    with pytest.raises(dataclasses.FrozenInstanceError):
         report.checks[0].status = FAIL
 
 

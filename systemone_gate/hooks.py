@@ -5,8 +5,8 @@ Allows automatic installation of pre-commit diff checks in any git repository.
 
 import os
 import shlex
-import sys
 import subprocess
+import sys
 from typing import Optional
 
 HOOK_MARKER = "SystemOne Gate"
