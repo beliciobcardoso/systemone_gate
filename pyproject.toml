@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "systemone-gate"
-version = "0.2.0"
+dynamic = ["version"]
 description = "Ultra-fast local decision gate and triage engine for AI coding agents powered by Ollama System One."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -30,6 +30,11 @@ systemone-mcp = "systemone_gate.mcp_server:run_mcp_server"
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "pytest-cov>=5", "ruff>=0.15", "mypy>=2.0"]
+
+[tool.setuptools.dynamic]
+# Single source of truth: edit __version__ in systemone_gate/__init__.py (setuptools reads it
+# statically, without importing the package). tests/test_version.py keeps everything in sync.
+version = { attr = "systemone_gate.__version__" }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -26,6 +26,7 @@ O agente **não** avança de etapa sem autorização explícita do usuário em c
 1. **Implementar** → trabalha na branch `feat/<nome>`, sem commitar.
 2. **Autorização 1** ("pode commitar/subir") → commit, push e PR **`feat/<nome>` → `dev`**.
 3. **Autorização 2** ("pode promover") → PR **`dev` → `main`**.
+4. **Autorização 3** ("pode publicar a versão") → tag `vX.Y.Z` em `main` e GitHub Release (ver "Releases").
 
 - Autorização vale só para a etapa citada e para aquele momento; não se estende a etapas seguintes nem a outras features.
 - Merge dos PRs só quando o usuário pedir. Auto-merge só se solicitado.
@@ -80,6 +81,26 @@ Descrição de PR criado por agente termina com:
 - Só mergear com: branch atualizada com a base, conflitos resolvidos, conversas resolvidas.
 - Após o merge de feature, apagar a branch remota e local. **Nunca** apagar `dev` nem `main`.
 - Após promover, `main` pode ficar à frente de `dev` por um merge commit: sincronizar com `git switch dev && git merge --ff-only origin/main` (ou merge de `main` em `dev`).
+
+## Releases
+
+Versionamento semântico ([SemVer 2.0](https://semver.org/lang/pt-BR/)). Enquanto o projeto é `0.x`:
+
+- mudança **incompatível** (comandos e flags da CLI, ferramentas MCP, variáveis de ambiente ou API da biblioteca) sobe o **minor** (`0.2.0` → `0.3.0`);
+- correção ou melhoria **compatível** sobe o **patch**;
+- o `1.0.0` só chega quando a API pública estiver declarada estável (comandos, flags e códigos de saída da CLI; nomes e schemas das ferramentas MCP; funções públicas de `systemone_gate`). A decisão é do mantenedor.
+
+**Fonte única:** `__version__` em `systemone_gate/__init__.py`. O `pyproject.toml` (versão dinâmica), a CLI (`--version`) e o servidor MCP leem dele, e `tests/test_version.py` falha se algo divergir ou se o CHANGELOG não tiver a seção da versão.
+
+Passos de um release:
+
+1. Criar `chore/release_X_Y_Z` a partir de `dev` atualizada.
+2. Editar **somente** `__version__`; no `CHANGELOG.md`, mover o conteúdo de `[Unreleased]` para `## [X.Y.Z] - AAAA-MM-DD`, deixando `[Unreleased]` vazio no topo.
+3. Rodar `scripts/check.sh` e abrir o PR para `dev` (squash).
+4. Promover `dev` → `main` por merge commit (Autorização 2).
+5. Criar a tag anotada no commit de merge em `main`: `git tag -a vX.Y.Z -m "release X.Y.Z" <sha>` e `git push origin vX.Y.Z`. Opcional: `gh release create vX.Y.Z --notes-file <trecho do CHANGELOG>`.
+
+Tag e GitHub Release são ações públicas e exigem **autorização própria** (Autorização 3), separada da promoção. Nunca mover nem apagar uma tag já publicada: se um release sair errado, publique um patch novo.
 
 ## Proteção de branches
 
