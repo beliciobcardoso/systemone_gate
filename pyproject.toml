@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "systemone-gate"
+version = "0.1.0"
+description = "Ultra-fast local decision gate and triage engine for AI coding agents powered by Ollama System One."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [
+    { name = "Bello", email = "developer@local" }
+]
+keywords = ["ollama", "systemone", "ai-agents", "mcp", "code-quality", "git-hook", "jev"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Quality Assurance",
+    "Programming Language :: Python :: 3",
+]
+
+[project.scripts]
+systemone-gate = "systemone_gate.cli:main"
+systemone-mcp = "systemone_gate.mcp_server:run_mcp_server"

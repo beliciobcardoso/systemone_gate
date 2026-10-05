@@ -1,0 +1,192 @@
+"""
+Model Context Protocol (MCP) Server for SystemOne Gate.
+Zero external dependencies (pure standard library).
+Compatible with Claude Desktop, Cursor, Antigravity, Cline, Windsurf, Roo Code.
+"""
+
+import sys
+import json
+from typing import Dict, Any
+
+from .client import SystemOneClient
+from .rubrics import (
+    RUBRIC_DIFF_RISK,
+    RUBRIC_ERROR_TRIAGE,
+    RUBRIC_COMMAND_SAFETY,
+    RUBRIC_AGENT_ROUTING,
+)
+
+MCP_TOOLS = [
+    {
+        "name": "systemone_triage_error",
+        "description": "Triage and classify build, linker, runtime errors, or test failures using local Ollama Nimble (9B) decision model.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "error_log": {
+                    "type": "string",
+                    "description": "The compiler error, stack trace, or test failure output to evaluate."
+                },
+                "model": {
+                    "type": "string",
+                    "description": "Decision model to use ('nimble' or 'tev1:0.8b'). Defaults to 'nimble'.",
+                    "default": "nimble"
+                }
+            },
+            "required": ["error_log"]
+        }
+    },
+    {
+        "name": "systemone_review_diff",
+        "description": "Evaluates architectural risk, breaking changes, and critical failure modes in a code patch or git diff using Nimble (9B).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "diff": {
+                    "type": "string",
+                    "description": "The git diff or code changes to evaluate."
+                },
+                "model": {
+                    "type": "string",
+                    "description": "Model to use ('nimble' or 'tev1:0.8b'). Defaults to 'nimble'.",
+                    "default": "nimble"
+                }
+            },
+            "required": ["diff"]
+        }
+    },
+    {
+        "name": "systemone_command_guard",
+        "description": "Ultra-fast safety check (<15ms via tev1:0.8b) before executing potentially risky shell/bash commands.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "command": {
+                    "type": "string",
+                    "description": "The bash or CLI command to inspect."
+                }
+            },
+            "required": ["command"]
+        }
+    },
+    {
+        "name": "systemone_query",
+        "description": "Perform any custom choice or score evaluation against a state using Ollama System One.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "state": {
+                    "type": "string",
+                    "description": "Context or input text to evaluate."
+                },
+                "questions": {
+                    "type": "object",
+                    "description": "Dictionary of questions according to Ollama /v1/systemone schema (choice or score)."
+                },
+                "model": {
+                    "type": "string",
+                    "description": "Ollama model ('nimble' or 'tev1:0.8b'). Defaults to 'nimble'.",
+                    "default": "nimble"
+                }
+            },
+            "required": ["state", "questions"]
+        }
+    }
+]
+
+def send_jsonrpc(obj: Dict[str, Any]):
+    line = json.dumps(obj)
+    sys.stdout.write(line + "\n")
+    sys.stdout.flush()
+
+def run_mcp_server():
+    client = SystemOneClient()
+
+    while True:
+        line = sys.stdin.readline()
+        if not line:
+            break
+        line = line.strip()
+        if not line:
+            continue
+
+        try:
+            req = json.loads(line)
+        except Exception:
+            continue
+
+        req_id = req.get("id")
+        method = req.get("method")
+        params = req.get("params", {})
+
+        if method == "initialize":
+            send_jsonrpc({
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {
+                        "tools": {}
+                    },
+                    "serverInfo": {
+                        "name": "systemone-gate",
+                        "version": "0.1.0"
+                    }
+                }
+            })
+        elif method == "notifications/initialized":
+            pass
+        elif method == "ping":
+            send_jsonrpc({"jsonrpc": "2.0", "id": req_id, "result": {}})
+        elif method == "tools/list":
+            send_jsonrpc({
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {
+                    "tools": MCP_TOOLS
+                }
+            })
+        elif method == "tools/call":
+            tool_name = params.get("name")
+            tool_args = params.get("arguments", {})
+
+            if tool_name == "systemone_triage_error":
+                res = client.triage_error(tool_args.get("error_log", ""), model=tool_args.get("model"))
+            elif tool_name == "systemone_review_diff":
+                res = client.review_diff(tool_args.get("diff", ""), model=tool_args.get("model"))
+            elif tool_name == "systemone_command_guard":
+                res = client.guard_command(tool_args.get("command", ""))
+            elif tool_name == "systemone_query":
+                res = client.evaluate(
+                    state=tool_args.get("state", ""),
+                    questions=tool_args.get("questions", {}),
+                    model=tool_args.get("model")
+                )
+            else:
+                res = {"error": f"Tool '{tool_name}' não encontrada"}
+
+            send_jsonrpc({
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": json.dumps(res, indent=2, ensure_ascii=False)
+                        }
+                    ]
+                }
+            })
+        else:
+            if req_id is not None:
+                send_jsonrpc({
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "error": {
+                        "code": -32601,
+                        "message": f"Method not found: {method}"
+                    }
+                })
+
+if __name__ == "__main__":
+    run_mcp_server()
