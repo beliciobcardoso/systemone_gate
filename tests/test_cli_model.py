@@ -24,7 +24,7 @@ def _exit_code(argv):
 
 def test_default_model_is_named_constant(seen_model):
     assert _exit_code(["diff"]) == 0
-    assert seen_model["model"] == cli.DEFAULT_DIFF_MODEL == "tev1:0.8b"
+    assert seen_model["model"] == cli.DEFAULT_DIFF_MODEL == "nimble"
 
 
 def test_nimble_flag_selects_nimble(seen_model):

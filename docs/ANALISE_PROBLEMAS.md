@@ -161,7 +161,7 @@
 - **Esforço:** S
 
 ### FAL-06 · Hook usa o modelo menor para code review
-- **Achado (RSK-02, [#25](https://github.com/beliciobcardoso/systemone_gate/pull/25)):** o `tev1:0.8b`, padrão do hook, **não discrimina risco de diff** (acerta 36-39% do nível de risco, contra 33% do acaso; 33-53% de `breaking_change`, contra 56% de quem responde sempre `safe`), e o `nimble` acerta 72-75% e 69%. Trocar o padrão do hook para `nimble` é uma **decisão pendente do usuário** (custo: partida a frio de 12 a 72 s).
+- **Achado (RSK-02, [#25](https://github.com/beliciobcardoso/systemone_gate/pull/25)) e decisão ([#29](https://github.com/beliciobcardoso/systemone_gate/pull/29)):** o `tev1:0.8b` **não discriminava risco de diff** (acertava 36-39% do nível de risco, contra 33% do acaso; 33-53% de `breaking_change`, contra 56% de quem responde sempre `safe`), e o `nimble` acerta 72-75% e 69%. **O padrão do hook passou a ser `nimble`** a pedido do usuário. Custo medido: com `nimble` descarregado e o timeout de 30 s, o 1º commit esperou 30 s e **pulou a revisão** (fail-open) e o 2º esperou mais 27 s; por isso o hook agora usa timeout de 120 s (a CLI segue com 30 s).
 - **Status:** ✅ **Resolvido** em [#17](https://github.com/beliciobcardoso/systemone_gate/pull/17) — `diff --model`, `--nimble` e `SYSTEMONE_DIFF_MODEL` escolhem o modelo; o padrão continua `tev1:0.8b` e está documentado como **não calibrado**.
 - **Local:** `cli.py:132` (`"nimble" if args.nimble else "tev1:0.8b"`); `hooks.py:15` (sem `--nimble`)
 - **Evidência:** Estático
