@@ -42,9 +42,9 @@
 
 - **Infraestrutura válida:** o endpoint `/v1/systemone` e os modelos existem e respondem no formato esperado (HTTP 200, `choice`/`score`/`probabilities`). A premissa do projeto se sustenta.
 - **Problema central (S1):** o guard de comandos **aprova `rm -rf /`** (P(destrutivo)=0,23) e `dd … of=/dev/sda`, `DROP TABLE`. Nenhum cruzaria o limiar de bloqueio. Docs e `.cursorrules` instruem agentes a confiar nele justamente para esses comandos.
-- **Progresso (atualizado em 2026-10-05, `dev` @ `6355092`):** dos 12 itens S1/S2, **9 resolvidos** (SEG-01, DEF-01, DEF-02, DEF-03, DEF-04, FAL-02, DT-05, DT-01, DT-02), **1 mitigado** (FAL-01) e **2 parciais** (FAL-03, SEG-02), via PRs [#3](https://github.com/beliciobcardoso/systemone_gate/pull/3) a [#8](https://github.com/beliciobcardoso/systemone_gate/pull/8); mais DOC-03 e DOC-04 (S3). Legenda: ✅ Resolvido · 🟡 Parcial/Mitigado · ⬜ Aberto. **Convenção:** o status é atualizado na mesma branch que resolve o item.
+- **Progresso (atualizado em 2026-10-05, `dev` @ `6355092`):** dos 12 itens S1/S2, **9 resolvidos** (SEG-01, DEF-01, DEF-02, DEF-03, DEF-04, FAL-02, DT-05, DT-01, DT-02), **1 mitigado** (FAL-01) e **2 parciais** (FAL-03, SEG-02), via PRs [#3](https://github.com/beliciobcardoso/systemone_gate/pull/3) a [#8](https://github.com/beliciobcardoso/systemone_gate/pull/8); mais DOC-03 e DOC-04 (S3). Legenda: ✅ Resolvido · 🟡 Parcial/Mitigado · ⬜ Aberto · ⛔ Descartado por decisão do usuário. **Convenção:** o status é atualizado na mesma branch que resolve o item.
 - **Totais:** 44 itens — 9 defeitos, 6 falhas de produto, 11 dívidas técnicas, 3 de segurança, 7 de documentação, 3 riscos e 5 de higiene (agrupados). Só 2 são S1, 10 são S2 e 4 são hipóteses não testadas (SEG-02, DOC-05, DOC-06, RSK-02).
-- **Maior alavancagem:** (1) rebaixar/reestruturar o guard, (2) tornar o hook seguro por padrão (fail-open real), (3) criar testes + CI, (4) centralizar a política de decisão.
+- **Maior alavancagem:** (1) rebaixar/reestruturar o guard, (2) tornar o hook seguro por padrão (fail-open real), (3) criar testes, (4) centralizar a política de decisão.
 
 ### Visão geral
 
@@ -72,7 +72,7 @@
 | FAL-06 | Hook usa modelo 0.8B para code review | Falha | Adequação funcional | S3 | Should | Estático | ⬜ Aberto |
 | DT-03 | Erro retornado como `dict` misturado ao sucesso | Dívida | Manutenibilidade | S3 | Should | Estático | ⬜ Aberto |
 | DT-04 | Tools MCP exigem que o agente cole diff/log | Dívida | Eficiência | S3 | Should | Estático | ⬜ Aberto |
-| DT-06 | Sem CI, lint, type-check, formatação | Dívida | Manutenibilidade | S3 | Should | Reproduzido (ausência) | ⬜ Aberto |
+| DT-06 | Sem CI, lint, type-check, formatação | Dívida | Manutenibilidade | S3 | Should | Reproduzido (ausência) | ⬜ Aberto (CI ⛔ descartado) |
 | DT-07 | Rubricas enviesadas para C/redes (mosquitto) | Dívida | Adequação funcional | S3 | Should | Estático | ⬜ Aberto |
 | SEG-03 | `OLLAMA_SYSTEMONE_URL` sem validação de esquema/host | Segurança | Segurança | S3 | Could | Estático | ⬜ Aberto |
 | DOC-01 | Config do Aider quebrada | Doc. | Usabilidade | S3 | Must | Reproduzido | ⬜ Aberto |
@@ -87,7 +87,7 @@
 | DOC-06 | Versões de modelos/caminhos de IDEs não verificáveis | Doc. | — | S4 | Could | **Hipótese** | ⬜ Aberto |
 | RSK-02 | Rubricas em português vs. modelo possivelmente treinado em inglês | Risco | Adequação funcional | S3 | Could | **Hipótese** | ⬜ Aberto |
 | RSK-03 | Privacidade: diffs/comandos podem conter segredos | Risco | Segurança | S3 | Should | Estático | ⬜ Aberto |
-| DT-11 | `AGENTS.md` exige CI verde, testes e cobertura que não existem | Dívida | Manutenibilidade | S3 | Should | Estático | ⬜ Aberto |
+| DT-11 | `AGENTS.md` exige CI verde, testes e cobertura que não existem | Dívida | Manutenibilidade | S3 | Should | Estático | ✅ Resolvido (#10) |
 | DOC-07 | Hook sugere `--no-verify`, que `AGENTS.md` proíbe | Doc. | Usabilidade | S3 | Should | Estático | ⬜ Aberto |
 | HIG-01..05 | Higiene (ver §9) | — | — | S4 | Won't | Estático | ⬜ Aberto |
 
@@ -119,7 +119,7 @@
   2. **LLM como segunda opinião** (só eleva o alerta, **nunca libera** o que a camada 1 bloqueou).
   3. **Benchmark próprio:** criar `tests/fixtures/guard_cases.jsonl` (≥100 comandos rotulados: seguros, ambíguos, destrutivos). Medir recall de destrutivos por modelo (`tev1:0.8b`, `tev1:4b`, `nimble`) e **calibrar o limiar a partir dos dados**, com meta explícita (ex.: recall ≥ 0,98 nos destrutivos inequívocos).
   4. Se nenhum modelo atingir a meta, **remover a alegação de segurança** (ver DOC-03) e manter o guard como heurística de aviso.
-- **Critério de aceite:** suíte de benchmark em CI; `rm -rf /` e os 3 casos acima bloqueados por regra.
+- **Critério de aceite:** suíte de benchmark local (`@pytest.mark.slow`); `rm -rf /` e os 3 casos acima bloqueados por regra.
 - **Esforço:** M (regras + dataset) · L (calibração completa)
 
 ### FAL-02 · Diff truncado nas primeiras 250 linhas
@@ -309,7 +309,7 @@
 - **Alternativa (DT-04-alt):** migrar o transporte para o SDK oficial `mcp` — troca a meta "zero dependência" por menos código próprio e conformidade garantida (resolve DEF-07). Trade-off consciente; recomendo só se o MCP crescer além de 4 tools.
 
 ### DT-05 · Zero testes automatizados
-- **Status:** ✅ **Resolvido** em [#5](https://github.com/beliciobcardoso/systemone_gate/pull/5), com os testes dos PRs #3, #4, #6, #7 e #8 (393 testes, 96% de cobertura). CI segue pendente (DT-06).
+- **Status:** ✅ **Resolvido** em [#5](https://github.com/beliciobcardoso/systemone_gate/pull/5), com os testes dos PRs #3, #4, #6, #7 e #8 (393 testes, 96% de cobertura). O projeto não usa CI (decisão do usuário; ver DT-06).
 - **Evidência:** `git ls-files` não lista nenhum teste; sem `pytest` no `pyproject.toml`.
 - **Quadrante:** Inadvertida · Imprudente
 - **Classificação:** Dívida (teste) · Manutenibilidade · **S2** · Must
@@ -323,6 +323,7 @@
 - **Esforço:** L
 
 ### DT-06 · Sem CI, lint, type-check ou formatação
+- **Status:** ⛔ **CI descartado** por decisão do usuário (o projeto não precisa de CI). Lint, type-check e formatação **locais** seguem ⬜ abertos: a decisão cobre só o CI.
 - **Quadrante:** Inadvertida · Imprudente
 - **Classificação:** Dívida (processo) · Manutenibilidade · S3 · Should
 - **Solução:** `ruff` + `mypy` (ou `pyright`) em `pyproject.toml`; workflow GitHub Actions com matriz Python 3.9–3.13 rodando lint, tipos e testes (sem benchmark). Pre-commit local.
@@ -355,6 +356,7 @@
 - **Esforço:** M
 
 ### DT-11 · `AGENTS.md` exige gates que o projeto não possui
+- **Status:** ✅ **Resolvido** em [#10](https://github.com/beliciobcardoso/systemone_gate/pull/10) — em vez de criar o CI, o requisito "CI verde" e os "status checks" foram removidos do `AGENTS.md`. O gate de testes locais ("Antes de abrir PR") permanece.
 - **Local:** `AGENTS.md:80`, `AGENTS.md:90-96`, `AGENTS.md:106`
 - **Evidência:** Estático (o `AGENTS.md` pede "CI verde", "status checks passando", "testes passam e cobertura mínima de 80%"; o repositório não tem testes nem workflow de CI — ver DT-05/DT-06). **Não verifiquei** se os rulesets do GitHub já estão configurados.
 - **Quadrante:** Deliberada · Prudente (processo definido antes da infraestrutura)
@@ -451,7 +453,7 @@
 
 | ID | Risco | Evidência | Sev. | Mitigação |
 |---|---|---|---|---|
-| **RSK-01** | O projeto depende do endpoint `/v1/systemone` e dos modelos `nimble`/`tev1`, sem contrato versionado (modelos de terceiros; a API pode mudar entre versões do Ollama). | Estático | S3 | Detectar versão (`/api/version`) e capacidade `decision` (`/api/tags`) na inicialização; teste de contrato em CI contra Ollama real (job opcional); fixar versão mínima testada no README. |
+| **RSK-01** | O projeto depende do endpoint `/v1/systemone` e dos modelos `nimble`/`tev1`, sem contrato versionado (modelos de terceiros; a API pode mudar entre versões do Ollama). | Estático | S3 | Detectar versão (`/api/version`) e capacidade `decision` (`/api/tags`) na inicialização; teste de contrato local contra Ollama real (opcional); fixar versão mínima testada no README. |
 | **RSK-02** | Rubricas em português para modelos possivelmente treinados em inglês podem degradar a precisão. | **Hipótese** | S3 | Benchmark A/B pt × en nas mesmas rubricas; adotar o idioma com melhor resultado. |
 | **RSK-03** | Diffs e comandos podem conter segredos; mesmo local, ficam em logs/memória do Ollama e (via MCP) no contexto do agente de nuvem. | Estático | S3 | Redação de padrões de segredo antes de enviar (`AKIA…`, `ghp_…`, `-----BEGIN`); documentar o fluxo de dados real; evitar logar payloads. |
 
@@ -481,7 +483,7 @@ Sem mudança de arquitetura, só reduz risco imediato.
 - DOC-01 (remover config do Aider).
 
 ### Fase 1 — Fundação de qualidade (≈ 3–4 dias)
-- DT-05 (testes + Ollama falso), DT-06 (CI/lint/tipos).
+- DT-05 (testes + Ollama falso), DT-06 (lint/tipos; CI descartado).
 - DT-01 + DT-02 + DT-03 + DT-10 (política única, exceções tipadas, tipos de domínio) — com os testes já cobrindo.
 - DEF-03, DEF-06, DEF-07, DEF-08.
 
@@ -511,7 +513,7 @@ Se o benchmark do guard (FAL-01) mostrar que **nenhum** dos modelos atinge recal
 | DEF-05 | `git worktree add` + `install-hook`: hook criado no caminho correto. |
 | FAL-01 | `rm -rf /`, `dd of=/dev/sda`, `DROP TABLE` → bloqueados; ≥ 98% de recall no dataset. |
 | FAL-02 | Diff com 600 linhas de lockfile + 20 de código: código é avaliado; relatório lista arquivos pulados. |
-| DT-05 | `pytest --cov` ≥ 80% nos módulos sem Ollama; CI verde nas versões 3.9–3.13. |
+| DT-05 | `pytest --cov` ≥ 80% nos módulos sem Ollama; testes passando localmente. |
 | DOC-01..03 | Cada comando documentado executado em ambiente limpo (checklist no PR). |
 
 ---
