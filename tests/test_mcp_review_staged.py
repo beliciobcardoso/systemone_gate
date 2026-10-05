@@ -5,9 +5,9 @@ import os
 import subprocess
 
 import pytest
+from test_mcp_protocol import McpProc
 
 from systemone_gate import mcp_server
-from test_mcp_protocol import McpProc
 
 TOOL = "systemone_review_staged"
 VERDICT = {"answers": {

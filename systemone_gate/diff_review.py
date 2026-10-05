@@ -153,11 +153,13 @@ def _empty_result(coverage: Dict[str, Any]) -> Dict[str, Any]:
 
 def _breaking_prob(answers: Dict[str, Any]) -> float:
     probs = (answers.get("breaking_change") or {}).get("probabilities") or {}
-    return probs.get("breaking_change", 0.0)
+    prob: float = probs.get("breaking_change", 0.0)  # JSON-derived Any; shape validated upstream by policy
+    return prob
 
 
 def _risk_score(answers: Dict[str, Any]) -> float:
-    return (answers.get("risk_level") or {}).get("score", 0.0)
+    score: float = (answers.get("risk_level") or {}).get("score", 0.0)  # JSON-derived Any, see _breaking_prob
+    return score
 
 
 def _aggregate(per_file_answers: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -183,7 +185,7 @@ def _plan(files: Tuple[FileDiff, ...], max_files: int):
     return to_review, skipped
 
 
-def review_staged(client: Any, diff_text: str, model: str,
+def review_staged(client: Any, diff_text: str, model: Optional[str],
                   max_lines_per_file: int = DEFAULT_MAX_LINES_PER_FILE,
                  max_files: int = DEFAULT_MAX_FILES,
                  profile: Optional[str] = None) -> Dict[str, Any]:

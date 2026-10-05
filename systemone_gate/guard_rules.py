@@ -155,7 +155,10 @@ def _check_git(cmd: SimpleCommand) -> Optional[RuleMatch]:
     )
     for target in targets:
         if _push_ref(target) in _PROTECTED_BRANCHES and (forced or target.startswith("+")):
-            return RuleMatch("git-force-push-protected", "force push em main/master reescreve o histórico compartilhado")
+            return RuleMatch(
+                "git-force-push-protected",
+                "force push em main/master reescreve o histórico compartilhado",
+            )
     return None
 
 

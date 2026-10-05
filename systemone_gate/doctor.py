@@ -60,7 +60,7 @@ class DoctorReport:
         return all(c.status != FAIL for c in self.checks)
 
 
-def _split_endpoint(endpoint: str):
+def _split_endpoint(endpoint: str) -> Tuple[str, str]:
     parts = urlsplit(endpoint)
     if parts.scheme not in ("http", "https") or not parts.hostname:
         raise ValueError(f"endpoint inválido: {endpoint!r} (esperado http(s)://host[:porta]/...)")
@@ -127,7 +127,7 @@ def check_version(version_payload: Dict[str, Any]) -> Check:
         return Check("version", WARN, f"Versão do Ollama não reconhecida: {raw!r}",
                      f"Confirme manualmente que é >= {MIN_OLLAMA_VERSION} (`ollama --version`).")
     minimum = parse_version(MIN_OLLAMA_VERSION)
-    if parsed < minimum:
+    if minimum is not None and parsed < minimum:
         return Check("version", FAIL, f"Ollama {raw} é anterior ao mínimo {MIN_OLLAMA_VERSION}",
                      f"Atualize o Ollama para >= {MIN_OLLAMA_VERSION} (o endpoint /v1/systemone não existe antes).")
     return Check("version", OK, f"Ollama {raw} (mínimo {MIN_OLLAMA_VERSION})")
@@ -152,7 +152,9 @@ def check_models(base: str, models: Sequence[str], timeout: float) -> Check:
     if missing:
         return Check("models", FAIL, "Modelos ausentes: " + ", ".join(missing),
                      "; ".join(f"ollama pull {m}" for m in missing))
-    no_capability = [m for m in models if DECISION_CAPABILITY not in (installed[_normalize_tag(m)].get("capabilities") or [])]
+    no_capability = [
+        m for m in models if DECISION_CAPABILITY not in (installed[_normalize_tag(m)].get("capabilities") or [])
+    ]
     if no_capability:
         return Check("models", WARN, f"Sem capability '{DECISION_CAPABILITY}' reportada: " + ", ".join(no_capability),
                      "Ollama mais antigo pode não reportar capabilities; o teste de contrato confirma o uso real.")

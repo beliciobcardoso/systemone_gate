@@ -53,8 +53,8 @@ class ServerProc:
     def recv(self):
         try:
             line = self.lines.get(timeout=TIMEOUT)
-        except queue.Empty:
-            raise AssertionError("server hung: no reply within timeout")
+        except queue.Empty as exc:
+            raise AssertionError("server hung: no reply within timeout") from exc
         assert line is not None, "server died (stdout closed)"
         self.stdout_seen.append(line)
         return json.loads(line)
@@ -242,7 +242,7 @@ def test_run_loop_in_process_covers_all_methods(monkeypatch, capsys):
 
     mcp_server.run_mcp_server()
 
-    replies = [json.loads(l) for l in capsys.readouterr().out.splitlines()]
+    replies = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
     assert [r["id"] for r in replies] == [None, 1, 2, 3, 4, 5, 6]
     assert replies[0]["error"] == {"code": -32700, "message": "Parse error"}
     assert replies[1]["result"]["protocolVersion"] == "2024-11-05"

@@ -7,6 +7,7 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # import fake_ollama
 
 from fake_ollama import FakeOllama  # noqa: E402
+
 from systemone_gate.client import SystemOneClient  # noqa: E402
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
