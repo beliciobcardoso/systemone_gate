@@ -87,7 +87,7 @@
 | DOC-06 | Versões de modelos/caminhos de IDEs não verificáveis | Doc. | — | S4 | Could | **Hipótese** | ⬜ Aberto |
 | RSK-02 | Rubricas em português vs. modelo possivelmente treinado em inglês | Risco | Adequação funcional | S3 | Could | **Hipótese** | ⬜ Aberto |
 | RSK-03 | Privacidade: diffs/comandos podem conter segredos | Risco | Segurança | S3 | Should | Estático | ⬜ Aberto |
-| DT-11 | `AGENTS.md` exige CI verde, testes e cobertura que não existem | Dívida | Manutenibilidade | S3 | Should | Estático | ✅ Resolvido (PR_N) |
+| DT-11 | `AGENTS.md` exige CI verde, testes e cobertura que não existem | Dívida | Manutenibilidade | S3 | Should | Estático | ✅ Resolvido (10) |
 | DOC-07 | Hook sugere `--no-verify`, que `AGENTS.md` proíbe | Doc. | Usabilidade | S3 | Should | Estático | ⬜ Aberto |
 | HIG-01..05 | Higiene (ver §9) | — | — | S4 | Won't | Estático | ⬜ Aberto |
 
@@ -356,7 +356,7 @@
 - **Esforço:** M
 
 ### DT-11 · `AGENTS.md` exige gates que o projeto não possui
-- **Status:** ✅ **Resolvido** em [PR_N](https://github.com/beliciobcardoso/systemone_gate/pull/PR_N) — em vez de criar o CI, o requisito "CI verde" e os "status checks" foram removidos do `AGENTS.md`. O gate de testes locais ("Antes de abrir PR") permanece.
+- **Status:** ✅ **Resolvido** em [10](https://github.com/beliciobcardoso/systemone_gate/pull/10) — em vez de criar o CI, o requisito "CI verde" e os "status checks" foram removidos do `AGENTS.md`. O gate de testes locais ("Antes de abrir PR") permanece.
 - **Local:** `AGENTS.md:80`, `AGENTS.md:90-96`, `AGENTS.md:106`
 - **Evidência:** Estático (o `AGENTS.md` pede "CI verde", "status checks passando", "testes passam e cobertura mínima de 80%"; o repositório não tem testes nem workflow de CI — ver DT-05/DT-06). **Não verifiquei** se os rulesets do GitHub já estão configurados.
 - **Quadrante:** Deliberada · Prudente (processo definido antes da infraestrutura)
