@@ -12,6 +12,41 @@ from typing import List
 from .client import SystemOneClient
 from .hooks import install_git_hook, uninstall_git_hook
 from .mcp_server import run_mcp_server
+from .policy import (
+    ACTION_BLOCK,
+    DiffReview,
+    InvalidResponse,
+    PolicyConfig,
+    evaluate_command,
+    evaluate_diff,
+    parse_command_check,
+    parse_diff_review,
+)
+
+EXIT_CONFIG_ERROR = 2
+
+def _try_parse(parser, res):
+    """Parses a response for display only; the verdict comes from the policy layer."""
+    try:
+        return parser(res)
+    except InvalidResponse:
+        return None
+
+def _print_diff_report(review: DiffReview, res: dict) -> None:
+    risk_info = res["answers"]["risk_level"]
+    print("\n------------------ Relatório de Impacto ------------------")
+    print(f"📊 Nível de Risco Técnico: {review.risk_score:.2f} / 2.0")
+    legend = risk_info.get("legend")
+    level_probs = risk_info.get("probabilities")
+    if isinstance(legend, dict) and isinstance(level_probs, dict):
+        for idx, desc in legend.items():
+            prob = level_probs.get(idx, 0.0)
+            print(f"   • Nível {idx} ({prob*100:.1f}%): {desc}")
+
+    print(f"\n⚠️  Breaking Change: {review.breaking_choice.upper()}")
+    for opt, prob in review.breaking_probs.items():
+        print(f"   • {opt}: {prob*100:.1f}%")
+    print("----------------------------------------------------------\n")
 
 def handle_diff(client: SystemOneClient, model: str, max_lines: int = 250) -> int:
     try:
@@ -33,36 +68,29 @@ def handle_diff(client: SystemOneClient, model: str, max_lines: int = 250) -> in
     print(f"🔍 [SystemOne Gate] Inspecionando diff ({len(lines)} linhas) com modelo '{model}'...")
     res = client.review_diff(truncated_diff, model=model)
 
-    if "error" in res:
-        print(f"⚠️  [SystemOne Gate] Aviso: {res['error']}", file=sys.stderr)
-        return 0  # Falha silenciosa para não travar trabalho offline sem ollama
+    try:
+        cfg = PolicyConfig.from_env()
+    except ValueError as e:
+        print(f"❌ Configuração de política inválida: {e}", file=sys.stderr)
+        return EXIT_CONFIG_ERROR
 
-    answers = res.get("answers", {})
-    risk_info = answers.get("risk_level", {})
-    breaking_info = answers.get("breaking_change", {})
+    decision = evaluate_diff(res, cfg)
+    if decision.warning:
+        print(f"⚠️  [SystemOne Gate] Aviso: {decision.warning}", file=sys.stderr)
 
-    risk_score = risk_info.get("score", 0.0)
-    breaking_choice = breaking_info.get("choice", "safe")
-    breaking_probs = breaking_info.get("probabilities", {})
+    review = _try_parse(parse_diff_review, res)
+    if review is not None:
+        _print_diff_report(review, res)
 
-    print("\n------------------ Relatório de Impacto ------------------")
-    print(f"📊 Nível de Risco Técnico: {risk_score:.2f} / 2.0")
-    if "legend" in risk_info:
-        for idx, desc in risk_info["legend"].items():
-            prob = risk_info.get("probabilities", {}).get(idx, 0.0)
-            print(f"   • Nível {idx} ({prob*100:.1f}%): {desc}")
-
-    print(f"\n⚠️  Breaking Change: {breaking_choice.upper()}")
-    for opt, prob in breaking_probs.items():
-        print(f"   • {opt}: {prob*100:.1f}%")
-    print("----------------------------------------------------------\n")
-
-    # Bloqueia se o risco for extremo e com quebra confirmada
-    breaking_risk_prob = breaking_probs.get("breaking_change", 0.0)
-    if risk_score > 1.85 and breaking_risk_prob > 0.65:
-        print("❌ [BLOQUEIO ATIVADO] Risco crítico e quebra de contrato identificados!", file=sys.stderr)
+    if decision.action == ACTION_BLOCK:
+        if review is not None:
+            print("❌ [BLOQUEIO ATIVADO] Risco crítico e quebra de contrato identificados!", file=sys.stderr)
+        else:
+            print(f"❌ [BLOQUEIO ATIVADO] {'; '.join(decision.reasons)}", file=sys.stderr)
         return 1
 
+    if decision.warning:
+        return 0  # Falha aberta (diff_on_error=allow): não trava trabalho offline sem ollama
     print("✅ [APROVADO] Verificação concluída com sucesso.")
     return 0
 
@@ -80,20 +108,27 @@ def handle_triage(client: SystemOneClient, error_text: str, model: str) -> int:
 
 def handle_guard(client: SystemOneClient, command_text: str, model: str) -> int:
     res = client.guard_command(command_text, model=model)
-    if "error" in res:
-        print(f"❌ Erro: {res['error']}", file=sys.stderr)
-        return 1
+    try:
+        cfg = PolicyConfig.from_env()
+    except ValueError as e:
+        print(f"❌ Configuração de política inválida: {e}", file=sys.stderr)
+        return EXIT_CONFIG_ERROR
 
-    answers = res.get("answers", {})
-    is_dest = answers.get("is_destructive", {}).get("choice", "safe")
-    danger = answers.get("danger_score", {}).get("score", 0.0)
+    decision = evaluate_command(res, cfg)
+    if decision.warning:
+        print(f"⚠️  [SystemOne Gate] Aviso: {decision.warning}", file=sys.stderr)
 
-    print(f"🛡️  Comando: {command_text}")
-    print(f"• Destrutivo: {is_dest}")
-    print(f"• Pontuação de perigo: {danger:.2f} / 2.0")
+    check = _try_parse(parse_command_check, res)
+    if check is not None:
+        print(f"🛡️  Comando: {command_text}")
+        print(f"• Destrutivo: {check.choice}")
+        print(f"• Pontuação de perigo: {check.danger_score:.2f} / 2.0")
 
-    if is_dest == "destructive_or_risky" and danger > 1.5:
-        print("❌ [COMANDO BLOQUEADO] Risco destrutivo elevado!", file=sys.stderr)
+    if decision.action == ACTION_BLOCK:
+        if check is not None:
+            print("❌ [COMANDO BLOQUEADO] Risco destrutivo elevado!", file=sys.stderr)
+        else:
+            print(f"❌ [COMANDO BLOQUEADO] {'; '.join(decision.reasons)}", file=sys.stderr)
         return 1
     return 0
 
