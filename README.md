@@ -226,7 +226,8 @@ Para guias passo a passo de como plugar o SystemOne Gate em cada agente específ
 
 ## 🔒 Privacidade e Segurança
 
-* **100% Local:** Todo o processamento acontece dentro da máquina do desenvolvedor (`localhost:11434`).
+* **100% Local:** Todo o processamento acontece dentro da máquina do desenvolvedor (`localhost:11434`). O endpoint deve usar `http`/`https` e apontar para um host de loopback (`localhost`, `127.0.0.0/8`, `::1`, `*.localhost`); hosts remotos só são aceitos com `SYSTEMONE_ALLOW_REMOTE=1` (um aviso é emitido no stderr, pois diffs, comandos e logs passarão a sair da máquina). Nenhum nome de host é resolvido via DNS: qualquer um diferente de `localhost`/`*.localhost` conta como remoto.
+* **Redação de segredos (ativa por padrão):** antes de enviar ao modelo, o texto (`state`: diffs, comandos, logs) passa por `redact_secrets`, que troca chaves AWS, tokens GitHub/Slack/Stripe, chaves Google, blocos PEM de chave privada, JWTs, `Authorization: Bearer ...`, senhas em URLs e atribuições `password|secret|api_key|token=...` por `[REDACTED:<regra>]`. Quando algo é mascarado, o resultado traz `"redacted": <n>`. Desative com `SYSTEMONE_REDACT=0` ou `SystemOneClient(redact=False)`. É uma redução de risco baseada em padrões, **não uma garantia**: formatos não reconhecidos passam. As regras determinísticas do `guard_command` enxergam o comando original, sem redação.
 * **Sem Telemetria:** O SystemOne Gate não coleta e não envia dados para a nuvem.
 * **Resiliente a Falhas de Rede:** Se o serviço local do Ollama estiver inativo, o pre-commit hook permite o fluxo normal de desenvolvimento para nunca bloquear o usuário.
 
