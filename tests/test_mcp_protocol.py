@@ -118,3 +118,10 @@ def test_tools_call_triage(mcp, fake):
     msg = mcp.call("tools/call", {"name": "systemone_triage_error", "arguments": {"error_log": "oops"}})
     assert _text_json(msg) == {"answers": {"root_cause": {"choice": "compilation_syntax"}}}
     assert fake.requests[0]["state"] == "oops"
+
+
+def test_tools_call_success_has_no_iserror(mcp, fake):
+    fake.respond("nimble", {"answers": {"q": {"choice": "a"}}})
+    msg = mcp.call("tools/call", {"name": "systemone_command_guard", "arguments": {"command": "ls"}})
+    assert "isError" not in msg["result"]
+    assert "error" not in _text_json(msg)

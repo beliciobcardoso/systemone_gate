@@ -99,6 +99,8 @@ def test_arguments_null_is_treated_as_empty(server, tool):
     assert reply["id"] == 2
     assert "error" not in reply
     assert "content" in reply["result"]
+    assert reply["result"]["isError"] is True
+    assert "error" in json.loads(reply["result"]["content"][0]["text"])
     server.assert_alive()
 
 
@@ -110,6 +112,8 @@ def test_arguments_missing_is_treated_as_empty(server, tool):
     assert reply["id"] == 2
     assert "error" not in reply
     assert "content" in reply["result"]
+    assert reply["result"]["isError"] is True
+    assert "error" in json.loads(reply["result"]["content"][0]["text"])
     server.assert_alive()
 
 
@@ -145,11 +149,12 @@ def test_non_object_json_line_is_ignored(server, raw):
     server.assert_alive()
 
 
-def test_unknown_tool_returns_result_and_keeps_running(server):
+def test_unknown_tool_returns_iserror_and_keeps_running(server):
     server.send(call("nope", {}))
     reply = server.recv()
     assert reply["id"] == 2
-    assert "content" in reply["result"]
+    assert reply["result"]["isError"] is True
+    assert "nope" in reply["result"]["content"][0]["text"]
     server.assert_alive()
 
 
@@ -238,8 +243,111 @@ def test_run_loop_in_process_covers_all_methods(monkeypatch, capsys):
     mcp_server.run_mcp_server()
 
     replies = [json.loads(l) for l in capsys.readouterr().out.splitlines()]
-    assert [r["id"] for r in replies] == [1, 2, 3, 4, 5, 6]
-    assert replies[0]["result"]["protocolVersion"] == "2024-11-05"
-    assert replies[3]["result"]["content"]
-    assert replies[4]["error"]["code"] == -32602
-    assert replies[5]["error"]["code"] == -32601
+    assert [r["id"] for r in replies] == [None, 1, 2, 3, 4, 5, 6]
+    assert replies[0]["error"] == {"code": -32700, "message": "Parse error"}
+    assert replies[1]["result"]["protocolVersion"] == "2024-11-05"
+    assert replies[4]["result"]["content"]
+    assert "isError" not in replies[4]["result"]
+    assert replies[5]["error"]["code"] == -32602
+    assert replies[6]["error"]["code"] == -32601
+
+
+# --- DEF-07: parse errors and tool failures -------------------------------
+
+PARSE_ERROR = {"jsonrpc": "2.0", "id": None,
+               "error": {"code": -32700, "message": "Parse error"}}
+
+
+@pytest.mark.parametrize("raw", [
+    "{", "not json", '{"jsonrpc": "2.0", "id": 1, "meth',
+    "\x00\x01\x02 \ufffd\x7f garbage", "{'single': 'quotes'}",
+])
+def test_invalid_json_line_gets_parse_error_and_server_stays_alive(server, raw):
+    server.send_raw(raw)
+    assert server.recv() == PARSE_ERROR
+    server.assert_alive()
+
+
+def test_parse_error_does_not_echo_offending_text(server):
+    server.send_raw("super-secret-token {")
+    line_reply = server.recv()
+    assert "super-secret-token" not in json.dumps(line_reply)
+    assert "super-secret-token" not in server.stdout_seen[-1]
+
+
+def test_blank_line_gets_no_reply(server):
+    server.send_raw("")
+    server.send_raw("   ")
+    server.assert_alive()  # first reply on stdout must be the ping's
+
+
+def test_mixed_valid_and_invalid_lines_keep_ids_matched(server):
+    server.send({"jsonrpc": "2.0", "id": 10, "method": "ping"})
+    server.send_raw("{")
+    server.send({"jsonrpc": "2.0", "id": 11, "method": "ping"})
+    server.send_raw("not json")
+    server.send({"jsonrpc": "2.0", "id": 12, "method": "bogus"})
+    server.send({"jsonrpc": "2.0", "method": "bogus"})
+    server.send({"jsonrpc": "2.0", "id": 13, "method": "ping"})
+    replies = [server.recv() for _ in range(6)]
+    assert [r["id"] for r in replies] == [10, None, 11, None, 12, 13]
+    assert replies[1] == PARSE_ERROR and replies[3] == PARSE_ERROR
+    assert replies[4]["error"]["code"] == -32601
+    assert replies[5]["result"] == {}
+
+
+@pytest.mark.parametrize("tool,args", [
+    ("systemone_triage_error", {"error_log": "boom"}),
+    ("systemone_review_diff", {"diff": "diff --git a/x b/x"}),
+    ("systemone_command_guard", {"command": "ls"}),
+    ("systemone_query", {"state": "s", "questions": {}}),
+])
+def test_tool_failure_is_iserror_with_original_error_text(server, tool, args):
+    server.send(call(tool, args))
+    reply = server.recv()
+    assert reply["id"] == 2
+    assert reply["result"]["isError"] is True
+    payload = json.loads(reply["result"]["content"][0]["text"])
+    assert isinstance(payload["error"], str) and payload["error"]
+    server.assert_alive()
+
+
+class _ErrorClient:
+    def triage_error(self, error_log, model=None):
+        return {"error": "x"}
+
+    def guard_command(self, command):
+        return {"error": "x"}
+
+
+def test_dispatch_error_dict_is_iserror_and_text_unchanged():
+    result = mcp_server._dispatch_tool(
+        _ErrorClient(), "systemone_triage_error", {"error_log": "e"}
+    )
+    assert result["isError"] is True
+    assert json.loads(result["content"][0]["text"]) == {"error": "x"}
+
+
+def test_dispatch_normal_dict_has_no_iserror_key():
+    result = mcp_server._dispatch_tool(
+        _StubClient(), "systemone_command_guard", {"command": "ls"}
+    )
+    assert "isError" not in result
+
+
+def test_dispatch_unknown_tool_is_iserror():
+    result = mcp_server._dispatch_tool(_StubClient(), "nope", {})
+    assert result["isError"] is True
+    assert "nope" in json.loads(result["content"][0]["text"])["error"]
+
+
+def test_run_loop_in_process_logs_parse_error_to_stderr(monkeypatch, capsys):
+    import io
+
+    monkeypatch.setattr(mcp_server, "SystemOneClient", _StubClient)
+    monkeypatch.setattr(sys, "stdin", io.StringIO("not json\n"))
+    mcp_server.run_mcp_server()
+    captured = capsys.readouterr()
+    assert json.loads(captured.out) == PARSE_ERROR
+    assert "not json" not in captured.out
+    assert captured.err

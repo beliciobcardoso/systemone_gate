@@ -101,6 +101,9 @@ def send_jsonrpc(obj: Dict[str, Any]):
     sys.stdout.flush()
 
 def _text_result(payload: Dict[str, Any], is_error: bool = False) -> Dict[str, Any]:
+    # A tool payload carrying an "error" key is a failure, not an answer.
+    if isinstance(payload, dict) and "error" in payload:
+        is_error = True
     result = {
         "content": [
             {
@@ -150,6 +153,13 @@ def run_mcp_server():
         try:
             req = json.loads(line)
         except Exception:
+            # Never echo the offending text; keep details minimal on stderr.
+            print("mcp: ignoring invalid JSON line (parse error)", file=sys.stderr)
+            send_jsonrpc({
+                "jsonrpc": "2.0",
+                "id": None,
+                "error": {"code": -32700, "message": "Parse error"}
+            })
             continue
 
         if not isinstance(req, dict):

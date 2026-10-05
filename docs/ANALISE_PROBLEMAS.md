@@ -64,7 +64,7 @@
 | DT-02 | Três políticas de bloqueio divergentes | Dívida | Manutenibilidade | S2 | Must | Estático | ✅ Resolvido (#7) |
 | DEF-05 | `.git` como arquivo (worktree/submodule) quebra `install-hook` | Defeito | Portabilidade | S3 | Should | Estático | ✅ Resolvido (#11) |
 | DEF-06 | `HTTPError` rotulado como "Failed to connect" | Defeito | Usabilidade | S3 | Should | Estático | ✅ Resolvido (#12) |
-| DEF-07 | MCP: JSON inválido ignorado e erro sem `isError` | Defeito | Confiabilidade | S3 | Should | Estático | ⬜ Aberto |
+| DEF-07 | MCP: JSON inválido ignorado e erro sem `isError` | Defeito | Confiabilidade | S3 | Should | Estático | ✅ Resolvido (#13) |
 | DEF-08 | Timeout fixo de 30 s | Defeito | Confiabilidade | S3 | Should | Estático (+ cold start medido) | 🟡 Parcial (#12) |
 | DEF-09 | Hook ignora `core.hooksPath` | Defeito | Compatibilidade | S3 | Could | Estático | ✅ Resolvido (#11) |
 | FAL-04 | Latência real ~200 ms vs. "<15 ms" prometido | Falha | Eficiência | S3 | Should | Medido | ⬜ Aberto |
@@ -238,6 +238,7 @@
 - **Esforço:** S
 
 ### DEF-07 · MCP: JSON inválido ignorado; erro entregue como sucesso
+- **Status:** ✅ **Resolvido** em [#13](https://github.com/beliciobcardoso/systemone_gate/pull/13) — JSON inválido recebe `-32700` e falhas de tool (inclusive tool desconhecida) voltam com `isError: true`. Os testes que fixavam o contrato antigo foram atualizados de propósito.
 - **Local:** `mcp_server.py:113-116`, `168-179`
 - **Evidência:** Estático
 - **Classificação:** Defeito · Confiabilidade · S3 · Should
