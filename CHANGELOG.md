@@ -18,6 +18,10 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 - The package description in `pyproject.toml` no longer says "ultra-fast", which the latency measurements do not support (#35).
 
+### Fixed
+
+- Two hook tests assumed that `systemone_gate` was not installed in the interpreter running the tests, so they failed after `pip install -e ".[dev]"`, the documented setup. They now simulate the missing package with a stub interpreter (#36).
+
 ## [0.3.0] - 2026-10-05
 
 ### Changed
