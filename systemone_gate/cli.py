@@ -163,7 +163,11 @@ def main(argv: List[str] = None):
     subparsers.add_parser("mcp", help="Inicia o servidor MCP stdio (para Claude Desktop, Cursor, Antigravity)")
 
     args = parser.parse_args(argv)
-    client = SystemOneClient()
+    try:
+        client = SystemOneClient()
+    except ValueError as e:
+        print(f"❌ Configuração inválida: {e}", file=sys.stderr)
+        sys.exit(2)
 
     if args.command == "diff":
         model = "nimble" if args.nimble else "tev1:0.8b"
