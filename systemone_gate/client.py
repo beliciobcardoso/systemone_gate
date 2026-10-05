@@ -7,12 +7,17 @@ import copy
 import json
 import math
 import os
+import ipaddress
+import re
 import socket
+import sys
+import urllib.parse
 import urllib.request
 import urllib.error
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 
 from .guard_rules import evaluate_command
+from .redact import redact_secrets
 from .rubrics import (
     RUBRIC_DIFF_RISK,
     RUBRIC_ERROR_TRIAGE,
@@ -40,6 +45,70 @@ DEFAULT_ENDPOINT = os.environ.get("OLLAMA_SYSTEMONE_URL", "http://localhost:1143
 DEFAULT_TIMEOUT = 30.0
 TIMEOUT_ENV_VAR = "SYSTEMONE_TIMEOUT"
 HTTP_ERROR_BODY_CAP = 500  # bytes of the server's error body kept in messages
+ALLOW_REMOTE_ENV_VAR = "SYSTEMONE_ALLOW_REMOTE"
+REDACT_ENV_VAR = "SYSTEMONE_REDACT"
+ALLOWED_SCHEMES = ("http", "https")
+
+_remote_warned = False  # the remote-host warning is printed once per process
+_USERINFO = re.compile(r"(://)[^/?#]*@")
+
+
+def _safe_url(url: str) -> str:
+    """URL for messages: any `user:pass@` is hidden."""
+    return _USERINFO.sub(r"\1[REDACTED]@", url)
+
+
+def _is_loopback_host(host: str) -> bool:
+    if host == "localhost" or host.endswith(".localhost"):
+        return True
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        return False  # any other hostname counts as remote (no DNS resolution)
+    mapped = getattr(address, "ipv4_mapped", None)
+    return (mapped or address).is_loopback
+
+
+def _allow_remote() -> bool:
+    value = os.environ.get(ALLOW_REMOTE_ENV_VAR, "")
+    return value != "" and value != "0"
+
+
+def _warn_remote_once(url: str) -> None:
+    global _remote_warned
+    if _remote_warned:
+        return
+    _remote_warned = True
+    print(f"[systemone_gate] AVISO: endpoint remoto {_safe_url(url)}; diffs, comandos e logs "
+          f"sairão desta máquina ({ALLOW_REMOTE_ENV_VAR} ativo)", file=sys.stderr)
+
+
+def _validate_endpoint(endpoint: Any) -> str:
+    """Accepts http(s) endpoints on loopback (remote only with SYSTEMONE_ALLOW_REMOTE); else ValueError."""
+    shown = _safe_url(endpoint) if isinstance(endpoint, str) else repr(type(endpoint).__name__)
+    try:
+        parts = urllib.parse.urlsplit(endpoint)
+        host = parts.hostname
+        parts.port  # noqa: B018 - raises ValueError on an invalid port
+    except (ValueError, AttributeError):
+        raise ValueError(f"Endpoint inválido: {shown}") from None
+    if parts.scheme.lower() not in ALLOWED_SCHEMES:
+        raise ValueError(f"Endpoint inválido: esquema '{parts.scheme}' não permitido em {shown} (use http ou https)")
+    if not host:
+        raise ValueError(f"Endpoint inválido: sem host em {shown}")
+    if not _is_loopback_host(host):
+        if not _allow_remote():
+            raise ValueError(f"Endpoint inválido: host remoto em {shown}; "
+                             f"defina {ALLOW_REMOTE_ENV_VAR}=1 para permitir")
+        _warn_remote_once(endpoint)
+    return endpoint
+
+
+def _resolve_redact(explicit: Optional[bool]) -> bool:
+    """constructor arg -> env SYSTEMONE_REDACT (`0` disables) -> ON."""
+    if explicit is not None:
+        return bool(explicit)
+    return os.environ.get(REDACT_ENV_VAR) != "0"
 
 
 def _validate_timeout(value: Any, source: str) -> float:
@@ -91,9 +160,10 @@ class SystemOneClient:
     """
 
     def __init__(self, endpoint: str = DEFAULT_ENDPOINT, default_model: str = "nimble", fast_model: str = "tev1:0.8b",
-                 timeout: Optional[float] = None):
+                 timeout: Optional[float] = None, redact: Optional[bool] = None):
         self.timeout = _resolve_timeout(timeout)  # fail fast on invalid SYSTEMONE_TIMEOUT
-        self.endpoint = endpoint
+        self.endpoint = _validate_endpoint(endpoint)
+        self.redact = _resolve_redact(redact)
         self.default_model = default_model
         self.fast_model = fast_model
 
@@ -104,9 +174,10 @@ class SystemOneClient:
         Returns the parsed response dictionary containing 'answers' and 'usage'.
         """
         selected_model = model or self.default_model
+        sent_state, redactions = self._redact_state(state)
         payload = json.dumps({
             "model": selected_model,
-            "state": state,
+            "state": sent_state,
             "questions": questions
         }).encode("utf-8")
 
@@ -120,6 +191,8 @@ class SystemOneClient:
         try:
             with urllib.request.urlopen(req, timeout=effective_timeout) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
+                if redactions and isinstance(data, dict):
+                    return {**data, "redacted": redactions}
                 return data
         except urllib.error.HTTPError as e:  # before URLError: HTTPError is a subclass
             return self._http_error(e, selected_model)
@@ -134,6 +207,13 @@ class SystemOneClient:
             if isinstance(e, urllib.error.URLError):
                 return self._error(f"Failed to connect to Ollama at {self.endpoint}: {e}", "connection", selected_model)
             return self._error(f"Unexpected error during evaluation: {e}", "unexpected", selected_model)
+
+    def _redact_state(self, state: Any) -> Tuple[Any, int]:
+        """Text actually sent to the model and how many secrets were masked (best effort)."""
+        if not self.redact or not isinstance(state, str):
+            return state, 0
+        result = redact_secrets(state)
+        return result.text, len(result.findings)
 
     @staticmethod
     def _error(message: str, kind: str, model: str, **extra: Any) -> Dict[str, Any]:
