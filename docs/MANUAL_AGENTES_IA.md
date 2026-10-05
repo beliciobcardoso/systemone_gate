@@ -6,7 +6,7 @@ Este guia orienta como conectar o **SystemOne Gate** a **qualquer agente de Inte
 
 ## 🧠 Por que usar o SystemOne Gate com Agentes de IA?
 
-Agentes de IA generativos (GPT-4o, Claude 3.7 Sonnet, Gemini 2.5/3.8) são excepcionais para raciocínio profundo e geração de código, mas são **lentos e caros** para verificações repetitivas em segundo plano.
+Agentes de IA generativos (modelos de nuvem como GPT, Claude e Gemini) são excepcionais para raciocínio profundo e geração de código, mas são **lentos e caros** para verificações repetitivas em segundo plano.
 
 O **SystemOne Gate** atua como o sistema reflexo / córtex motor de baixa latência dos agentes:
 
@@ -58,8 +58,10 @@ Antes de configurar qualquer agente, certifique-se de que o backend local do Oll
 
 O Antigravity suporta nativamente servidores MCP e Skills modulares.
 
+Docs oficiais: https://antigravity.google/docs/mcp e https://antigravity.google/docs/skills
+
 ### Passo 1: Registrar o Servidor MCP
-Edite o arquivo global `~/.gemini/config/mcp_config.json`:
+Edite o arquivo global `~/.gemini/config/mcp_config.json` (ou `.agents/mcp_config.json` no workspace):
 
 ```json
 {
@@ -92,8 +94,11 @@ Quando houver falha de compilação, erro de testes ou necessidade de avaliar o 
 
 O Claude Code e o Claude Desktop utilizam a especificação padrão do **Model Context Protocol (MCP)**.
 
+Docs oficiais: https://code.claude.com/docs/en/mcp (Claude Code) e https://modelcontextprotocol.io/quickstart/user (Claude Desktop).
+
 ### No Claude Desktop (`claude_desktop_config.json`):
-* **Linux:** `~/.config/Claude/claude_desktop_config.json`
+A doc oficial lista apenas macOS e Windows (Configurações > Developer > Edit Config).
+* **Linux:** `~/.config/Claude/claude_desktop_config.json` (⚠️ não verificado em fonte oficial; a doc oficial não lista Linux)
 * **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
 * **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 
@@ -112,10 +117,11 @@ O Claude Code e o Claude Desktop utilizam a especificação padrão do **Model C
 ```
 
 ### No Claude Code (CLI):
-Adicione ao seu arquivo `.claude/config.json` do projeto ou execute:
+Registre via CLI. O `--` é obrigatório para separar as opções do `claude mcp add` das flags do comando do servidor (como o `-m`):
 ```bash
-claude mcp add systemone-gate python3 -m systemone_gate.mcp_server
+claude mcp add systemone-gate -e PYTHONPATH=/caminho/para/systemone_gate -- python3 -m systemone_gate.mcp_server
 ```
+O escopo padrão é `local` (privado, salvo em `~/.claude.json`). Use `--scope project` para gravar em `.mcp.json` na raiz do projeto (versionável) ou `--scope user` para todos os projetos (`~/.claude.json`). O `.mcp.json` tem o mesmo formato `mcpServers` (`command`/`args`/`env`) do Claude Desktop acima. O arquivo `.claude/config.json` não é usado para isso.
 
 ---
 
@@ -124,12 +130,23 @@ claude mcp add systemone-gate python3 -m systemone_gate.mcp_server
 No Cursor, você pode expor o SystemOne Gate tanto como ferramenta MCP de background quanto através de regras de contexto (`.cursorrules`).
 
 ### Adicionando como MCP no Cursor:
-1. Abra as **Settings** do Cursor (`Ctrl+,` ou `Cmd+,`).
-2. Vá em **Features > MCP Servers > Add New MCP Server**.
-3. Preencha:
-   * **Name:** `systemone`
-   * **Type:** `command`
-   * **Command:** `python3 -m systemone_gate.mcp_server`
+Docs oficiais: https://cursor.com/docs/context/mcp
+
+Edite `~/.cursor/mcp.json` (global) ou `.cursor/mcp.json` (projeto). A navegação por menus muda entre versões do Cursor; a doc atual aponta o painel **Customize** na barra lateral.
+
+```json
+{
+  "mcpServers": {
+    "systemone": {
+      "command": "python3",
+      "args": ["-m", "systemone_gate.mcp_server"],
+      "env": {
+        "PYTHONPATH": "/caminho/para/systemone_gate"
+      }
+    }
+  }
+}
+```
 
 ### Configurando no `.cursorrules` da raiz do projeto:
 ```markdown
@@ -172,6 +189,8 @@ Fora disso, a decisão continua sendo humana. Não é um sandbox: variáveis exp
 
 ## 4. Windsurf (Codeium Cascade)
 
+> ⚠️ Não verificado em fonte oficial nesta versão do manual; confirme na documentação do Windsurf (a doc oficial foi migrada para docs.devin.ai e a página consultada não cita este caminho).
+
 O Windsurf suporta servidores MCP através do painel de extensões e do arquivo de configuração `~/.codeium/windsurf/mcp_config.json`:
 
 ```json
@@ -191,6 +210,10 @@ O Windsurf suporta servidores MCP através do painel de extensões e do arquivo 
 ---
 
 ## 5. Cline / Roo Code (VS Code Extension)
+
+> ⚠️ Não verificado em fonte oficial nesta versão do manual; confirme na documentação do Cline e do Roo Code (o nome `cline_mcp_settings.json` não foi confirmado; no Roo o arquivo é `mcp_settings.json` ou `.roo/mcp.json`, e a chave de aprovação automática documentada é `alwaysAllow`, não `autoApprove`).
+
+Docs: https://docs.cline.bot/mcp/configuring-mcp-servers e https://roocodeinc.github.io/Roo-Code/features/mcp/using-mcp-in-roo
 
 No VS Code com a extensão **Cline** ou **Roo Code**:
 1. Clique no ícone de MCP na barra lateral do Cline.
