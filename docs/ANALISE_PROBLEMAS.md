@@ -74,7 +74,7 @@
 | DT-04 | Tools MCP exigem que o agente cole diff/log | Dívida | Eficiência | S3 | Should | Estático | ⬜ Aberto |
 | DT-06 | Sem CI, lint, type-check, formatação | Dívida | Manutenibilidade | S3 | Should | Reproduzido (ausência) | ⬜ Aberto (CI ⛔ descartado) |
 | DT-07 | Rubricas enviesadas para C/redes (mosquitto) | Dívida | Adequação funcional | S3 | Should | Estático | ⬜ Aberto |
-| SEG-03 | `OLLAMA_SYSTEMONE_URL` sem validação de esquema/host | Segurança | Segurança | S3 | Could | Estático | ⬜ Aberto |
+| SEG-03 | `OLLAMA_SYSTEMONE_URL` sem validação de esquema/host | Segurança | Segurança | S3 | Could | Estático | ✅ Resolvido (#19) |
 | DOC-01 | Config do Aider quebrada | Doc. | Usabilidade | S3 | Must | Reproduzido | ⬜ Aberto |
 | DOC-02 | Alegações não sustentadas (<15 ms, calibrado, determinístico) | Doc. | — | S3 | Must | Medido | ⬜ Aberto |
 | DOC-03 | Docs mandam usar guard para `rm -rf`/`prune`/reset | Doc. | Segurança | S3 | Must | Medido | ✅ Resolvido (#8) |
@@ -86,7 +86,7 @@
 | DOC-05 | `claude mcp add` provavelmente sem `--` / caminho de config | Doc. | Usabilidade | S4 | Could | **Hipótese** | ✅ Resolvido (#15) |
 | DOC-06 | Versões de modelos/caminhos de IDEs não verificáveis | Doc. | — | S4 | Could | **Hipótese** | 🟡 Parcial (#15) |
 | RSK-02 | Rubricas em português vs. modelo possivelmente treinado em inglês | Risco | Adequação funcional | S3 | Could | **Hipótese** | ⬜ Aberto |
-| RSK-03 | Privacidade: diffs/comandos podem conter segredos | Risco | Segurança | S3 | Should | Estático | ⬜ Aberto |
+| RSK-03 | Privacidade: diffs/comandos podem conter segredos | Risco | Segurança | S3 | Should | Estático | ✅ Resolvido (#19) |
 | DT-11 | `AGENTS.md` exige CI verde, testes e cobertura que não existem | Dívida | Manutenibilidade | S3 | Should | Estático | ✅ Resolvido (#10) |
 | DOC-07 | Hook sugere `--no-verify`, que `AGENTS.md` proíbe | Doc. | Usabilidade | S3 | Should | Estático | ⬜ Aberto |
 | HIG-01..05 | Higiene (ver §9) | — | — | S4 | Won't | Estático | 🟡 Parcial (#14) |
@@ -395,6 +395,7 @@
 - **Esforço:** S (casos de teste) · M (mitigação)
 
 ### SEG-03 · `OLLAMA_SYSTEMONE_URL` sem validação
+- **Status:** ✅ **Resolvido** em [#19](https://github.com/beliciobcardoso/systemone_gate/pull/19) — só `http`/`https`; host remoto exige `SYSTEMONE_ALLOW_REMOTE=1` e emite um aviso; a senha da URL é ocultada nas mensagens.
 - **Local:** `client.py:19`
 - **Evidência:** Estático
 - **Classificação:** Segurança · S3 · Could · CWE-73/CWE-918
@@ -465,7 +466,7 @@
 |---|---|---|---|---|
 | **RSK-01** | O projeto depende do endpoint `/v1/systemone` e dos modelos `nimble`/`tev1`, sem contrato versionado (modelos de terceiros; a API pode mudar entre versões do Ollama). | Estático | S3 | Detectar versão (`/api/version`) e capacidade `decision` (`/api/tags`) na inicialização; teste de contrato local contra Ollama real (opcional); fixar versão mínima testada no README. |
 | **RSK-02** | Rubricas em português para modelos possivelmente treinados em inglês podem degradar a precisão. | **Hipótese** | S3 | Benchmark A/B pt × en nas mesmas rubricas; adotar o idioma com melhor resultado. |
-| **RSK-03** | Diffs e comandos podem conter segredos; mesmo local, ficam em logs/memória do Ollama e (via MCP) no contexto do agente de nuvem. | Estático | S3 | Redação de padrões de segredo antes de enviar (`AKIA…`, `ghp_…`, `-----BEGIN`); documentar o fluxo de dados real; evitar logar payloads. |
+| **RSK-03** | Diffs e comandos podem conter segredos; mesmo local, ficam em logs/memória do Ollama e (via MCP) no contexto do agente de nuvem. | Estático | S3 | Redação de padrões de segredo antes de enviar (`AKIA…`, `ghp_…`, `-----BEGIN`); documentar o fluxo de dados real; evitar logar payloads.  **Status:** ✅ **Resolvido** em [#19](https://github.com/beliciobcardoso/systemone_gate/pull/19) — `redact.py` oculta 11 tipos de segredo antes de enviar ao modelo (ligado por padrão; `SYSTEMONE_REDACT=0` desliga). É correspondência de padrões, **melhor esforço**, não garantia. |
 
 ---
 

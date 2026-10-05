@@ -154,23 +154,23 @@ def _used_timeout(monkeypatch, c, **kwargs):
 
 def test_timeout_default_is_30(monkeypatch):
     monkeypatch.delenv("SYSTEMONE_TIMEOUT", raising=False)
-    assert _used_timeout(monkeypatch, SystemOneClient(endpoint="http://x")) == 30.0
+    assert _used_timeout(monkeypatch, SystemOneClient(endpoint="http://127.0.0.1:9/")) == 30.0
 
 
 def test_timeout_env_used(monkeypatch):
     monkeypatch.setenv("SYSTEMONE_TIMEOUT", "75.5")
-    assert _used_timeout(monkeypatch, SystemOneClient(endpoint="http://x")) == 75.5
+    assert _used_timeout(monkeypatch, SystemOneClient(endpoint="http://127.0.0.1:9/")) == 75.5
 
 
 def test_timeout_constructor_beats_env(monkeypatch):
     monkeypatch.setenv("SYSTEMONE_TIMEOUT", "75")
-    c = SystemOneClient(endpoint="http://x", timeout=12)
+    c = SystemOneClient(endpoint="http://127.0.0.1:9/", timeout=12)
     assert _used_timeout(monkeypatch, c) == 12
 
 
 def test_timeout_evaluate_arg_beats_constructor(monkeypatch):
     monkeypatch.setenv("SYSTEMONE_TIMEOUT", "75")
-    c = SystemOneClient(endpoint="http://x", timeout=12)
+    c = SystemOneClient(endpoint="http://127.0.0.1:9/", timeout=12)
     assert _used_timeout(monkeypatch, c, timeout=5) == 5
 
 
@@ -182,19 +182,19 @@ def test_timeout_legacy_int_argument_still_works(fake, client):
 def test_invalid_env_timeout_raises_at_construction(monkeypatch, value):
     monkeypatch.setenv("SYSTEMONE_TIMEOUT", value)
     with pytest.raises(ValueError, match="SYSTEMONE_TIMEOUT"):
-        SystemOneClient(endpoint="http://x")
+        SystemOneClient(endpoint="http://127.0.0.1:9/")
 
 
 def test_invalid_env_ignored_when_constructor_timeout_given(monkeypatch):
     # constructor arg wins; env is not consulted at all
     monkeypatch.setenv("SYSTEMONE_TIMEOUT", "abc")
-    assert SystemOneClient(endpoint="http://x", timeout=3).timeout == 3
+    assert SystemOneClient(endpoint="http://127.0.0.1:9/", timeout=3).timeout == 3
 
 
 @pytest.mark.parametrize("value", [0, -1, float("nan"), float("inf")])
 def test_invalid_constructor_timeout_raises(value):
     with pytest.raises(ValueError, match="timeout"):
-        SystemOneClient(endpoint="http://x", timeout=value)
+        SystemOneClient(endpoint="http://127.0.0.1:9/", timeout=value)
 
 
 def test_cli_exits_2_on_invalid_timeout_env(fake, sub_env, repo_root):
@@ -216,7 +216,7 @@ def test_http_error_body_read_failure_does_not_raise(client, monkeypatch):
             raise OSError("reset")
 
     def raise_http(*a, **k):
-        raise urllib.error.HTTPError("http://x", 503, "Service Unavailable", {}, BrokenBody())
+        raise urllib.error.HTTPError("http://127.0.0.1:9/", 503, "Service Unavailable", {}, BrokenBody())
     monkeypatch.setattr("systemone_gate.client.urllib.request.urlopen", raise_http)
-    res = client("http://x").evaluate("s", QUESTIONS)
+    res = client("http://127.0.0.1:9/").evaluate("s", QUESTIONS)
     assert res["status"] == 503 and res["error_kind"] == "http"
