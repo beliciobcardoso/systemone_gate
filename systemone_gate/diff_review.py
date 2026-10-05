@@ -14,6 +14,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 HEADER_PREFIX = "diff --git "
 FALLBACK_PATH = "(diff)"
+DEFAULT_MAX_LINES_PER_FILE = 250
+DEFAULT_MAX_FILES = 20
 
 REASON_LOCKFILE = "lockfile"
 REASON_BINARY = "binário"
@@ -182,7 +184,8 @@ def _plan(files: Tuple[FileDiff, ...], max_files: int):
 
 
 def review_staged(client: Any, diff_text: str, model: str,
-                  max_lines_per_file: int = 250, max_files: int = 20) -> Dict[str, Any]:
+                  max_lines_per_file: int = DEFAULT_MAX_LINES_PER_FILE,
+                 max_files: int = DEFAULT_MAX_FILES) -> Dict[str, Any]:
     """Reviews each non-ignored file separately and aggregates worst-case."""
     if not diff_text.strip():
         return _empty_result({"reviewed": [], "skipped": [], "truncated": []})

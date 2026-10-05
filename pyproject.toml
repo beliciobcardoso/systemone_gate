@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
 authors = [
-    { name = "Bello", email = "developer@local" }
+    { name = "Belicio B Cardoso" }
 ]
 keywords = ["ollama", "systemone", "ai-agents", "mcp", "code-quality", "git-hook", "jev"]
 classifiers = [
@@ -19,6 +19,10 @@ classifiers = [
     "Topic :: Software Development :: Quality Assurance",
     "Programming Language :: Python :: 3",
 ]
+
+[project.urls]
+Repository = "https://github.com/beliciobcardoso/systemone_gate"
+Issues = "https://github.com/beliciobcardoso/systemone_gate/issues"
 
 [project.scripts]
 systemone-gate = "systemone_gate.cli:main"
