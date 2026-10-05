@@ -132,7 +132,12 @@ systemone-gate install-hook
 
 # Remover o hook (restaura o hook original, se houver backup)
 systemone-gate uninstall-hook
+
+# Diagnosticar o backend Ollama (versão, modelos e contrato do endpoint)
+systemone-gate doctor
 ```
+
+**Diagnóstico (`doctor`):** o SystemOne Gate depende de um endpoint de terceiros sem contrato versionado, então este é o caminho rápido para investigar erros como "Failed to connect" ou HTTP 404. O comando verifica, em ordem: (1) se o Ollama responde em `/api/version`; (2) se a versão é **>= 0.35.0** (mínimo exigido; antes disso `/v1/systemone` não existe); (3) se os modelos `tev1:0.8b` e `nimble` estão instalados e com a capability `decision` (use `--model NOME`, repetível, para trocar a lista); (4) um teste de contrato com uma chamada mínima a `/v1/systemone` (pule com `--no-smoke`). Imprime um checklist (✅/⚠️/❌) e sai com 0 se tudo obrigatório passou, 1 se houve falha e 2 para configuração inválida (ex.: `SYSTEMONE_TIMEOUT`).
 
 **Saída sem emoji:** se o terminal ou o pipe não suporta UTF-8 (ex.: `PYTHONIOENCODING=ascii`), a CLI troca os emoji por tokens ASCII (`[OK]`, `[ERRO]`, `[AVISO]`) automaticamente. Para forçar esse modo, use `systemone-gate --plain diff` ou `SYSTEMONE_PLAIN=1`. O servidor MCP não é afetado.
 
