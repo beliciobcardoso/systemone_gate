@@ -12,6 +12,16 @@ class _Handler(BaseHTTPRequestHandler):
     def log_message(self, *args, **kwargs):  # keep test output quiet
         pass
 
+    def do_GET(self):
+        fake = self.server.fake
+        with fake._lock:
+            fake._get_paths.append(self.path)
+            cfg = fake._snapshot_config()
+        if cfg["delay"]:
+            fake._stop.wait(cfg["delay"])
+        status, data = cfg["routes"].get(self.path, (404, b'{"error": "not found"}'))
+        self._send(status, data)
+
     def do_POST(self):
         fake = self.server.fake
         length = int(self.headers.get("Content-Length") or 0)
@@ -65,6 +75,8 @@ class FakeOllama:
     def __init__(self):
         self._lock = threading.Lock()
         self._requests: List[Dict[str, Any]] = []
+        self._get_paths: List[str] = []
+        self.routes: Dict[str, Any] = {}  # GET path -> (status, bytes); unknown paths answer 404
         self._stop = threading.Event()
         self.responses: Dict[str, Dict[str, Any]] = {}
         self.status: Optional[int] = None
@@ -78,6 +90,7 @@ class FakeOllama:
     def _snapshot_config(self) -> Dict[str, Any]:
         return {
             "responses": dict(self.responses),
+            "routes": dict(self.routes),
             "status": self.status,
             "delay": self.delay,
             "raw_body": self.raw_body,
@@ -87,6 +100,20 @@ class FakeOllama:
 
     def respond(self, model: str, body: Dict[str, Any]) -> None:
         self.responses[model] = body
+
+    def route(self, path: str, body: Any, status: int = 200) -> None:
+        """Serve `body` (bytes sent raw, anything else JSON-encoded) on GET `path`."""
+        data = body if isinstance(body, bytes) else json.dumps(body).encode("utf-8")
+        self.routes[path] = (status, data)
+
+    @property
+    def get_paths(self) -> List[str]:
+        with self._lock:
+            return list(self._get_paths)
+
+    @property
+    def base_url(self) -> str:
+        return "http://127.0.0.1:%d" % self.port
 
     @property
     def requests(self) -> List[Dict[str, Any]]:

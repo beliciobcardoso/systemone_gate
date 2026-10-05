@@ -79,7 +79,7 @@
 | DOC-02 | Alegações não sustentadas (<15 ms, calibrado, determinístico) | Doc. | — | S3 | Must | Medido | ✅ Resolvido (#16) |
 | DOC-03 | Docs mandam usar guard para `rm -rf`/`prune`/reset | Doc. | Segurança | S3 | Must | Medido | ✅ Resolvido (#8) |
 | DOC-04 | Exemplos com comportamento oposto na mesma falha | Doc. | Confiabilidade | S3 | Should | Estático | ✅ Resolvido (#7) |
-| RSK-01 | Dependência de endpoint/modelos de terceiros sem contrato versionado | Risco | Compatibilidade | S3 | Should | Estático | ⬜ Aberto |
+| RSK-01 | Dependência de endpoint/modelos de terceiros sem contrato versionado | Risco | Compatibilidade | S3 | Should | Estático | ✅ Resolvido (#20) |
 | DT-08 | Código morto (`--tev`, `route_task`, `uninstall`) | Dívida | Manutenibilidade | S4 | Could | Estático | ✅ Resolvido (#14) |
 | DT-09 | Magic numbers e metadados placeholder | Dívida | Manutenibilidade | S4 | Could | Estático | ✅ Resolvido (#14) |
 | DT-10 | Sem tipos de domínio (dicts por toda parte) | Dívida | Manutenibilidade | S4 | Could | Estático | 🟡 Parcial (#7) |
@@ -470,7 +470,7 @@
 
 | ID | Risco | Evidência | Sev. | Mitigação |
 |---|---|---|---|---|
-| **RSK-01** | O projeto depende do endpoint `/v1/systemone` e dos modelos `nimble`/`tev1`, sem contrato versionado (modelos de terceiros; a API pode mudar entre versões do Ollama). | Estático | S3 | Detectar versão (`/api/version`) e capacidade `decision` (`/api/tags`) na inicialização; teste de contrato local contra Ollama real (opcional); fixar versão mínima testada no README. |
+| **RSK-01** | O projeto depende do endpoint `/v1/systemone` e dos modelos `nimble`/`tev1`, sem contrato versionado (modelos de terceiros; a API pode mudar entre versões do Ollama). | Estático | S3 | Detectar versão (`/api/version`) e capacidade `decision` (`/api/tags`) na inicialização; teste de contrato local contra Ollama real (opcional); fixar versão mínima testada no README.  **Status:** ✅ **Resolvido** em [#20](https://github.com/beliciobcardoso/systemone_gate/pull/20) — `systemone-gate doctor` verifica alcance, versão mínima (0.35.0), modelos com capacidade `decision` e o formato da resposta; o teste de contrato roda só com `pytest -m contract`. |
 | **RSK-02** | Rubricas em português para modelos possivelmente treinados em inglês podem degradar a precisão. | **Hipótese** | S3 | Benchmark A/B pt × en nas mesmas rubricas; adotar o idioma com melhor resultado. |
 | **RSK-03** | Diffs e comandos podem conter segredos; mesmo local, ficam em logs/memória do Ollama e (via MCP) no contexto do agente de nuvem. | Estático | S3 | Redação de padrões de segredo antes de enviar (`AKIA…`, `ghp_…`, `-----BEGIN`); documentar o fluxo de dados real; evitar logar payloads.  **Status:** ✅ **Resolvido** em [#19](https://github.com/beliciobcardoso/systemone_gate/pull/19) — `redact.py` oculta 11 tipos de segredo antes de enviar ao modelo (ligado por padrão; `SYSTEMONE_REDACT=0` desliga). É correspondência de padrões, **melhor esforço**, não garantia. |
 

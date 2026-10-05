@@ -13,6 +13,7 @@ from typing import List, Optional
 
 from .claude_hook import run_pretooluse
 from .client import SystemOneClient
+from .doctor import run_cli as run_doctor_cli
 from .diff_review import DEFAULT_MAX_LINES_PER_FILE, format_coverage, review_staged
 from .hooks import install_git_hook, uninstall_git_hook
 from .mcp_server import run_mcp_server
@@ -176,6 +177,11 @@ def main(argv: Optional[List[str]] = None):
     # hook-guard
     subparsers.add_parser("hook-guard", help="Hook PreToolUse do Claude Code: bloqueia comandos catastróficos (offline, sem modelo)")
 
+    # doctor
+    p_doctor = subparsers.add_parser("doctor", help="Valida o backend Ollama (versão, modelos e contrato do endpoint)")
+    p_doctor.add_argument("--model", action="append", default=None, help="Modelo a verificar (repetível; padrão: tev1:0.8b e nimble)")
+    p_doctor.add_argument("--no-smoke", action="store_true", help="Pula o teste de contrato (POST /v1/systemone)")
+
     # mcp
     subparsers.add_parser("mcp", help="Inicia o servidor MCP stdio (para Claude Desktop, Cursor, Antigravity)")
 
@@ -226,6 +232,9 @@ def _dispatch(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None
         if message:
             print(message, file=sys.stderr)
         sys.exit(code)
+
+    elif args.command == "doctor":
+        sys.exit(run_doctor_cli(client.endpoint, args.model, not args.no_smoke, client.timeout))
 
     elif args.command == "mcp":
         run_mcp_server()
