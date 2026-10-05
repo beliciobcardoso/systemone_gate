@@ -89,7 +89,7 @@
 | RSK-03 | Privacidade: diffs/comandos podem conter segredos | Risco | Segurança | S3 | Should | Estático | ✅ Resolvido (#19) |
 | DT-11 | `AGENTS.md` exige CI verde, testes e cobertura que não existem | Dívida | Manutenibilidade | S3 | Should | Estático | ✅ Resolvido (#10) |
 | DOC-07 | Hook sugere `--no-verify`, que `AGENTS.md` proíbe | Doc. | Usabilidade | S3 | Should | Estático | ✅ Resolvido (#17) |
-| HIG-01..05 | Higiene (ver §9) | — | — | S4 | Won't | Estático | 🟡 Parcial (#14) |
+| HIG-01..05 | Higiene (ver §9) | — | — | S4 | Won't | Estático | ✅ Resolvido (#14) |
 
 ---
 
@@ -487,7 +487,7 @@
 | HIG-02 | `subprocess.check_output` sem `timeout`. | Adicionar `timeout=` e tratar `TimeoutExpired`. **Resolvido ([#14](https://github.com/beliciobcardoso/systemone_gate/pull/14)).** |
 | HIG-03 | Sem `CHANGELOG`, sem política de versionamento. | Adotar SemVer + Keep a Changelog. **Resolvido ([#14](https://github.com/beliciobcardoso/systemone_gate/pull/14)).** |
 | HIG-04 | Saída com emojis em hook/CLI pode quebrar em terminais/CI sem UTF-8. | Flag `--plain` ou detectar `isatty`/encoding. **Resolvido ([#14](https://github.com/beliciobcardoso/systemone_gate/pull/14)).** |
-| HIG-05 | `.gitignore` não cobre `.serena/` (aparece como untracked), `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`, `.coverage`. | Adicionar as entradas antes de criar testes/CI (DT-05/06). **Parcial ([#5](https://github.com/beliciobcardoso/systemone_gate/pull/5)):** `.pytest_cache/`, `.coverage` e `htmlcov/` já entraram; os caches de mypy/ruff entraram em [#14](https://github.com/beliciobcardoso/systemone_gate/pull/14); falta só `.serena/` — decisão do usuário (ignorar a pasta ou versionar o `project.yml`). |
+| HIG-05 | `.gitignore` não cobre `.serena/` (aparece como untracked), `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`, `.coverage`. | Adicionar as entradas antes de criar testes/CI (DT-05/06). **Parcial ([#5](https://github.com/beliciobcardoso/systemone_gate/pull/5)):** `.pytest_cache/`, `.coverage` e `htmlcov/` já entraram; os caches de mypy/ruff entraram em [#14](https://github.com/beliciobcardoso/systemone_gate/pull/14); `.serena/`: o usuário decidiu **versionar** o `project.yml` (commit `865822a`), e o `.serena/.gitignore` do próprio Serena já ignora `cache` e `project.local.yml`. **Resolvido.** |
 
 ---
 
