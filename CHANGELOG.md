@@ -7,6 +7,15 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Added
+
+- `systemone-gate --version` prints the installed version (#27).
+- Release process and SemVer policy for 0.x documented in `AGENTS.md`, with a separate authorization for tags and GitHub Releases (#27).
+
+### Changed
+
+- The version has a single source, `systemone_gate.__version__`: `pyproject.toml` reads it dynamically, and the CLI and the MCP server report it (#26, #27).
+
 ## [0.2.0] - 2026-10-05
 
 ### Added

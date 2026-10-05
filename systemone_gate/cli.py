@@ -11,6 +11,7 @@ import sys
 from contextlib import nullcontext
 from typing import List, Optional
 
+from . import __version__
 from .claude_hook import run_pretooluse
 from .client import SystemOneClient
 from .diff_review import DEFAULT_MAX_LINES_PER_FILE, format_coverage, review_staged
@@ -162,6 +163,7 @@ def main(argv: Optional[List[str]] = None):
         prog="systemone-gate",
         description="Gatekeeper e motor de triagem local de baixa latência para agentes de IA e desenvolvedores."
     )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument("--plain", action="store_true",
                         help="Saída apenas ASCII (sem emoji); também via SYSTEMONE_PLAIN=1")
     subparsers = parser.add_subparsers(dest="command", help="Comandos disponíveis")

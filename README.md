@@ -150,6 +150,9 @@ systemone-gate triage "undefined reference to mqtt3_db_open no mosquitto.c"
 # Testar se um comando de terminal é seguro
 systemone-gate guard "rm -rf /tmp/data/*"
 
+# Mostrar a versão instalada
+systemone-gate --version
+
 # Instalar Git Pre-Commit Hook no repositório atual
 systemone-gate install-hook
 
