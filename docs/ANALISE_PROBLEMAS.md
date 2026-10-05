@@ -83,8 +83,8 @@
 | DT-08 | Código morto (`--tev`, `route_task`, `uninstall`) | Dívida | Manutenibilidade | S4 | Could | Estático | ⬜ Aberto |
 | DT-09 | Magic numbers e metadados placeholder | Dívida | Manutenibilidade | S4 | Could | Estático | ⬜ Aberto |
 | DT-10 | Sem tipos de domínio (dicts por toda parte) | Dívida | Manutenibilidade | S4 | Could | Estático | ⬜ Aberto |
-| DOC-05 | `claude mcp add` provavelmente sem `--` / caminho de config | Doc. | Usabilidade | S4 | Could | **Hipótese** | ⬜ Aberto |
-| DOC-06 | Versões de modelos/caminhos de IDEs não verificáveis | Doc. | — | S4 | Could | **Hipótese** | ⬜ Aberto |
+| DOC-05 | `claude mcp add` provavelmente sem `--` / caminho de config | Doc. | Usabilidade | S4 | Could | **Hipótese** | ✅ Resolvido (#15) |
+| DOC-06 | Versões de modelos/caminhos de IDEs não verificáveis | Doc. | — | S4 | Could | **Hipótese** | 🟡 Parcial (#15) |
 | RSK-02 | Rubricas em português vs. modelo possivelmente treinado em inglês | Risco | Adequação funcional | S3 | Could | **Hipótese** | ⬜ Aberto |
 | RSK-03 | Privacidade: diffs/comandos podem conter segredos | Risco | Segurança | S3 | Should | Estático | ⬜ Aberto |
 | DT-11 | `AGENTS.md` exige CI verde, testes e cobertura que não existem | Dívida | Manutenibilidade | S3 | Should | Estático | ✅ Resolvido (#10) |
@@ -432,12 +432,14 @@
 - **Esforço:** S
 
 ### DOC-05 · `claude mcp add` e caminho de configuração
+- **Status:** ✅ **Resolvido** em [#15](https://github.com/beliciobcardoso/systemone_gate/pull/15) — o `--` é obrigatório antes das flags do comando do servidor (confirmado na doc oficial e em `claude mcp add --help`); o arquivo de projeto é `.mcp.json` e os escopos local/user ficam em `~/.claude.json`. O manual foi corrigido.
 - **Evidência:** **Hipótese** — `claude mcp add --help` confirma a sintaxe `<name> <commandOrUrl> [args...]`, mas não mostrei que `-m` seja interpretado como flag; `.claude/config.json` não é o arquivo padrão (o de projeto é `.mcp.json`).
 - **Classificação:** Documentação · S4 · Could
 - **Solução:** testar o comando exato numa instalação limpa e documentar o resultado (provável `claude mcp add systemone-gate -- python3 -m systemone_gate.mcp_server`).
 - **Esforço:** S
 
 ### DOC-06 · Versões e caminhos não verificáveis
+- **Status:** 🟡 **Parcial** em [#15](https://github.com/beliciobcardoso/systemone_gate/pull/15) — corrigidos Cursor (usa `mcp.json`) e as versões de modelos de terceiros; confirmados Antigravity e Claude Desktop (macOS/Windows). **Windsurf, Cline/Roo e o caminho Linux do Claude Desktop não foram verificados em fonte oficial** e estão marcados como tal no manual.
 - **Local:** manual (cita "Gemini 2.5/3.8", `~/.gemini/config/mcp_config.json`, caminhos Windsurf/Cline)
 - **Evidência:** **Hipótese** — não tenho essas ferramentas para validar.
 - **Classificação:** Documentação · S4 · Could
