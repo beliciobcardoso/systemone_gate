@@ -6,6 +6,7 @@ Compatible with Claude Desktop, Cursor, Antigravity, Cline, Windsurf, Roo Code.
 
 import sys
 import json
+import traceback
 from typing import Dict, Any
 
 from .client import SystemOneClient
@@ -99,6 +100,42 @@ def send_jsonrpc(obj: Dict[str, Any]):
     sys.stdout.write(line + "\n")
     sys.stdout.flush()
 
+def _text_result(payload: Dict[str, Any], is_error: bool = False) -> Dict[str, Any]:
+    result = {
+        "content": [
+            {
+                "type": "text",
+                "text": json.dumps(payload, indent=2, ensure_ascii=False)
+            }
+        ]
+    }
+    if is_error:
+        result["isError"] = True
+    return result
+
+def _dispatch_tool(client: Any, tool_name: Any, tool_args: Dict[str, Any]) -> Dict[str, Any]:
+    """Run a tool and build the tools/call result. Never raises."""
+    try:
+        if tool_name == "systemone_triage_error":
+            res = client.triage_error(tool_args.get("error_log", ""), model=tool_args.get("model"))
+        elif tool_name == "systemone_review_diff":
+            res = client.review_diff(tool_args.get("diff", ""), model=tool_args.get("model"))
+        elif tool_name == "systemone_command_guard":
+            res = client.guard_command(tool_args.get("command", ""))
+        elif tool_name == "systemone_query":
+            res = client.evaluate(
+                state=tool_args.get("state", ""),
+                questions=tool_args.get("questions", {}),
+                model=tool_args.get("model")
+            )
+        else:
+            res = {"error": f"Tool '{tool_name}' não encontrada"}
+        return _text_result(res)
+    except Exception:
+        # stdout is the protocol channel: log details to stderr only.
+        traceback.print_exc(file=sys.stderr)
+        return _text_result({"error": "Internal error while executing tool"}, is_error=True)
+
 def run_mcp_server():
     client = SystemOneClient()
 
@@ -115,9 +152,14 @@ def run_mcp_server():
         except Exception:
             continue
 
+        if not isinstance(req, dict):
+            continue
+
         req_id = req.get("id")
         method = req.get("method")
-        params = req.get("params", {})
+        params = req.get("params")
+        if not isinstance(params, dict):
+            params = {}
 
         if method == "initialize":
             send_jsonrpc({
@@ -148,34 +190,25 @@ def run_mcp_server():
             })
         elif method == "tools/call":
             tool_name = params.get("name")
-            tool_args = params.get("arguments", {})
+            tool_args = params.get("arguments")
+            if tool_args is None:
+                tool_args = {}
 
-            if tool_name == "systemone_triage_error":
-                res = client.triage_error(tool_args.get("error_log", ""), model=tool_args.get("model"))
-            elif tool_name == "systemone_review_diff":
-                res = client.review_diff(tool_args.get("diff", ""), model=tool_args.get("model"))
-            elif tool_name == "systemone_command_guard":
-                res = client.guard_command(tool_args.get("command", ""))
-            elif tool_name == "systemone_query":
-                res = client.evaluate(
-                    state=tool_args.get("state", ""),
-                    questions=tool_args.get("questions", {}),
-                    model=tool_args.get("model")
-                )
-            else:
-                res = {"error": f"Tool '{tool_name}' não encontrada"}
+            if not isinstance(tool_args, dict):
+                send_jsonrpc({
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "error": {
+                        "code": -32602,
+                        "message": "Invalid params: 'arguments' must be an object"
+                    }
+                })
+                continue
 
             send_jsonrpc({
                 "jsonrpc": "2.0",
                 "id": req_id,
-                "result": {
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": json.dumps(res, indent=2, ensure_ascii=False)
-                        }
-                    ]
-                }
+                "result": _dispatch_tool(client, tool_name, tool_args)
             })
         else:
             if req_id is not None:
