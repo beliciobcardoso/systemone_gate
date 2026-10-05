@@ -18,6 +18,7 @@ from .diff_review import DEFAULT_MAX_LINES_PER_FILE, format_coverage, review_sta
 from .hooks import install_git_hook, uninstall_git_hook
 from .mcp_server import run_mcp_server
 from .output import plain_output
+from .rubrics import DEFAULT_PROFILE, PROFILES
 from .policy import (
     ACTION_BLOCK,
     DiffReview,
@@ -34,6 +35,7 @@ DEFAULT_DIFF_MODEL = "tev1:0.8b"
 DIFF_MODEL_ENV = "SYSTEMONE_DIFF_MODEL"
 NIMBLE_MODEL = "nimble"
 GIT_DIFF_TIMEOUT_SECONDS = 30
+PROFILE_HELP = f"Perfil de rubrica (padrão: env SYSTEMONE_PROFILE ou {DEFAULT_PROFILE})"
 
 def _try_parse(parser, res):
     """Parses a response for display only; the verdict comes from the policy layer."""
@@ -41,6 +43,10 @@ def _try_parse(parser, res):
         return parser(res)
     except InvalidResponse:
         return None
+
+def _invalid_config(error: ValueError) -> int:
+    print(f"❌ Configuração inválida: {error}", file=sys.stderr)
+    return EXIT_CONFIG_ERROR
 
 def _print_diff_report(review: DiffReview, res: dict) -> None:
     risk_info = res["answers"]["risk_level"]
@@ -58,7 +64,8 @@ def _print_diff_report(review: DiffReview, res: dict) -> None:
         print(f"   • {opt}: {prob*100:.1f}%")
     print("----------------------------------------------------------\n")
 
-def handle_diff(client: SystemOneClient, model: str, max_lines: int = DEFAULT_MAX_LINES_PER_FILE) -> int:
+def handle_diff(client: SystemOneClient, model: str, max_lines: int = DEFAULT_MAX_LINES_PER_FILE,
+                profile: Optional[str] = None) -> int:
     try:
         diff_output = subprocess.check_output(["git", "diff", "--cached"], text=True,
                                               timeout=GIT_DIFF_TIMEOUT_SECONDS)
@@ -72,7 +79,10 @@ def handle_diff(client: SystemOneClient, model: str, max_lines: int = DEFAULT_MA
 
     line_count = len(diff_output.splitlines())
     print(f"🔍 [SystemOne Gate] Inspecionando diff ({line_count} linhas) com modelo '{model}'...")
-    res = review_staged(client, diff_output, model, max_lines_per_file=max_lines)
+    try:
+        res = review_staged(client, diff_output, model, max_lines_per_file=max_lines, profile=profile)
+    except ValueError as e:
+        return _invalid_config(e)
     for coverage_line in format_coverage(res.get("coverage", {})):
         print(coverage_line)
 
@@ -102,9 +112,12 @@ def handle_diff(client: SystemOneClient, model: str, max_lines: int = DEFAULT_MA
     print("✅ [APROVADO] Verificação concluída com sucesso.")
     return 0
 
-def handle_triage(client: SystemOneClient, error_text: str, model: str) -> int:
+def handle_triage(client: SystemOneClient, error_text: str, model: str, profile: Optional[str] = None) -> int:
     print(f"🩺 [SystemOne Gate] Triando erro com modelo '{model}'...\n")
-    res = client.triage_error(error_text, model=model)
+    try:
+        res = client.triage_error(error_text, model=model, profile=profile)
+    except ValueError as e:
+        return _invalid_config(e)
 
     if "error" in res:
         print(f"❌ Erro: {res['error']}", file=sys.stderr)
@@ -156,11 +169,13 @@ def main(argv: Optional[List[str]] = None):
     diff_model.add_argument(
         "--model", default=None,
         help=f"Modelo Ollama (padrão: {DEFAULT_DIFF_MODEL}; também via {DIFF_MODEL_ENV})")
+    p_diff.add_argument("--profile", choices=PROFILES, default=None, help=PROFILE_HELP)
 
     # triage
     p_triage = subparsers.add_parser("triage", help="Triagem de erros de compilação, testes ou logs")
     p_triage.add_argument("error_text", nargs="+", help="Texto do erro ou stacktrace")
     p_triage.add_argument("--model", default="nimble", help="Modelo Ollama a utilizar (padrão: nimble)")
+    p_triage.add_argument("--profile", choices=PROFILES, default=None, help=PROFILE_HELP)
 
     # guard
     p_guard = subparsers.add_parser("guard", help="Valida se um comando shell tem riscos de destruição de dados")
@@ -209,11 +224,11 @@ def _dispatch(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None
     if args.command == "diff":
         if args.model is not None and not args.model.strip():
             parser.error("--model não pode ser vazio")
-        sys.exit(handle_diff(client, model=_resolve_diff_model(args)))
+        sys.exit(handle_diff(client, model=_resolve_diff_model(args), profile=args.profile))
 
     elif args.command == "triage":
         err_msg = " ".join(args.error_text)
-        sys.exit(handle_triage(client, err_msg, model=args.model))
+        sys.exit(handle_triage(client, err_msg, model=args.model, profile=args.profile))
 
     elif args.command == "guard":
         cmd_msg = " ".join(args.cmd_text)
