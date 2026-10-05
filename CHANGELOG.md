@@ -7,6 +7,10 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Changed
+
+- The package description in `pyproject.toml` no longer says "ultra-fast", which the latency measurements do not support (#35).
+
 ## [0.3.0] - 2026-10-05
 
 ### Changed
