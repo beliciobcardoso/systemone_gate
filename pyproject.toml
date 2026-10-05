@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "systemone-gate"
-version = "0.1.0"
+version = "0.2.0"
 description = "Ultra-fast local decision gate and triage engine for AI coding agents powered by Ollama System One."
 readme = "README.md"
 requires-python = ">=3.9"
