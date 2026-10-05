@@ -140,6 +140,20 @@ systemone-gate uninstall-hook
 
 ---
 
+### Perfis de rubrica (`diff` e `triage`)
+
+As rubricas de risco de diff e de triagem de erro têm perfis, pois o texto original é voltado a código C/sistemas (sockets, locks, parsing de protocolo):
+
+| Perfil | Para quê |
+|---|---|
+| `default` | Texto original (C/sistemas), mantido por compatibilidade. |
+| `generic` | Redação neutra, sem jargão de C/rede. |
+| `web-backend` | Serviços NestJS/Prisma/PostgreSQL/Java Spring: migrations destrutivas, autenticação/autorização, queries sem filtro de tenant, contratos REST/GraphQL, transações, segredos. |
+
+Seleção: `systemone-gate diff --profile web-backend`, `systemone-gate triage --profile web-backend "erro"` ou a variável `SYSTEMONE_PROFILE` (o argumento tem precedência). Perfil inválido encerra com código 2. No MCP e na biblioteca vale a variável de ambiente, ou `profile=` em `review_diff`/`triage_error`. As rubricas `guard` e de roteamento não mudam.
+
+> **Atenção:** os perfis `generic` e `web-backend` ainda **não foram validados** contra dados rotulados; a qualidade da nova redação não foi medida. O `default` continua sendo o texto original, voltado a C/sistemas.
+
 ### 2. Como Servidor MCP (Model Context Protocol)
 
 O SystemOne Gate possui um servidor MCP nativo sem dependências externas (Zero-Dependency) compatível com:

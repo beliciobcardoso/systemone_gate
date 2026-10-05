@@ -14,8 +14,10 @@ from typing import Dict, Any, Optional
 
 from .guard_rules import evaluate_command
 from .rubrics import (
-    RUBRIC_DIFF_RISK,
-    RUBRIC_ERROR_TRIAGE,
+    DEFAULT_PROFILE,
+    PROFILES,
+    get_diff_rubric,
+    get_triage_rubric,
     RUBRIC_COMMAND_SAFETY,
     RUBRIC_AGENT_ROUTING,
 )
@@ -39,6 +41,7 @@ DEFAULT_ENDPOINT = os.environ.get("OLLAMA_SYSTEMONE_URL", "http://localhost:1143
 
 DEFAULT_TIMEOUT = 30.0
 TIMEOUT_ENV_VAR = "SYSTEMONE_TIMEOUT"
+PROFILE_ENV_VAR = "SYSTEMONE_PROFILE"
 HTTP_ERROR_BODY_CAP = 500  # bytes of the server's error body kept in messages
 
 
@@ -61,6 +64,20 @@ def _resolve_timeout(explicit: Optional[float]) -> float:
     if raw is None:
         return DEFAULT_TIMEOUT
     return _validate_timeout(raw, TIMEOUT_ENV_VAR)
+
+
+def _resolve_profile(explicit: Optional[str]) -> str:
+    """call arg -> env SYSTEMONE_PROFILE -> DEFAULT_PROFILE; ValueError names the source."""
+    if explicit is not None:
+        source, value = "profile", explicit
+    else:
+        raw = os.environ.get(PROFILE_ENV_VAR)
+        if not raw:
+            return DEFAULT_PROFILE
+        source, value = PROFILE_ENV_VAR, raw
+    if value not in PROFILES:
+        raise ValueError(f"{source} inválido: {value!r} (válidos: {', '.join(PROFILES)})")
+    return value
 
 
 def _http_error_text(err: urllib.error.HTTPError) -> str:
@@ -148,19 +165,25 @@ class SystemOneClient:
             message += f" (endpoint /v1/systemone não encontrado (Ollama < 0.35?) ou modelo '{model}' ausente)"
         return self._error(message, "http", model, status=err.code)
 
-    def triage_error(self, error_text: str, model: Optional[str] = None) -> Dict[str, Any]:
-        """Triages build, linker, or runtime errors using Nimble (9B)."""
+    def triage_error(self, error_text: str, model: Optional[str] = None,
+                     profile: Optional[str] = None) -> Dict[str, Any]:
+        """Triages build, linker, or runtime errors using Nimble (9B).
+
+        Raises ValueError for an unknown profile (arg or SYSTEMONE_PROFILE)."""
         return self.evaluate(
             state=error_text,
-            questions=RUBRIC_ERROR_TRIAGE,
+            questions=get_triage_rubric(_resolve_profile(profile)),
             model=model or self.default_model
         )
 
-    def review_diff(self, diff_text: str, model: Optional[str] = None) -> Dict[str, Any]:
-        """Evaluates architectural risk and breaking changes in code diffs."""
+    def review_diff(self, diff_text: str, model: Optional[str] = None,
+                    profile: Optional[str] = None) -> Dict[str, Any]:
+        """Evaluates architectural risk and breaking changes in code diffs.
+
+        Raises ValueError for an unknown profile (arg or SYSTEMONE_PROFILE)."""
         return self.evaluate(
             state=diff_text,
-            questions=RUBRIC_DIFF_RISK,
+            questions=get_diff_rubric(_resolve_profile(profile)),
             model=model or self.default_model
         )
 

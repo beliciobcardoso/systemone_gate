@@ -185,20 +185,22 @@ def _plan(files: Tuple[FileDiff, ...], max_files: int):
 
 def review_staged(client: Any, diff_text: str, model: str,
                   max_lines_per_file: int = DEFAULT_MAX_LINES_PER_FILE,
-                 max_files: int = DEFAULT_MAX_FILES) -> Dict[str, Any]:
+                 max_files: int = DEFAULT_MAX_FILES,
+                 profile: Optional[str] = None) -> Dict[str, Any]:
     """Reviews each non-ignored file separately and aggregates worst-case."""
     if not diff_text.strip():
         return _empty_result({"reviewed": [], "skipped": [], "truncated": []})
     files = split_diff_by_file(diff_text) or (FileDiff(FALLBACK_PATH, diff_text),)
     to_review, skipped = _plan(files, max_files)
 
+    extra = {} if profile is None else {"profile": profile}
     answers_list: List[Dict[str, Any]] = []
     truncated: List[str] = []
     for fd in to_review:
         text, was_truncated = _truncate(fd.text, max_lines_per_file)
         if was_truncated:
             truncated.append(fd.path)
-        res = client.review_diff(text, model=model)
+        res = client.review_diff(text, model=model, **extra)
         if isinstance(res, dict) and "error" in res:
             return res
         answers = res.get("answers") if isinstance(res, dict) else None

@@ -73,7 +73,7 @@
 | DT-03 | Erro retornado como `dict` misturado ao sucesso | Dívida | Manutenibilidade | S3 | Should | Estático | ⬜ Aberto |
 | DT-04 | Tools MCP exigem que o agente cole diff/log | Dívida | Eficiência | S3 | Should | Estático | ⬜ Aberto |
 | DT-06 | Sem CI, lint, type-check, formatação | Dívida | Manutenibilidade | S3 | Should | Reproduzido (ausência) | ⬜ Aberto (CI ⛔ descartado) |
-| DT-07 | Rubricas enviesadas para C/redes (mosquitto) | Dívida | Adequação funcional | S3 | Should | Estático | ⬜ Aberto |
+| DT-07 | Rubricas enviesadas para C/redes (mosquitto) | Dívida | Adequação funcional | S3 | Should | Estático | 🟡 Parcial (#21) |
 | SEG-03 | `OLLAMA_SYSTEMONE_URL` sem validação de esquema/host | Segurança | Segurança | S3 | Could | Estático | ⬜ Aberto |
 | DOC-01 | Config do Aider quebrada | Doc. | Usabilidade | S3 | Must | Reproduzido | ⬜ Aberto |
 | DOC-02 | Alegações não sustentadas (<15 ms, calibrado, determinístico) | Doc. | — | S3 | Must | Medido | ⬜ Aberto |
@@ -335,6 +335,7 @@
 - **Esforço:** S
 
 ### DT-07 · Rubricas enviesadas para C/redes
+- **Status:** 🟡 **Parcial** em [#21](https://github.com/beliciobcardoso/systemone_gate/pull/21) — perfis `default` (texto original), `generic` e `web-backend` via `--profile`/`SYSTEMONE_PROFILE`. **Não validados com dados rotulados**; o padrão segue o texto original orientado a C.
 - **Local:** `rubrics.py` (`socket`, `locks`, `mqtt`, `protocol_parsing`), `examples/cursor_rules.md` ("C/C++")
 - **Quadrante:** Deliberada · Prudente (nasceu do caso mosquitto) — mas vendida como genérica
 - **Classificação:** Dívida (adequação ao domínio) · Adequação funcional · S3 · Should
