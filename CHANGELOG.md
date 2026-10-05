@@ -7,6 +7,10 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Changed
+
+- Docs and package docstring no longer claim "zero cost" or "instantaneous" triage: the wording is now "no cloud-token cost" (local hardware and memory still apply) and measured latency lives in the README.
+
 ### Fixed
 
 - `systemone-gate hook-guard`, `install-hook` and `uninstall-hook` no longer fail when `SYSTEMONE_TIMEOUT` or `OLLAMA_SYSTEMONE_URL` is invalid. Before, `hook-guard` exited with 2, which makes the Claude Code `PreToolUse` hook block every Bash call even though the hook never talks to Ollama.
