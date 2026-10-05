@@ -1,0 +1,290 @@
+[
+ {
+  "id": "diff-01",
+  "state": "diff --git a/src/ring.c b/src/ring.c\n--- a/src/ring.c\n+++ b/src/ring.c\n@@ -20,6 +20,8 @@ static size_t ring_next(size_t i, size_t cap)\n+/* Returns the index after i, wrapping to 0 at cap.\n+ * Not thread-safe; callers hold the ring lock. */\n static size_t ring_next(size_t i, size_t cap)\n {\n     return (i + 1) % cap;",
+  "risk_level": 0,
+  "breaking_change": "safe",
+  "language": "c",
+  "why": "only a comment added"
+ },
+ {
+  "id": "diff-02",
+  "state": "diff --git a/app/utils.py b/app/utils.py\n--- a/app/utils.py\n+++ b/app/utils.py\n@@ -8,3 +8,7 @@\n def slugify(text):\n+    \"\"\"Lowercase the text and replace spaces by hyphens.\n+\n+    Example: slugify(\"Hello World\") -> \"hello-world\".\n+    \"\"\"\n     return text.lower().replace(\" \", \"-\")",
+  "risk_level": 0,
+  "breaking_change": "safe",
+  "language": "python",
+  "why": "docstring added"
+ },
+ {
+  "id": "diff-03",
+  "state": "diff --git a/db/queries/orders.sql b/db/queries/orders.sql\n--- a/db/queries/orders.sql\n+++ b/db/queries/orders.sql\n@@ -1,3 +1,4 @@\n+-- Open orders per customer, used by the weekly report.\n SELECT customer_id, COUNT(*) AS open_orders\n FROM orders\n WHERE status = 'open'",
+  "risk_level": 0,
+  "breaking_change": "safe",
+  "language": "sql",
+  "why": "SQL comment only"
+ },
+ {
+  "id": "diff-04",
+  "state": "diff --git a/src/format.ts b/src/format.ts\n--- a/src/format.ts\n+++ b/src/format.ts\n@@ -3,6 +3,6 @@\n export function label(n: number): string {\n-  const x = n.toFixed(2);\n-  return `R$ ${x}`;\n+  const formatted = n.toFixed(2);\n+  return `R$ ${formatted}`;\n }",
+  "risk_level": 0,
+  "breaking_change": "safe",
+  "language": "typescript",
+  "why": "local variable renamed, same behavior"
+ },
+ {
+  "id": "diff-05",
+  "state": "diff --git a/scripts/backup.sh b/scripts/backup.sh\n--- a/scripts/backup.sh\n+++ b/scripts/backup.sh\n@@ -1,4 +1,6 @@\n #!/usr/bin/env bash\n set -euo pipefail\n+\n+# Nightly backup of /var/data to the NAS (called from cron at 02:00).\n tar czf /mnt/nas/data.tgz /var/data",
+  "risk_level": 0,
+  "breaking_change": "safe",
+  "language": "shell",
+  "why": "comment and blank line in script"
+ },
+ {
+  "id": "diff-06",
+  "state": "diff --git a/src/util.c b/src/util.c\n--- a/src/util.c\n+++ b/src/util.c\n@@ -5,7 +5,7 @@\n int clamp(int v, int lo, int hi)\n {\n-  if (v<lo) return lo;\n-  if (v>hi) return hi;\n-  return v;\n+    if (v < lo) return lo;\n+    if (v > hi) return hi;\n+    return v;\n }",
+  "risk_level": 0,
+  "breaking_change": "safe",
+  "language": "c",
+  "why": "whitespace/indent formatting only"
+ },
+ {
+  "id": "diff-07",
+  "state": "diff --git a/tests/test_slug.py b/tests/test_slug.py\n--- /dev/null\n+++ b/tests/test_slug.py\n@@ -0,0 +1,6 @@\n+from app.utils import slugify\n+\n+\n+def test_slugify_lowercases():\n+    assert slugify(\"A B\") == \"a-b\"",
+  "risk_level": 0,
+  "breaking_change": "safe",
+  "language": "python",
+  "why": "tests added only"
+ },
+ {
+  "id": "diff-08",
+  "state": "diff --git a/src/api/client.ts b/src/api/client.ts\n--- a/src/api/client.ts\n+++ b/src/api/client.ts\n@@ -12,3 +12,7 @@\n+/**\n+ * Performs a GET and parses the JSON body.\n+ * @param path route relative to the API base URL\n+ */\n export async function getJson(path: string) {",
+  "risk_level": 0,
+  "breaking_change": "safe",
+  "language": "typescript",
+  "why": "JSDoc comment only"
+ },
+ {
+  "id": "diff-09",
+  "state": "diff --git a/app/report.py b/app/report.py\n--- a/app/report.py\n+++ b/app/report.py\n@@ -1,6 +1,5 @@\n-import sys\n-import os\n import json\n+import os\n \n def load(path):\n     with open(path) as f:",
+  "risk_level": 0,
+  "breaking_change": "safe",
+  "language": "python",
+  "why": "import order and unused import removal"
+ },
+ {
+  "id": "diff-10",
+  "state": "diff --git a/src/main.c b/src/main.c\n--- a/src/main.c\n+++ b/src/main.c\n@@ -88,3 +88,3 @@\n-    fprintf(stderr, \"faild to open config\\n\");\n+    fprintf(stderr, \"failed to open config\\n\");\n     return 1;",
+  "risk_level": 0,
+  "breaking_change": "safe",
+  "language": "c",
+  "why": "typo fix in a log message"
+ },
+ {
+  "id": "diff-11",
+  "state": "diff --git a/db/queries/users.sql b/db/queries/users.sql\n--- a/db/queries/users.sql\n+++ b/db/queries/users.sql\n@@ -1,2 +1,4 @@\n-select id,name from users\n-where active=true order by name;\n+SELECT id, name\n+FROM users\n+WHERE active = TRUE\n+ORDER BY name;",
+  "risk_level": 0,
+  "breaking_change": "safe",
+  "language": "sql",
+  "why": "formatting of a query (keywords upper-cased, same query)"
+ },
+ {
+  "id": "diff-12",
+  "state": "diff --git a/scripts/deploy.sh b/scripts/deploy.sh\n--- a/scripts/deploy.sh\n+++ b/scripts/deploy.sh\n@@ -2,5 +2,6 @@\n usage() {\n-  echo \"usage: deploy.sh <env>\"\n+  echo \"usage: deploy.sh <env>   (env: staging | production)\"\n }",
+  "risk_level": 0,
+  "breaking_change": "safe",
+  "language": "shell",
+  "why": "README-style usage text in script help"
+ },
+ {
+  "id": "diff-13",
+  "state": "diff --git a/app/utils.py b/app/utils.py\n--- a/app/utils.py\n+++ b/app/utils.py\n@@ -12,3 +12,8 @@\n     return text.lower().replace(\" \", \"-\")\n+\n+\n+def truncate(text, limit=80):\n+    if len(text) <= limit:\n+        return text\n+    return text[: limit - 1] + \"…\"",
+  "risk_level": 1,
+  "breaking_change": "safe",
+  "language": "python",
+  "why": "new isolated helper, nothing calls it yet"
+ },
+ {
+  "id": "diff-14",
+  "state": "diff --git a/src/format.ts b/src/format.ts\n--- a/src/format.ts\n+++ b/src/format.ts\n@@ -6,3 +6,7 @@\n   return `R$ ${formatted}`;\n }\n+\n+export function percent(n: number): string {\n+  return `${(n * 100).toFixed(1)}%`;\n+}",
+  "risk_level": 1,
+  "breaking_change": "safe",
+  "language": "typescript",
+  "why": "new exported helper added (additive)"
+ },
+ {
+  "id": "diff-15",
+  "state": "diff --git a/src/util.c b/src/util.c\n--- a/src/util.c\n+++ b/src/util.c\n@@ -12,3 +12,8 @@\n     return v;\n }\n+\n+static int is_power_of_two(unsigned x)\n+{\n+    return x && !(x & (x - 1));\n+}",
+  "risk_level": 1,
+  "breaking_change": "safe",
+  "language": "c",
+  "why": "new static helper function, local to the file"
+ },
+ {
+  "id": "diff-16",
+  "state": "diff --git a/scripts/rotate_logs.sh b/scripts/rotate_logs.sh\n--- /dev/null\n+++ b/scripts/rotate_logs.sh\n@@ -0,0 +1,5 @@\n+#!/usr/bin/env bash\n+set -euo pipefail\n+# Compress logs older than 7 days.\n+find /var/log/app -name '*.log' -mtime +7 -exec gzip {} +",
+  "risk_level": 1,
+  "breaking_change": "safe",
+  "language": "shell",
+  "why": "new optional helper script"
+ },
+ {
+  "id": "diff-17",
+  "state": "diff --git a/app/utils.py b/app/utils.py\n--- a/app/utils.py\n+++ b/app/utils.py\n@@ -2,4 +2,6 @@\n def parse_port(value):\n-    return int(value)\n+    if value is None or value == \"\":\n+        return None\n+    return int(value)",
+  "risk_level": 1,
+  "breaking_change": "potential_break",
+  "language": "python",
+  "why": "bugfix changes returned value for edge case; callers may depend on old behavior"
+ },
+ {
+  "id": "diff-18",
+  "state": "diff --git a/db/migrations/012_add_status.sql b/db/migrations/012_add_status.sql\n--- /dev/null\n+++ b/db/migrations/012_add_status.sql\n@@ -0,0 +1,2 @@\n+ALTER TABLE invoices\n+  ADD COLUMN status VARCHAR(16) NOT NULL DEFAULT 'pending';",
+  "risk_level": 1,
+  "breaking_change": "potential_break",
+  "language": "sql",
+  "why": "adds NOT NULL column with default to a used table; existing inserts/readers might be affected"
+ },
+ {
+  "id": "diff-19",
+  "state": "diff --git a/src/api/client.ts b/src/api/client.ts\n--- a/src/api/client.ts\n+++ b/src/api/client.ts\n@@ -20,5 +20,5 @@\n export async function getJson(path: string, opts: { retries?: number } = {}) {\n-  const retries = opts.retries ?? 0;\n+  const retries = opts.retries ?? 3;\n   return fetchWithRetry(path, retries);\n }",
+  "risk_level": 1,
+  "breaking_change": "potential_break",
+  "language": "typescript",
+  "why": "default value of a public option changed"
+ },
+ {
+  "id": "diff-20",
+  "state": "diff --git a/src/main.c b/src/main.c\n--- a/src/main.c\n+++ b/src/main.c\n@@ -40,5 +40,5 @@ int main(int argc, char **argv)\n     if (argc < 2) {\n-        fprintf(stderr, \"missing file\\n\");\n+        fprintf(stderr, \"error: no input file given\\n\");\n         return 2;\n     }",
+  "risk_level": 1,
+  "breaking_change": "potential_break",
+  "language": "c",
+  "why": "simple bugfix changes the error message text that scripts may grep"
+ },
+ {
+  "id": "diff-21",
+  "state": "diff --git a/app/utils.py b/app/utils.py\n--- a/app/utils.py\n+++ b/app/utils.py\n@@ -2,4 +2,4 @@\n-def slugify(text, sep=\"-\"):\n-    return text.lower().replace(\" \", sep)\n+def slugify(text):\n+    return text.lower().replace(\" \", \"-\")",
+  "risk_level": 1,
+  "breaking_change": "breaking_change",
+  "language": "python",
+  "why": "public function loses a parameter; callers passing it will fail"
+ },
+ {
+  "id": "diff-22",
+  "state": "diff --git a/src/format.ts b/src/format.ts\n--- a/src/format.ts\n+++ b/src/format.ts\n@@ -3,4 +3,4 @@\n-export function label(n: number): string {\n+export function formatMoney(n: number): string {\n   const formatted = n.toFixed(2);\n   return `R$ ${formatted}`;",
+  "risk_level": 1,
+  "breaking_change": "breaking_change",
+  "language": "typescript",
+  "why": "exported function renamed without alias"
+ },
+ {
+  "id": "diff-23",
+  "state": "diff --git a/db/migrations/013_rename.sql b/db/migrations/013_rename.sql\n--- /dev/null\n+++ b/db/migrations/013_rename.sql\n@@ -0,0 +1,2 @@\n+ALTER TABLE customers\n+  RENAME COLUMN full_name TO name;",
+  "risk_level": 1,
+  "breaking_change": "breaking_change",
+  "language": "sql",
+  "why": "column renamed in a table read by other services"
+ },
+ {
+  "id": "diff-24",
+  "state": "diff --git a/include/ring.h b/include/ring.h\n--- a/include/ring.h\n+++ b/include/ring.h\n@@ -10,4 +10,4 @@\n-int ring_push(ring_t *r, int value);\n+int ring_push(ring_t *r, int value, int flags);\n int ring_pop(ring_t *r, int *out);",
+  "risk_level": 1,
+  "breaking_change": "breaking_change",
+  "language": "c",
+  "why": "public header function signature changed (extra required argument)"
+ },
+ {
+  "id": "diff-25",
+  "state": "diff --git a/src/stats.c b/src/stats.c\n--- a/src/stats.c\n+++ b/src/stats.c\n@@ -3,8 +3,12 @@\n static unsigned long hits;\n+static pthread_mutex_t hits_lock = PTHREAD_MUTEX_INITIALIZER;\n \n void stats_hit(void)\n {\n-    hits++;\n+    pthread_mutex_lock(&hits_lock);\n+    hits++;\n+    pthread_mutex_unlock(&hits_lock);\n }",
+  "risk_level": 2,
+  "breaking_change": "safe",
+  "language": "c",
+  "why": "adds an internal mutex around a static counter; no API change"
+ },
+ {
+  "id": "diff-26",
+  "state": "diff --git a/app/cache.py b/app/cache.py\n--- a/app/cache.py\n+++ b/app/cache.py\n@@ -1,9 +1,12 @@\n+import threading\n+\n _cache = {}\n+_lock = threading.Lock()\n \n \n def put(key, value):\n-    _cache[key] = value\n+    with _lock:\n+        _cache[key] = value",
+  "risk_level": 2,
+  "breaking_change": "safe",
+  "language": "python",
+  "why": "adds an internal threading.Lock around a shared dict; public API unchanged"
+ },
+ {
+  "id": "diff-27",
+  "state": "diff --git a/src/buf.c b/src/buf.c\n--- a/src/buf.c\n+++ b/src/buf.c\n@@ -14,6 +14,9 @@ char *buf_new(size_t n)\n     char *p = malloc(n);\n+    if (p == NULL) {\n+        return NULL;\n+    }\n     memset(p, 0, n);\n     return p;",
+  "risk_level": 2,
+  "breaking_change": "safe",
+  "language": "c",
+  "why": "adds missing NULL check after malloc; no contract change"
+ },
+ {
+  "id": "diff-28",
+  "state": "diff --git a/src/load.c b/src/load.c\n--- a/src/load.c\n+++ b/src/load.c\n@@ -30,6 +30,7 @@ int load_file(const char *path)\n     char *data = malloc(size);\n     if (fread(data, 1, size, f) != size) {\n+        free(data);\n         fclose(f);\n         return -1;\n     }",
+  "risk_level": 2,
+  "breaking_change": "safe",
+  "language": "c",
+  "why": "adds missing free on error path; internal memory fix"
+ },
+ {
+  "id": "diff-29",
+  "state": "diff --git a/src/queue.c b/src/queue.c\n--- a/src/queue.c\n+++ b/src/queue.c\n@@ -22,9 +22,10 @@ void queue_push(queue_t *q, job_t *j)\n-    pthread_mutex_lock(&q->lock);\n-    pthread_cond_signal(&q->ready);\n+    pthread_mutex_lock(&q->lock);\n     list_append(&q->items, j);\n+    pthread_cond_signal(&q->ready);\n     pthread_mutex_unlock(&q->lock);",
+  "risk_level": 2,
+  "breaking_change": "potential_break",
+  "language": "c",
+  "why": "switches mutex to recursive and changes lock order; deadlock/behavior risk for callers"
+ },
+ {
+  "id": "diff-30",
+  "state": "diff --git a/app/pool.py b/app/pool.py\n--- a/app/pool.py\n+++ b/app/pool.py\n@@ -10,8 +10,9 @@ class Pool:\n     def acquire(self):\n-        with self._lock:\n-            return self._free.pop()\n+        self._lock.acquire()\n+        conn = self._free.pop() if self._free else self._create()\n+        self._lock.release()\n+        return conn",
+  "risk_level": 2,
+  "breaking_change": "potential_break",
+  "language": "python",
+  "why": "realloc-like growth strategy and lock scope changed; observable timing/ordering may change"
+ },
+ {
+  "id": "diff-31",
+  "state": "diff --git a/src/vec.c b/src/vec.c\n--- a/src/vec.c\n+++ b/src/vec.c\n@@ -18,6 +18,9 @@ void vec_push(vec_t *v, int x)\n-    v->data[v->len++] = x;\n+    if (v->len == v->cap) {\n+        v->cap *= 2;\n+        v->data = realloc(v->data, v->cap * sizeof(int));\n+    }\n+    v->data[v->len++] = x;",
+  "risk_level": 2,
+  "breaking_change": "potential_break",
+  "language": "c",
+  "why": "replaces fixed buffer by realloc growth; sizes seen by callers can change"
+ },
+ {
+  "id": "diff-32",
+  "state": "diff --git a/db/queries/stock.sql b/db/queries/stock.sql\n--- a/db/queries/stock.sql\n+++ b/db/queries/stock.sql\n@@ -1,3 +1,4 @@\n SELECT quantity\n FROM stock\n-WHERE sku = :sku;\n+WHERE sku = :sku\n+FOR UPDATE;",
+  "risk_level": 2,
+  "breaking_change": "potential_break",
+  "language": "sql",
+  "why": "adds SELECT ... FOR UPDATE row locking to an existing query; can block concurrent callers"
+ },
+ {
+  "id": "diff-33",
+  "state": "diff --git a/include/net.h b/include/net.h\n--- a/include/net.h\n+++ b/include/net.h\n@@ -8,6 +8,7 @@ typedef struct conn {\n     int fd;\n-    uint16_t port;\n+    uint32_t timeout_ms;\n+    uint16_t port;\n     struct sockaddr_in peer;\n } conn_t;",
+  "risk_level": 2,
+  "breaking_change": "breaking_change",
+  "language": "c",
+  "why": "socket struct in a public header gets a new field in the middle, ABI/wire layout change"
+ },
+ {
+  "id": "diff-34",
+  "state": "diff --git a/include/proto.h b/include/proto.h\n--- a/include/proto.h\n+++ b/include/proto.h\n@@ -4,8 +4,7 @@ typedef struct __attribute__((packed)) frame_hdr {\n     uint8_t  version;\n-    uint32_t length;\n-    uint16_t flags;\n+    uint16_t length;\n     uint8_t  type;\n } frame_hdr_t;",
+  "risk_level": 2,
+  "breaking_change": "breaking_change",
+  "language": "c",
+  "why": "public socket header struct field type narrowed and removed field"
+ },
+ {
+  "id": "diff-35",
+  "state": "diff --git a/include/buf.h b/include/buf.h\n--- a/include/buf.h\n+++ b/include/buf.h\n@@ -3,6 +3,6 @@\n-/* Returns a pointer to an internal static buffer; do not free. */\n-const char *buf_name(const buf_t *b);\n+/* Returns a malloc'd copy; the caller must free it. */\n+char *buf_name(const buf_t *b);",
+  "risk_level": 2,
+  "breaking_change": "breaking_change",
+  "language": "c",
+  "why": "public alloc API now requires caller to free (ownership contract changes)"
+ },
+ {
+  "id": "diff-36",
+  "state": "diff --git a/app/cache.py b/app/cache.py\n--- a/app/cache.py\n+++ b/app/cache.py\n@@ -1,9 +1,9 @@\n-import threading\n-_lock = threading.Lock()\n+import asyncio\n+_lock = asyncio.Lock()\n \n \n-def put(key, value):\n-    with _lock:\n+async def put(key, value):\n+    async with _lock:\n         _cache[key] = value",
+  "risk_level": 2,
+  "breaking_change": "breaking_change",
+  "language": "python",
+  "why": "public lock-guarded API becomes async, callers must await"
+ }
+]
