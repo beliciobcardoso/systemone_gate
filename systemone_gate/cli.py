@@ -7,13 +7,15 @@ import sys
 import subprocess
 import json
 import argparse
-from typing import List
+from contextlib import nullcontext
+from typing import List, Optional
 
 from .claude_hook import run_pretooluse
 from .client import SystemOneClient
-from .diff_review import format_coverage, review_staged
+from .diff_review import DEFAULT_MAX_LINES_PER_FILE, format_coverage, review_staged
 from .hooks import install_git_hook, uninstall_git_hook
 from .mcp_server import run_mcp_server
+from .output import plain_output
 from .policy import (
     ACTION_BLOCK,
     DiffReview,
@@ -26,6 +28,7 @@ from .policy import (
 )
 
 EXIT_CONFIG_ERROR = 2
+GIT_DIFF_TIMEOUT_SECONDS = 30
 
 def _try_parse(parser, res):
     """Parses a response for display only; the verdict comes from the policy layer."""
@@ -50,9 +53,10 @@ def _print_diff_report(review: DiffReview, res: dict) -> None:
         print(f"   • {opt}: {prob*100:.1f}%")
     print("----------------------------------------------------------\n")
 
-def handle_diff(client: SystemOneClient, model: str, max_lines: int = 250) -> int:
+def handle_diff(client: SystemOneClient, model: str, max_lines: int = DEFAULT_MAX_LINES_PER_FILE) -> int:
     try:
-        diff_output = subprocess.check_output(["git", "diff", "--cached"], text=True)
+        diff_output = subprocess.check_output(["git", "diff", "--cached"], text=True,
+                                              timeout=GIT_DIFF_TIMEOUT_SECONDS)
     except Exception as e:
         print(f"❌ Erro ao executar 'git diff --cached': {e}", file=sys.stderr)
         return 1
@@ -131,17 +135,18 @@ def handle_guard(client: SystemOneClient, command_text: str, model: str) -> int:
         return 1
     return 0
 
-def main(argv: List[str] = None):
+def main(argv: Optional[List[str]] = None):
     parser = argparse.ArgumentParser(
         prog="systemone-gate",
         description="Gatekeeper e motor de triagem local ultrarrápido para agentes de IA e desenvolvedores."
     )
+    parser.add_argument("--plain", action="store_true",
+                        help="Saída apenas ASCII (sem emoji); também via SYSTEMONE_PLAIN=1")
     subparsers = parser.add_subparsers(dest="command", help="Comandos disponíveis")
 
     # diff
     p_diff = subparsers.add_parser("diff", help="Inspeciona alterações staged (git diff --cached)")
     p_diff.add_argument("--nimble", action="store_true", help="Usa Nimble (9B) em vez do Tev1 padrão")
-    p_diff.add_argument("--tev", action="store_true", help="Força uso do Tev1 0.8B (mais rápido)")
 
     # triage
     p_triage = subparsers.add_parser("triage", help="Triagem de erros de compilação, testes ou logs")
@@ -156,6 +161,10 @@ def main(argv: List[str] = None):
     p_hook = subparsers.add_parser("install-hook", help="Instala o pre-commit hook no repositório Git atual")
     p_hook.add_argument("--repo", default=None, help="Caminho do repositório Git")
 
+    # uninstall-hook
+    p_unhook = subparsers.add_parser("uninstall-hook", help="Remove o pre-commit hook do SystemOne Gate (restaura o backup, se houver)")
+    p_unhook.add_argument("--repo", default=None, help="Caminho do repositório Git")
+
     # hook-guard
     subparsers.add_parser("hook-guard", help="Hook PreToolUse do Claude Code: bloqueia comandos catastróficos (offline, sem modelo)")
 
@@ -163,6 +172,12 @@ def main(argv: List[str] = None):
     subparsers.add_parser("mcp", help="Inicia o servidor MCP stdio (para Claude Desktop, Cursor, Antigravity)")
 
     args = parser.parse_args(argv)
+    # The MCP server speaks JSON on stdout: it must never go through the translator.
+    output_ctx = nullcontext() if args.command == "mcp" else plain_output(args.plain)
+    with output_ctx:
+        _dispatch(parser, args)
+
+def _dispatch(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
     try:
         client = SystemOneClient()
     except ValueError as e:
@@ -183,6 +198,10 @@ def main(argv: List[str] = None):
 
     elif args.command == "install-hook":
         success = install_git_hook(args.repo)
+        sys.exit(0 if success else 1)
+
+    elif args.command == "uninstall-hook":
+        success = uninstall_git_hook(args.repo)
         sys.exit(0 if success else 1)
 
     elif args.command == "hook-guard":

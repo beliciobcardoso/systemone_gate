@@ -80,16 +80,16 @@
 | DOC-03 | Docs mandam usar guard para `rm -rf`/`prune`/reset | Doc. | Segurança | S3 | Must | Medido | ✅ Resolvido (#8) |
 | DOC-04 | Exemplos com comportamento oposto na mesma falha | Doc. | Confiabilidade | S3 | Should | Estático | ✅ Resolvido (#7) |
 | RSK-01 | Dependência de endpoint/modelos de terceiros sem contrato versionado | Risco | Compatibilidade | S3 | Should | Estático | ⬜ Aberto |
-| DT-08 | Código morto (`--tev`, `route_task`, `uninstall`) | Dívida | Manutenibilidade | S4 | Could | Estático | ⬜ Aberto |
-| DT-09 | Magic numbers e metadados placeholder | Dívida | Manutenibilidade | S4 | Could | Estático | ⬜ Aberto |
-| DT-10 | Sem tipos de domínio (dicts por toda parte) | Dívida | Manutenibilidade | S4 | Could | Estático | ⬜ Aberto |
+| DT-08 | Código morto (`--tev`, `route_task`, `uninstall`) | Dívida | Manutenibilidade | S4 | Could | Estático | ✅ Resolvido (#14) |
+| DT-09 | Magic numbers e metadados placeholder | Dívida | Manutenibilidade | S4 | Could | Estático | ✅ Resolvido (#14) |
+| DT-10 | Sem tipos de domínio (dicts por toda parte) | Dívida | Manutenibilidade | S4 | Could | Estático | 🟡 Parcial (#7) |
 | DOC-05 | `claude mcp add` provavelmente sem `--` / caminho de config | Doc. | Usabilidade | S4 | Could | **Hipótese** | ⬜ Aberto |
 | DOC-06 | Versões de modelos/caminhos de IDEs não verificáveis | Doc. | — | S4 | Could | **Hipótese** | ⬜ Aberto |
 | RSK-02 | Rubricas em português vs. modelo possivelmente treinado em inglês | Risco | Adequação funcional | S3 | Could | **Hipótese** | ⬜ Aberto |
 | RSK-03 | Privacidade: diffs/comandos podem conter segredos | Risco | Segurança | S3 | Should | Estático | ⬜ Aberto |
 | DT-11 | `AGENTS.md` exige CI verde, testes e cobertura que não existem | Dívida | Manutenibilidade | S3 | Should | Estático | ✅ Resolvido (#10) |
 | DOC-07 | Hook sugere `--no-verify`, que `AGENTS.md` proíbe | Doc. | Usabilidade | S3 | Should | Estático | ⬜ Aberto |
-| HIG-01..05 | Higiene (ver §9) | — | — | S4 | Won't | Estático | ⬜ Aberto |
+| HIG-01..05 | Higiene (ver §9) | — | — | S4 | Won't | Estático | 🟡 Parcial (#14) |
 
 ---
 
@@ -343,18 +343,21 @@
 - **Esforço:** M por perfil
 
 ### DT-08 · Código morto
+- **Status:** ✅ **Resolvido** em [#14](https://github.com/beliciobcardoso/systemone_gate/pull/14) — `--tev` (sem efeito) removido e `uninstall-hook` exposto na CLI. `route_task` e `RUBRIC_AGENT_ROUTING` ficaram, porque o manual (§7) e o exemplo os usam.
 - **Local:** `--tev` (`cli.py:110`, sem efeito); `route_task` + `RUBRIC_AGENT_ROUTING` (não expostos em CLI/MCP); `uninstall_git_hook` (sem comando)
 - **Classificação:** Dívida · Manutenibilidade · S4 · Could
 - **Solução:** remover `--tev`; expor `route`/`uninstall-hook` **ou** apagar. Decidir por uso real; não manter código sem consumidor.
 - **Esforço:** S
 
 ### DT-09 · Magic numbers e metadados placeholder
+- **Status:** ✅ **Resolvido** em [#14](https://github.com/beliciobcardoso/systemone_gate/pull/14) — limites de revisão (250 linhas/arquivo, 20 arquivos) e o timeout do `git diff` viraram constantes nomeadas; `pyproject.toml` sem o e-mail inventado e com `[project.urls]`.
 - **Local:** `cli.py` (250, 1.85, 0.65, 1.5), `pyproject.toml` (autor `developer@local`)
 - **Classificação:** Dívida · Manutenibilidade · S4 · Could
 - **Solução:** constantes nomeadas em `Config` (DT-01); metadados reais; `[project.urls]`.
 - **Esforço:** S
 
 ### DT-10 · Sem tipos de domínio
+- **Status:** 🟡 **Parcial** — os tipos de domínio já existem na camada de decisão (`DiffReview`, `CommandCheck`, `Decision`, em [#7](https://github.com/beliciobcardoso/systemone_gate/pull/7)). O retorno do `SystemOneClient` continua `dict` **de propósito**, para não quebrar quem usa a biblioteca (manual §7 e `examples/`); mudar isso é uma mudança de API, não uma correção.
 - **Local:** `client.py` e `cli.py` manipulam `dict[str, Any]` com chaves literais.
 - **Classificação:** Dívida · Manutenibilidade · S4 · Could
 - **Solução:** `@dataclass(frozen=True)` para `ChoiceAnswer`, `ScoreAnswer`, `Decision`, validando na borda (resolve DEF-03). Alinha com a regra de imutabilidade do repositório de convenções.
@@ -468,11 +471,11 @@
 
 | ID | Item | Ação |
 |---|---|---|
-| HIG-01 | `main(argv: List[str] = None)` — tipo incorreto (`Optional[List[str]]`). | Corrigir anotação. |
-| HIG-02 | `subprocess.check_output` sem `timeout`. | Adicionar `timeout=` e tratar `TimeoutExpired`. |
-| HIG-03 | Sem `CHANGELOG`, sem política de versionamento. | Adotar SemVer + Keep a Changelog. |
-| HIG-04 | Saída com emojis em hook/CLI pode quebrar em terminais/CI sem UTF-8. | Flag `--plain` ou detectar `isatty`/encoding. |
-| HIG-05 | `.gitignore` não cobre `.serena/` (aparece como untracked), `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`, `.coverage`. | Adicionar as entradas antes de criar testes/CI (DT-05/06). **Parcial ([#5](https://github.com/beliciobcardoso/systemone_gate/pull/5)):** `.pytest_cache/`, `.coverage` e `htmlcov/` já entraram; faltam `.serena/` e os caches de mypy/ruff. |
+| HIG-01 | `main(argv: List[str] = None)` — tipo incorreto (`Optional[List[str]]`). | Corrigir anotação. **Resolvido ([#14](https://github.com/beliciobcardoso/systemone_gate/pull/14)).** |
+| HIG-02 | `subprocess.check_output` sem `timeout`. | Adicionar `timeout=` e tratar `TimeoutExpired`. **Resolvido ([#14](https://github.com/beliciobcardoso/systemone_gate/pull/14)).** |
+| HIG-03 | Sem `CHANGELOG`, sem política de versionamento. | Adotar SemVer + Keep a Changelog. **Resolvido ([#14](https://github.com/beliciobcardoso/systemone_gate/pull/14)).** |
+| HIG-04 | Saída com emojis em hook/CLI pode quebrar em terminais/CI sem UTF-8. | Flag `--plain` ou detectar `isatty`/encoding. **Resolvido ([#14](https://github.com/beliciobcardoso/systemone_gate/pull/14)).** |
+| HIG-05 | `.gitignore` não cobre `.serena/` (aparece como untracked), `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`, `.coverage`. | Adicionar as entradas antes de criar testes/CI (DT-05/06). **Parcial ([#5](https://github.com/beliciobcardoso/systemone_gate/pull/5)):** `.pytest_cache/`, `.coverage` e `htmlcov/` já entraram; os caches de mypy/ruff entraram em [#14](https://github.com/beliciobcardoso/systemone_gate/pull/14); falta só `.serena/` — decisão do usuário (ignorar a pasta ou versionar o `project.yml`). |
 
 ---
 

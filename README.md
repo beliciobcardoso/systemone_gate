@@ -129,7 +129,12 @@ systemone-gate guard "rm -rf /tmp/data/*"
 
 # Instalar Git Pre-Commit Hook no repositório atual
 systemone-gate install-hook
+
+# Remover o hook (restaura o hook original, se houver backup)
+systemone-gate uninstall-hook
 ```
+
+**Saída sem emoji:** se o terminal ou o pipe não suporta UTF-8 (ex.: `PYTHONIOENCODING=ascii`), a CLI troca os emoji por tokens ASCII (`[OK]`, `[ERRO]`, `[AVISO]`) automaticamente. Para forçar esse modo, use `systemone-gate --plain diff` ou `SYSTEMONE_PLAIN=1`. O servidor MCP não é afetado.
 
 **Timeout:** o padrão é 30 s por chamada. No primeiro uso após inicialização a Ollama carrega o modelo em memória (o Nimble tem 9,5 GB) e pode demorar mais; aumente com `SYSTEMONE_TIMEOUT` (segundos, número positivo), por exemplo `SYSTEMONE_TIMEOUT=120 systemone-gate triage "..."`. Um valor inválido encerra a CLI com código 2. O endpoint pode ser trocado com `OLLAMA_SYSTEMONE_URL`.
 

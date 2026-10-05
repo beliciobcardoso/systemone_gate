@@ -52,3 +52,10 @@ def test_triage_connection_refused_exits_1_with_stderr(closed_port_url, sub_env,
     out = _run(["triage", "boom"], closed_port_url, sub_env, repo_root)
     assert out.returncode == 1
     assert "Failed to connect" in out.stderr
+
+
+def test_diff_has_no_tev_flag(capsys):
+    with pytest.raises(SystemExit) as e:
+        main(["diff", "--tev"])
+    assert e.value.code == 2
+    assert "unrecognized arguments" in capsys.readouterr().err
