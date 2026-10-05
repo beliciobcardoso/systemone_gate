@@ -65,7 +65,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 
 1. PR com base `main`, head `dev`. Título: `release: <resumo do que está sendo promovido>`.
 2. Descrição lista os PRs/features incluídos desde a última promoção (`git log main..dev`), com breaking changes e passos de deploy/rollback.
-3. Exige `dev` com CI verde e já validada.
+3. Exige `dev` já validada.
 
 Descrição de PR criado por agente termina com:
 
@@ -77,7 +77,7 @@ Descrição de PR criado por agente termina com:
 
 - **feature → `dev`**: **squash merge**. Um commit por feature em `dev`; os `Co-Authored-By` são agregados no commit final. Mensagem segue o formato de commit.
 - **`dev` → `main`**: **merge commit** (não squash, não rebase). Squash na promoção faz `dev` divergir de `main` e gera conflitos fantasmas no ciclo seguinte.
-- Só mergear com: CI verde, branch atualizada com a base, conflitos resolvidos, conversas resolvidas.
+- Só mergear com: branch atualizada com a base, conflitos resolvidos, conversas resolvidas.
 - Após o merge de feature, apagar a branch remota e local. **Nunca** apagar `dev` nem `main`.
 - Após promover, `main` pode ficar à frente de `dev` por um merge commit: sincronizar com `git switch dev && git merge --ff-only origin/main` (ou merge de `main` em `dev`).
 
@@ -87,9 +87,9 @@ Configurar no GitHub (Settings → Rules → Rulesets, ou Branch protection):
 
 ### `main`
 - Exigir PR; bloquear push direto.
-- Restringir a origem dos PRs a `dev` (via ruleset/CI que falha se head ≠ `dev`).
+- Restringir a origem dos PRs a `dev` por convenção (o projeto não usa CI para impor isso).
 - Exigir ao menos 1 aprovação; descartar aprovações obsoletas em novos commits.
-- Exigir status checks passando e branch atualizada.
+- Exigir branch atualizada com a base antes do merge.
 - Exigir resolução de todas as conversas.
 - Permitir apenas merge commit (histórico linear **não** se aplica aqui).
 - Bloquear force push e deleção.
@@ -97,7 +97,6 @@ Configurar no GitHub (Settings → Rules → Rulesets, ou Branch protection):
 
 ### `dev`
 - Exigir PR; bloquear push direto.
-- Exigir status checks passando.
 - Permitir apenas squash merge.
 - Bloquear force push e deleção.
 
