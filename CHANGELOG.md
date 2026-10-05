@@ -7,21 +7,19 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
-### Added
-
-- `systemone-gate --version` prints the installed version (#27).
-- Release process and SemVer policy for 0.x documented in `AGENTS.md`, with a separate authorization for tags and GitHub Releases (#27).
+## [0.3.0] - 2026-10-05
 
 ### Changed
 
-- Documentation: how to keep the model loaded in Ollama with `OLLAMA_KEEP_ALIVE` (5 minute default, accepted values, systemd and manual setups, memory trade-off), linked from the pre-commit hook sections (#30).
 - **Behavior change:** `diff` and the pre-commit hook now review with `nimble` by default (it was `tev1:0.8b`), because `tev1:0.8b` did not discriminate diff risk in the rubric benchmark. The hook uses a 120 s timeout by default, since the first call after an idle period loads the model in 12 to 72 s; the CLI and library default stays 30 s. Hooks installed earlier need `systemone-gate install-hook` again to get the longer timeout. Go back with `SYSTEMONE_DIFF_MODEL=tev1:0.8b` (#29).
-- The version has a single source, `systemone_gate.__version__`: `pyproject.toml` reads it dynamically, and the CLI and the MCP server report it (#26, #27).
+- Documentation: how to keep the model loaded in Ollama with `OLLAMA_KEEP_ALIVE` (5 minute default, accepted values, systemd and manual setups, memory trade-off), linked from the pre-commit hook sections (#30).
 
 ## [0.2.0] - 2026-10-05
 
 ### Added
 
+- `systemone-gate --version` prints the installed version (#27).
+- Release process and SemVer policy for 0.x documented in `AGENTS.md`, with a separate authorization for tags and GitHub Releases (#27).
 - Pytest suite with a fake Ollama server covering the client, the MCP server and the CLI (#5).
 - `SYSTEMONE_TIMEOUT` environment variable and `timeout` client argument (default 30 s); an invalid value exits the CLI with code 2 (#12).
 - Per-file staged diff review: lockfiles, binaries and minified/generated files are skipped, each file is truncated independently, and a coverage summary reports what was and was not inspected (#6).
@@ -41,6 +39,7 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ### Changed
 
+- The version has a single source, `systemone_gate.__version__`: `pyproject.toml` reads it dynamically, and the CLI and the MCP server report it (#26, #27).
 - Block/allow decisions moved out of the CLI into the policy layer (#7).
 - Staged diff is reviewed per file instead of truncating the whole diff as a single blob (#6).
 - The git hook generator now pins the absolute Python interpreter path, preserves an existing foreign hook as a backup and runs it first, and no longer blocks commits when the package is unavailable (fail-open) (#4).
