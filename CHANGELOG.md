@@ -14,6 +14,7 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ### Changed
 
+- Documentation: how to keep the model loaded in Ollama with `OLLAMA_KEEP_ALIVE` (5 minute default, accepted values, systemd and manual setups, memory trade-off), linked from the pre-commit hook sections (#30).
 - **Behavior change:** `diff` and the pre-commit hook now review with `nimble` by default (it was `tev1:0.8b`), because `tev1:0.8b` did not discriminate diff risk in the rubric benchmark. The hook uses a 120 s timeout by default, since the first call after an idle period loads the model in 12 to 72 s; the CLI and library default stays 30 s. Hooks installed earlier need `systemone-gate install-hook` again to get the longer timeout. Go back with `SYSTEMONE_DIFF_MODEL=tev1:0.8b` (#29).
 - The version has a single source, `systemone_gate.__version__`: `pyproject.toml` reads it dynamically, and the CLI and the MCP server report it (#26, #27).
 
