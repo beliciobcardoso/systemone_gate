@@ -131,6 +131,8 @@ systemone-gate guard "rm -rf /tmp/data/*"
 systemone-gate install-hook
 ```
 
+**Timeout:** o padrão é 30 s por chamada. No primeiro uso após inicialização a Ollama carrega o modelo em memória (o Nimble tem 9,5 GB) e pode demorar mais; aumente com `SYSTEMONE_TIMEOUT` (segundos, número positivo), por exemplo `SYSTEMONE_TIMEOUT=120 systemone-gate triage "..."`. Um valor inválido encerra a CLI com código 2. O endpoint pode ser trocado com `OLLAMA_SYSTEMONE_URL`.
+
 ---
 
 ### 2. Como Servidor MCP (Model Context Protocol)

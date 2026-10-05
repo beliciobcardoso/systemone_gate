@@ -63,9 +63,9 @@
 | DT-01 | Política de decisão dentro do handler da CLI | Dívida | Manutenibilidade | S2 | Should | Estático | ✅ Resolvido (#7) |
 | DT-02 | Três políticas de bloqueio divergentes | Dívida | Manutenibilidade | S2 | Must | Estático | ✅ Resolvido (#7) |
 | DEF-05 | `.git` como arquivo (worktree/submodule) quebra `install-hook` | Defeito | Portabilidade | S3 | Should | Estático | ⬜ Aberto |
-| DEF-06 | `HTTPError` rotulado como "Failed to connect" | Defeito | Usabilidade | S3 | Should | Estático | ⬜ Aberto |
+| DEF-06 | `HTTPError` rotulado como "Failed to connect" | Defeito | Usabilidade | S3 | Should | Estático | ✅ Resolvido (#12) |
 | DEF-07 | MCP: JSON inválido ignorado e erro sem `isError` | Defeito | Confiabilidade | S3 | Should | Estático | ⬜ Aberto |
-| DEF-08 | Timeout fixo de 30 s | Defeito | Confiabilidade | S3 | Should | Estático (+ cold start medido) | ⬜ Aberto |
+| DEF-08 | Timeout fixo de 30 s | Defeito | Confiabilidade | S3 | Should | Estático (+ cold start medido) | 🟡 Parcial (#12) |
 | DEF-09 | Hook ignora `core.hooksPath` | Defeito | Compatibilidade | S3 | Could | Estático | ⬜ Aberto |
 | FAL-04 | Latência real ~200 ms vs. "<15 ms" prometido | Falha | Eficiência | S3 | Should | Medido | ⬜ Aberto |
 | FAL-05 | Confiança do modelo baixa (0,03–0,27) | Falha | Adequação funcional | S3 | Should | Medido | ⬜ Aberto |
@@ -228,6 +228,7 @@
 - **Esforço:** S
 
 ### DEF-06 · `HTTPError` rotulado como "Failed to connect"
+- **Status:** ✅ **Resolvido** em [#12](https://github.com/beliciobcardoso/systemone_gate/pull/12) — `HTTPError` é tratado antes de `URLError`, com status e texto do servidor; erros ganham `error_kind` (e `status` para HTTP), de forma aditiva.
 - **Local:** `client.py:54-58`
 - **Evidência:** Estático
 - **Classificação:** Defeito · Usabilidade · S3 · Should
@@ -244,6 +245,7 @@
 - **Esforço:** S
 
 ### DEF-08 · Timeout fixo de 30 s
+- **Status:** 🟡 **Parcial** em [#12](https://github.com/beliciobcardoso/systemone_gate/pull/12) — timeout configurável (`SYSTEMONE_TIMEOUT`, argumento do cliente ou de `evaluate`) e mensagem específica de timeout. **Não feitos:** timeouts separados de conexão e leitura, e `keep_alive` (não verificado que o endpoint aceite o campo).
 - **Local:** `client.py:32`
 - **Evidência:** Estático; cold start do `tev1:0.8b` medido em 4,4 s (o do `nimble`, 9,5 GB, **não foi medido** — é maior).
 - **Classificação:** Defeito · Confiabilidade · S3 · Should
