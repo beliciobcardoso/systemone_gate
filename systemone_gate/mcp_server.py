@@ -58,7 +58,7 @@ MCP_TOOLS = [
     },
     {
         "name": "systemone_command_guard",
-        "description": "Ultra-fast safety check (<15ms via tev1:0.8b) before executing potentially risky shell/bash commands.",
+        "description": "Low-latency local safety check (deterministic rules first, then tev1:0.8b) before executing potentially risky shell/bash commands.",
         "inputSchema": {
             "type": "object",
             "properties": {

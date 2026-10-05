@@ -138,7 +138,7 @@ def handle_guard(client: SystemOneClient, command_text: str, model: str) -> int:
 def main(argv: Optional[List[str]] = None):
     parser = argparse.ArgumentParser(
         prog="systemone-gate",
-        description="Gatekeeper e motor de triagem local ultrarrápido para agentes de IA e desenvolvedores."
+        description="Gatekeeper e motor de triagem local de baixa latência para agentes de IA e desenvolvedores."
     )
     parser.add_argument("--plain", action="store_true",
                         help="Saída apenas ASCII (sem emoji); também via SYSTEMONE_PLAIN=1")

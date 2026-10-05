@@ -67,7 +67,7 @@
 | DEF-07 | MCP: JSON inválido ignorado e erro sem `isError` | Defeito | Confiabilidade | S3 | Should | Estático | ✅ Resolvido (#13) |
 | DEF-08 | Timeout fixo de 30 s | Defeito | Confiabilidade | S3 | Should | Estático (+ cold start medido) | 🟡 Parcial (#12) |
 | DEF-09 | Hook ignora `core.hooksPath` | Defeito | Compatibilidade | S3 | Could | Estático | ✅ Resolvido (#11) |
-| FAL-04 | Latência real ~200 ms vs. "<15 ms" prometido | Falha | Eficiência | S3 | Should | Medido | ⬜ Aberto |
+| FAL-04 | Latência real ~200 ms vs. "<15 ms" prometido | Falha | Eficiência | S3 | Should | Medido | ✅ Resolvido (#16) |
 | FAL-05 | Confiança do modelo baixa (0,03–0,27) | Falha | Adequação funcional | S3 | Should | Medido | ⬜ Aberto |
 | FAL-06 | Hook usa modelo 0.8B para code review | Falha | Adequação funcional | S3 | Should | Estático | ⬜ Aberto |
 | DT-03 | Erro retornado como `dict` misturado ao sucesso | Dívida | Manutenibilidade | S3 | Should | Estático | ⬜ Aberto |
@@ -75,8 +75,8 @@
 | DT-06 | Sem CI, lint, type-check, formatação | Dívida | Manutenibilidade | S3 | Should | Reproduzido (ausência) | ⬜ Aberto (CI ⛔ descartado) |
 | DT-07 | Rubricas enviesadas para C/redes (mosquitto) | Dívida | Adequação funcional | S3 | Should | Estático | ⬜ Aberto |
 | SEG-03 | `OLLAMA_SYSTEMONE_URL` sem validação de esquema/host | Segurança | Segurança | S3 | Could | Estático | ⬜ Aberto |
-| DOC-01 | Config do Aider quebrada | Doc. | Usabilidade | S3 | Must | Reproduzido | ⬜ Aberto |
-| DOC-02 | Alegações não sustentadas (<15 ms, calibrado, determinístico) | Doc. | — | S3 | Must | Medido | ⬜ Aberto |
+| DOC-01 | Config do Aider quebrada | Doc. | Usabilidade | S3 | Must | Reproduzido | ✅ Resolvido (#16) |
+| DOC-02 | Alegações não sustentadas (<15 ms, calibrado, determinístico) | Doc. | — | S3 | Must | Medido | ✅ Resolvido (#16) |
 | DOC-03 | Docs mandam usar guard para `rm -rf`/`prune`/reset | Doc. | Segurança | S3 | Must | Medido | ✅ Resolvido (#8) |
 | DOC-04 | Exemplos com comportamento oposto na mesma falha | Doc. | Confiabilidade | S3 | Should | Estático | ✅ Resolvido (#7) |
 | RSK-01 | Dependência de endpoint/modelos de terceiros sem contrato versionado | Risco | Compatibilidade | S3 | Should | Estático | ⬜ Aberto |
@@ -145,6 +145,7 @@
 - **Esforço:** M
 
 ### FAL-04 · Latência real vs. promessa
+- **Status:** ✅ **Resolvido** em [#16](https://github.com/beliciobcardoso/systemone_gate/pull/16) — a alegação "<15 ms" foi trocada por números medidos nesta máquina (tev1 ≈145-165 ms, nimble ≈380-420 ms por chamada quente; regras determinísticas ≈40-50 µs) e `benchmarks/latency.py` permite reproduzir. A partida a frio do nimble varia (≈12-47 s).
 - **Local:** `README.md`, `docs/MANUAL_AGENTES_IA.md`, `mcp_server.py` (descrição da tool)
 - **Evidência:** **Medido** — 180–260 ms por chamada quente (HTTP + Python incluídos); 4,4 s na chamada fria do `tev1:0.8b`.
 - **Classificação:** Falha (requisito não atendido) · Eficiência de desempenho · S3 · Should
@@ -407,6 +408,7 @@
 ## 7. Documentação
 
 ### DOC-01 · Config do Aider quebrada
+- **Status:** ✅ **Resolvido** em [#16](https://github.com/beliciobcardoso/systemone_gate/pull/16) — o §6 do manual usa `git-commit-verify: true` (opção do Aider confirmada na doc oficial) com o hook de pre-commit instalado, no lugar do `lint-cmd` quebrado. O Aider não foi executado.
 - **Local:** `docs/MANUAL_AGENTES_IA.md` §6
 - **Evidência:** **Reproduzido** — `diff foo.py` → `unrecognized arguments: foo.py`, exit 2. Além disso `git diff --cached` está vazio durante a edição do Aider.
 - **Classificação:** Defeito de documentação · Usabilidade · S3 · Must
@@ -414,6 +416,7 @@
 - **Esforço:** S
 
 ### DOC-02 · Alegações não sustentadas
+- **Status:** ✅ **Resolvido** em [#16](https://github.com/beliciobcardoso/systemone_gate/pull/16) — removidos "<15 ms", "probabilidades calibradas" e "saída determinística" (do modelo). Observado, não garantido: 20 chamadas idênticas deram respostas idênticas nesta máquina.
 - **Evidência:** **Medido** — "<15 ms" (real ~200 ms), "probabilidades calibradas" (sem prova; `confidence` 0,03–0,27), "saída determinística" (não verificado).
 - **Classificação:** Documentação enganosa · S3 · Must
 - **Solução:** substituir por números medidos e data/hardware; remover "calibradas" e "determinística" até haver evidência (benchmark de FAL-01/03).
