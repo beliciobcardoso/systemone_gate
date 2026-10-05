@@ -123,6 +123,8 @@ claude mcp add systemone-gate -e PYTHONPATH=/caminho/para/systemone_gate -- pyth
 ```
 O escopo padrão é `local` (privado, salvo em `~/.claude.json`). Use `--scope project` para gravar em `.mcp.json` na raiz do projeto (versionável) ou `--scope user` para todos os projetos (`~/.claude.json`). O `.mcp.json` tem o mesmo formato `mcpServers` (`command`/`args`/`env`) do Claude Desktop acima. O arquivo `.claude/config.json` não é usado para isso.
 
+**Dica de custo (`systemone_review_staged`):** com a mudança já em `git add`, chame `systemone_review_staged` (sem argumentos obrigatórios). O servidor roda `git diff --cached` no seu diretório de trabalho, revisa por arquivo e retorna risco, `coverage` e `decision` (allow/block), sem que o agente precise colar o diff como argumento do `systemone_review_diff`. O diretório de trabalho do servidor MCP precisa ser o repositório (configure o `cwd` no cliente, se necessário).
+
 ---
 
 ## 3. Cursor IDE

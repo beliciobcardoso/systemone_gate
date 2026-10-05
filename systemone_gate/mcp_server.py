@@ -6,10 +6,13 @@ Compatible with Claude Desktop, Cursor, Antigravity, Cline, Windsurf, Roo Code.
 
 import sys
 import json
+import subprocess
 import traceback
 from typing import Dict, Any
 
 from .client import SystemOneClient
+from .diff_review import review_staged
+from .policy import PolicyConfig, evaluate_diff
 from .rubrics import (
     RUBRIC_DIFF_RISK,
     RUBRIC_ERROR_TRIAGE,
@@ -17,10 +20,17 @@ from .rubrics import (
     RUBRIC_AGENT_ROUTING,
 )
 
+GIT_DIFF_TIMEOUT_SECONDS = 30
+NOTHING_STAGED_NOTE = "nenhuma alteração staged"
+PREFER_STAGED_HINT = (
+    " Se a alteração já está staged no git, prefira systemone_review_staged: "
+    "ele lê o diff no servidor e evita passá-lo pelo agente."
+)
+
 MCP_TOOLS = [
     {
         "name": "systemone_triage_error",
-        "description": "Triage and classify build, linker, runtime errors, or test failures using local Ollama Nimble (9B) decision model.",
+        "description": "Triage and classify build, linker, runtime errors, or test failures using local Ollama Nimble (9B) decision model." + PREFER_STAGED_HINT,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -39,7 +49,7 @@ MCP_TOOLS = [
     },
     {
         "name": "systemone_review_diff",
-        "description": "Evaluates architectural risk, breaking changes, and critical failure modes in a code patch or git diff using Nimble (9B).",
+        "description": "Evaluates architectural risk, breaking changes, and critical failure modes in a code patch or git diff using Nimble (9B)." + PREFER_STAGED_HINT,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -54,6 +64,20 @@ MCP_TOOLS = [
                 }
             },
             "required": ["diff"]
+        }
+    },
+    {
+        "name": "systemone_review_staged",
+        "description": "Reviews the changes currently staged in git (git diff --cached, read by the server in its working directory) per file, skipping lockfiles/binaries, and returns risk, breaking-change answers, coverage and the allow/block policy decision. Preferred over systemone_review_diff: the diff never passes through the agent.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "model": {
+                    "type": "string",
+                    "description": "Model to use ('nimble' or 'tev1:0.8b'). Defaults to 'nimble'.",
+                    "default": "nimble"
+                }
+            }
         }
     },
     {
@@ -116,6 +140,44 @@ def _text_result(payload: Dict[str, Any], is_error: bool = False) -> Dict[str, A
         result["isError"] = True
     return result
 
+def _staged_diff() -> Dict[str, Any]:
+    """Runs `git diff --cached` in the current directory. Returns {"diff"} or {"error"}."""
+    try:
+        proc = subprocess.run(["git", "diff", "--cached"], capture_output=True, text=True,
+                              errors="replace", timeout=GIT_DIFF_TIMEOUT_SECONDS)
+    except subprocess.TimeoutExpired:
+        return {"error": f"git diff --cached excedeu o tempo limite de {GIT_DIFF_TIMEOUT_SECONDS}s"}
+    except FileNotFoundError:
+        return {"error": "git não encontrado no PATH do servidor MCP"}
+    except OSError:
+        return {"error": "falha ao executar git no servidor MCP"}
+    if proc.returncode != 0:
+        return {"error": "o diretório de trabalho do servidor MCP não é um repositório git "
+                         "ou 'git diff --cached' falhou"}
+    return {"diff": proc.stdout}
+
+
+def _review_staged_tool(client: Any, tool_args: Dict[str, Any]) -> Dict[str, Any]:
+    staged = _staged_diff()
+    if "error" in staged:
+        return staged
+    if not staged["diff"].strip():
+        return {"answers": {},
+                "coverage": {"reviewed": [], "skipped": [], "truncated": []},
+                "note": NOTHING_STAGED_NOTE}
+    try:
+        cfg = PolicyConfig.from_env()
+    except ValueError as exc:
+        return {"error": f"configuração de política inválida: {exc}"}
+    res = review_staged(client, staged["diff"], tool_args.get("model"))
+    if "error" in res:
+        return res
+    decision = evaluate_diff(res, cfg)
+    return {**res, "decision": {"action": decision.action,
+                                "reasons": list(decision.reasons),
+                                "warning": decision.warning}}
+
+
 def _dispatch_tool(client: Any, tool_name: Any, tool_args: Dict[str, Any]) -> Dict[str, Any]:
     """Run a tool and build the tools/call result. Never raises."""
     try:
@@ -123,6 +185,8 @@ def _dispatch_tool(client: Any, tool_name: Any, tool_args: Dict[str, Any]) -> Di
             res = client.triage_error(tool_args.get("error_log", ""), model=tool_args.get("model"))
         elif tool_name == "systemone_review_diff":
             res = client.review_diff(tool_args.get("diff", ""), model=tool_args.get("model"))
+        elif tool_name == "systemone_review_staged":
+            res = _review_staged_tool(client, tool_args)
         elif tool_name == "systemone_command_guard":
             res = client.guard_command(tool_args.get("command", ""))
         elif tool_name == "systemone_query":

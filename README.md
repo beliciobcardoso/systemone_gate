@@ -192,6 +192,7 @@ O SystemOne Gate possui um servidor MCP nativo sem dependências externas (Zero-
 2. `systemone_review_diff`: Avaliação de risco técnico e quebras de contrato em patches de código.
 3. `systemone_command_guard`: Verificação de segurança de comandos bash (modelo leve Tev1 0.8B; veja Desempenho medido).
 4. `systemone_query`: Consultas arbitrárias tipadas (`choice` ou `score`) para qualquer contexto.
+5. `systemone_review_staged`: Revisa o que está staged (`git diff --cached` lido pelo próprio servidor, por arquivo, ignorando lockfiles/binários) e devolve risco, cobertura e a decisão allow/block. Preferível ao `systemone_review_diff` quando a mudança já está staged: o diff não passa pelo agente (menos tokens de saída e sem risco de resumo/alteração).
 
 ---
 

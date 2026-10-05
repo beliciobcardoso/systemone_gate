@@ -71,7 +71,7 @@
 | FAL-05 | Confiança do modelo baixa (0,03–0,27) | Falha | Adequação funcional | S3 | Should | Medido | ⬜ Aberto |
 | FAL-06 | Hook usa modelo 0.8B para code review | Falha | Adequação funcional | S3 | Should | Estático | ✅ Resolvido (#17) |
 | DT-03 | Erro retornado como `dict` misturado ao sucesso | Dívida | Manutenibilidade | S3 | Should | Estático | ⬜ Aberto |
-| DT-04 | Tools MCP exigem que o agente cole diff/log | Dívida | Eficiência | S3 | Should | Estático | ⬜ Aberto |
+| DT-04 | Tools MCP exigem que o agente cole diff/log | Dívida | Eficiência | S3 | Should | Estático | ✅ Resolvido (#18) |
 | DT-06 | Sem CI, lint, type-check, formatação | Dívida | Manutenibilidade | S3 | Should | Reproduzido (ausência) | ⬜ Aberto (CI ⛔ descartado) |
 | DT-07 | Rubricas enviesadas para C/redes (mosquitto) | Dívida | Adequação funcional | S3 | Should | Estático | ⬜ Aberto |
 | SEG-03 | `OLLAMA_SYSTEMONE_URL` sem validação de esquema/host | Segurança | Segurança | S3 | Could | Estático | ⬜ Aberto |
@@ -307,6 +307,7 @@
 - **Esforço:** M
 
 ### DT-04 · Tools MCP exigem que o agente cole diff/log como argumento
+- **Status:** ✅ **Resolvido** em [#18](https://github.com/beliciobcardoso/systemone_gate/pull/18) — nova tool `systemone_review_staged` lê `git diff --cached` no servidor, sem o agente repassar o diff. Não foi criada tool que leia caminhos arbitrários (risco de segurança).
 - **Local:** `mcp_server.py` (`systemone_review_diff`, `systemone_triage_error`)
 - **Quadrante:** Inadvertida · Prudente
 - **Classificação:** Dívida (arquitetura) · Eficiência · S3 · Should
