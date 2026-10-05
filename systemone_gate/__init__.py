@@ -1,6 +1,6 @@
 """
 SystemOne Gate
-Zero-cost, local decision gating & triage engine for AI coding agents.
+Local, cloud-token-free decision gating & triage engine for AI coding agents.
 Powered by Ollama System One (Jev-compatible models: Nimble 9B & Tev1).
 """
 
