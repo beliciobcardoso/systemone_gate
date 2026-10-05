@@ -121,6 +121,12 @@ Configurar no GitHub (Settings → Rules → Rulesets, ou Branch protection):
 - Permitir apenas squash merge.
 - Bloquear force push e deleção.
 
+## Convenções de trabalho (agentes)
+
+- **Relatório de problemas:** ao concluir um item de `docs/ANALISE_PROBLEMAS.md`, marcar o status (✅ Resolvido / 🟡 Parcial / ⬜ Aberto) na **mesma branch** da correção, citando o PR; o PR vai para `dev`. Usar "Parcial" quando só parte foi resolvida.
+- **Scripts de verificação que criam repositórios temporários:** usar `set -u`, criar o diretório com `mktemp -d` e abortar se falhar, conferir `$PWD` após o `cd`, exportar `GIT_CEILING_DIRECTORIES` para o diretório temporário e preferir `git -C <dir>` a `cd`. Nunca rodar `git init`/`git add`/`rm` com `cd` em variável possivelmente vazia (vai para o `$HOME`).
+- **`python -m pacote`** põe o cwd em `sys.path` antes do `PYTHONPATH`: para testar outra worktree, rodar de um cwd neutro.
+
 ## Antes de abrir PR
 
 - [ ] Testes passam e cobertura mínima de 80% nos módulos alterados.
