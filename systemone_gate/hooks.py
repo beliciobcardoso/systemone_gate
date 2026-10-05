@@ -30,6 +30,12 @@ if [ -x "$BACKUP" ]; then
     fi
 fi
 
+# Bypass direcionado e auditável: ignora APENAS esta verificação (os demais hooks já rodaram).
+if [ -n "$SYSTEMONE_SKIP" ] && [ "$SYSTEMONE_SKIP" != "0" ]; then
+    echo "[SystemOne Gate] verificação ignorada (SYSTEMONE_SKIP)." >&2
+    exit 0
+fi
+
 PY=@@PYTHON@@
 
 # Nunca bloquear o usuário se o pacote não estiver disponível neste interpretador.
@@ -44,7 +50,7 @@ STATUS=$?
 if [ $STATUS -ne 0 ]; then
     echo ""
     echo "❌ [SystemOne Gate] Commit abortado por risco detectado."
-    echo "💡 Para forçar o commit ignorando a verificação, use: git commit --no-verify"
+    echo "💡 Para ignorar APENAS esta verificação, use: SYSTEMONE_SKIP=1 git commit ..."
     exit $STATUS
 fi
 

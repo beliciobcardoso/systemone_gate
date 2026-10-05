@@ -3,6 +3,7 @@ Command Line Interface (CLI) for SystemOne Gate.
 Provides dev tools and can start the MCP server directly.
 """
 
+import os
 import sys
 import subprocess
 import json
@@ -12,10 +13,12 @@ from typing import List, Optional
 
 from .claude_hook import run_pretooluse
 from .client import SystemOneClient
+from .doctor import run_cli as run_doctor_cli
 from .diff_review import DEFAULT_MAX_LINES_PER_FILE, format_coverage, review_staged
 from .hooks import install_git_hook, uninstall_git_hook
 from .mcp_server import run_mcp_server
 from .output import plain_output
+from .rubrics import DEFAULT_PROFILE, PROFILES
 from .policy import (
     ACTION_BLOCK,
     DiffReview,
@@ -29,7 +32,11 @@ from .policy import (
 )
 
 EXIT_CONFIG_ERROR = 2
+DEFAULT_DIFF_MODEL = "tev1:0.8b"
+DIFF_MODEL_ENV = "SYSTEMONE_DIFF_MODEL"
+NIMBLE_MODEL = "nimble"
 GIT_DIFF_TIMEOUT_SECONDS = 30
+PROFILE_HELP = f"Perfil de rubrica (padrão: env SYSTEMONE_PROFILE ou {DEFAULT_PROFILE})"
 
 def _try_parse(parser, res):
     """Parses a response for display only; the verdict comes from the policy layer."""
@@ -40,6 +47,10 @@ def _try_parse(parser, res):
 
 def _confidence_suffix(confidence: Optional[float]) -> str:
     return "" if confidence is None else f" (confiança {confidence:.2f})"
+
+def _invalid_config(error: ValueError) -> int:
+    print(f"❌ Configuração inválida: {error}", file=sys.stderr)
+    return EXIT_CONFIG_ERROR
 
 def _print_diff_report(review: DiffReview, res: dict) -> None:
     risk_info = res["answers"]["risk_level"]
@@ -57,7 +68,8 @@ def _print_diff_report(review: DiffReview, res: dict) -> None:
         print(f"   • {opt}: {prob*100:.1f}%")
     print("----------------------------------------------------------\n")
 
-def handle_diff(client: SystemOneClient, model: str, max_lines: int = DEFAULT_MAX_LINES_PER_FILE) -> int:
+def handle_diff(client: SystemOneClient, model: str, max_lines: int = DEFAULT_MAX_LINES_PER_FILE,
+                profile: Optional[str] = None) -> int:
     try:
         diff_output = subprocess.check_output(["git", "diff", "--cached"], text=True,
                                               timeout=GIT_DIFF_TIMEOUT_SECONDS)
@@ -71,7 +83,10 @@ def handle_diff(client: SystemOneClient, model: str, max_lines: int = DEFAULT_MA
 
     line_count = len(diff_output.splitlines())
     print(f"🔍 [SystemOne Gate] Inspecionando diff ({line_count} linhas) com modelo '{model}'...")
-    res = review_staged(client, diff_output, model, max_lines_per_file=max_lines)
+    try:
+        res = review_staged(client, diff_output, model, max_lines_per_file=max_lines, profile=profile)
+    except ValueError as e:
+        return _invalid_config(e)
     for coverage_line in format_coverage(res.get("coverage", {})):
         print(coverage_line)
 
@@ -101,9 +116,12 @@ def handle_diff(client: SystemOneClient, model: str, max_lines: int = DEFAULT_MA
     print("✅ [APROVADO] Verificação concluída com sucesso.")
     return 0
 
-def handle_triage(client: SystemOneClient, error_text: str, model: str) -> int:
+def handle_triage(client: SystemOneClient, error_text: str, model: str, profile: Optional[str] = None) -> int:
     print(f"🩺 [SystemOne Gate] Triando erro com modelo '{model}'...\n")
-    res = client.triage_error(error_text, model=model)
+    try:
+        res = client.triage_error(error_text, model=model, profile=profile)
+    except ValueError as e:
+        return _invalid_config(e)
 
     if "error" in res:
         print(f"❌ Erro: {res['error']}", file=sys.stderr)
@@ -142,7 +160,7 @@ def handle_guard(client: SystemOneClient, command_text: str, model: str) -> int:
 def main(argv: Optional[List[str]] = None):
     parser = argparse.ArgumentParser(
         prog="systemone-gate",
-        description="Gatekeeper e motor de triagem local ultrarrápido para agentes de IA e desenvolvedores."
+        description="Gatekeeper e motor de triagem local de baixa latência para agentes de IA e desenvolvedores."
     )
     parser.add_argument("--plain", action="store_true",
                         help="Saída apenas ASCII (sem emoji); também via SYSTEMONE_PLAIN=1")
@@ -150,12 +168,18 @@ def main(argv: Optional[List[str]] = None):
 
     # diff
     p_diff = subparsers.add_parser("diff", help="Inspeciona alterações staged (git diff --cached)")
-    p_diff.add_argument("--nimble", action="store_true", help="Usa Nimble (9B) em vez do Tev1 padrão")
+    diff_model = p_diff.add_mutually_exclusive_group()
+    diff_model.add_argument("--nimble", action="store_true", help="Atalho para --model nimble (9B)")
+    diff_model.add_argument(
+        "--model", default=None,
+        help=f"Modelo Ollama (padrão: {DEFAULT_DIFF_MODEL}; também via {DIFF_MODEL_ENV})")
+    p_diff.add_argument("--profile", choices=PROFILES, default=None, help=PROFILE_HELP)
 
     # triage
     p_triage = subparsers.add_parser("triage", help="Triagem de erros de compilação, testes ou logs")
     p_triage.add_argument("error_text", nargs="+", help="Texto do erro ou stacktrace")
     p_triage.add_argument("--model", default="nimble", help="Modelo Ollama a utilizar (padrão: nimble)")
+    p_triage.add_argument("--profile", choices=PROFILES, default=None, help=PROFILE_HELP)
 
     # guard
     p_guard = subparsers.add_parser("guard", help="Valida se um comando shell tem riscos de destruição de dados")
@@ -172,6 +196,11 @@ def main(argv: Optional[List[str]] = None):
     # hook-guard
     subparsers.add_parser("hook-guard", help="Hook PreToolUse do Claude Code: bloqueia comandos catastróficos (offline, sem modelo)")
 
+    # doctor
+    p_doctor = subparsers.add_parser("doctor", help="Valida o backend Ollama (versão, modelos e contrato do endpoint)")
+    p_doctor.add_argument("--model", action="append", default=None, help="Modelo a verificar (repetível; padrão: tev1:0.8b e nimble)")
+    p_doctor.add_argument("--no-smoke", action="store_true", help="Pula o teste de contrato (POST /v1/systemone)")
+
     # mcp
     subparsers.add_parser("mcp", help="Inicia o servidor MCP stdio (para Claude Desktop, Cursor, Antigravity)")
 
@@ -181,6 +210,14 @@ def main(argv: Optional[List[str]] = None):
     with output_ctx:
         _dispatch(parser, args)
 
+def _resolve_diff_model(args: argparse.Namespace) -> str:
+    """--model / --nimble > SYSTEMONE_DIFF_MODEL (non-empty) > default."""
+    if args.model:
+        return args.model
+    if args.nimble:
+        return NIMBLE_MODEL
+    return os.environ.get(DIFF_MODEL_ENV) or DEFAULT_DIFF_MODEL
+
 def _dispatch(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
     try:
         client = SystemOneClient()
@@ -189,12 +226,13 @@ def _dispatch(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None
         sys.exit(2)
 
     if args.command == "diff":
-        model = "nimble" if args.nimble else "tev1:0.8b"
-        sys.exit(handle_diff(client, model=model))
+        if args.model is not None and not args.model.strip():
+            parser.error("--model não pode ser vazio")
+        sys.exit(handle_diff(client, model=_resolve_diff_model(args), profile=args.profile))
 
     elif args.command == "triage":
         err_msg = " ".join(args.error_text)
-        sys.exit(handle_triage(client, err_msg, model=args.model))
+        sys.exit(handle_triage(client, err_msg, model=args.model, profile=args.profile))
 
     elif args.command == "guard":
         cmd_msg = " ".join(args.cmd_text)
@@ -213,6 +251,9 @@ def _dispatch(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None
         if message:
             print(message, file=sys.stderr)
         sys.exit(code)
+
+    elif args.command == "doctor":
+        sys.exit(run_doctor_cli(client.endpoint, args.model, not args.no_smoke, client.timeout))
 
     elif args.command == "mcp":
         run_mcp_server()
