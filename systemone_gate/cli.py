@@ -10,6 +10,7 @@ import argparse
 from typing import List
 
 from .client import SystemOneClient
+from .diff_review import format_coverage, review_staged
 from .hooks import install_git_hook, uninstall_git_hook
 from .mcp_server import run_mcp_server
 
@@ -24,14 +25,11 @@ def handle_diff(client: SystemOneClient, model: str, max_lines: int = 250) -> in
         print("ℹ️  Nenhuma alteração staged encontrada (git diff --cached vazio). Commit liberado.")
         return 0
 
-    lines = diff_output.splitlines()
-    if len(lines) > max_lines:
-        truncated_diff = "\n".join(lines[:max_lines]) + f"\n... [truncado {len(lines) - max_lines} linhas]"
-    else:
-        truncated_diff = diff_output
-
-    print(f"🔍 [SystemOne Gate] Inspecionando diff ({len(lines)} linhas) com modelo '{model}'...")
-    res = client.review_diff(truncated_diff, model=model)
+    line_count = len(diff_output.splitlines())
+    print(f"🔍 [SystemOne Gate] Inspecionando diff ({line_count} linhas) com modelo '{model}'...")
+    res = review_staged(client, diff_output, model, max_lines_per_file=max_lines)
+    for coverage_line in format_coverage(res.get("coverage", {})):
+        print(coverage_line)
 
     if "error" in res:
         print(f"⚠️  [SystemOne Gate] Aviso: {res['error']}", file=sys.stderr)
