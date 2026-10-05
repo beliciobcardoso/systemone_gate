@@ -4,21 +4,15 @@ Zero external dependencies (pure standard library).
 Compatible with Claude Desktop, Cursor, Antigravity, Cline, Windsurf, Roo Code.
 """
 
-import sys
 import json
 import subprocess
+import sys
 import traceback
-from typing import Dict, Any
+from typing import Any, Dict
 
 from .client import SystemOneClient
 from .diff_review import review_staged
 from .policy import PolicyConfig, evaluate_diff
-from .rubrics import (
-    RUBRIC_DIFF_RISK,
-    RUBRIC_ERROR_TRIAGE,
-    RUBRIC_COMMAND_SAFETY,
-    RUBRIC_AGENT_ROUTING,
-)
 
 GIT_DIFF_TIMEOUT_SECONDS = 30
 NOTHING_STAGED_NOTE = "nenhuma alteração staged"
@@ -30,7 +24,10 @@ PREFER_STAGED_HINT = (
 MCP_TOOLS = [
     {
         "name": "systemone_triage_error",
-        "description": "Triage and classify build, linker, runtime errors, or test failures using local Ollama Nimble (9B) decision model." + PREFER_STAGED_HINT,
+        "description": (
+            "Triage and classify build, linker, runtime errors, or test failures using local Ollama "
+            "Nimble (9B) decision model." + PREFER_STAGED_HINT
+        ),
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -49,7 +46,10 @@ MCP_TOOLS = [
     },
     {
         "name": "systemone_review_diff",
-        "description": "Evaluates architectural risk, breaking changes, and critical failure modes in a code patch or git diff using Nimble (9B)." + PREFER_STAGED_HINT,
+        "description": (
+            "Evaluates architectural risk, breaking changes, and critical failure modes in a code patch "
+            "or git diff using Nimble (9B)." + PREFER_STAGED_HINT
+        ),
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -68,7 +68,12 @@ MCP_TOOLS = [
     },
     {
         "name": "systemone_review_staged",
-        "description": "Reviews the changes currently staged in git (git diff --cached, read by the server in its working directory) per file, skipping lockfiles/binaries, and returns risk, breaking-change answers, coverage and the allow/block policy decision. Preferred over systemone_review_diff: the diff never passes through the agent.",
+        "description": (
+            "Reviews the changes currently staged in git (git diff --cached, read by the server in its "
+            "working directory) per file, skipping lockfiles/binaries, and returns risk, breaking-change "
+            "answers, coverage and the allow/block policy decision. Preferred over "
+            "systemone_review_diff: the diff never passes through the agent."
+        ),
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -82,7 +87,10 @@ MCP_TOOLS = [
     },
     {
         "name": "systemone_command_guard",
-        "description": "Low-latency local safety check (deterministic rules first, then tev1:0.8b) before executing potentially risky shell/bash commands.",
+        "description": (
+            "Low-latency local safety check (deterministic rules first, then tev1:0.8b) before executing "
+            "potentially risky shell/bash commands."
+        ),
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -128,7 +136,7 @@ def _text_result(payload: Dict[str, Any], is_error: bool = False) -> Dict[str, A
     # A tool payload carrying an "error" key is a failure, not an answer.
     if isinstance(payload, dict) and "error" in payload:
         is_error = True
-    result = {
+    result: Dict[str, Any] = {
         "content": [
             {
                 "type": "text",

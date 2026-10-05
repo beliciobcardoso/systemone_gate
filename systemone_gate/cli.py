@@ -3,22 +3,21 @@ Command Line Interface (CLI) for SystemOne Gate.
 Provides dev tools and can start the MCP server directly.
 """
 
-import os
-import sys
-import subprocess
-import json
 import argparse
+import json
+import os
+import subprocess
+import sys
 from contextlib import nullcontext
 from typing import List, Optional
 
 from .claude_hook import run_pretooluse
 from .client import SystemOneClient
-from .doctor import run_cli as run_doctor_cli
 from .diff_review import DEFAULT_MAX_LINES_PER_FILE, format_coverage, review_staged
+from .doctor import run_cli as run_doctor_cli
 from .hooks import install_git_hook, uninstall_git_hook
 from .mcp_server import run_mcp_server
 from .output import plain_output
-from .rubrics import DEFAULT_PROFILE, PROFILES
 from .policy import (
     ACTION_BLOCK,
     DiffReview,
@@ -30,6 +29,7 @@ from .policy import (
     parse_command_check,
     parse_diff_review,
 )
+from .rubrics import DEFAULT_PROFILE, PROFILES
 
 EXIT_CONFIG_ERROR = 2
 DEFAULT_DIFF_MODEL = "tev1:0.8b"
@@ -190,15 +190,26 @@ def main(argv: Optional[List[str]] = None):
     p_hook.add_argument("--repo", default=None, help="Caminho do repositório Git")
 
     # uninstall-hook
-    p_unhook = subparsers.add_parser("uninstall-hook", help="Remove o pre-commit hook do SystemOne Gate (restaura o backup, se houver)")
+    p_unhook = subparsers.add_parser(
+        "uninstall-hook",
+        help="Remove o pre-commit hook do SystemOne Gate (restaura o backup, se houver)",
+    )
     p_unhook.add_argument("--repo", default=None, help="Caminho do repositório Git")
 
     # hook-guard
-    subparsers.add_parser("hook-guard", help="Hook PreToolUse do Claude Code: bloqueia comandos catastróficos (offline, sem modelo)")
+    subparsers.add_parser(
+        "hook-guard",
+        help="Hook PreToolUse do Claude Code: bloqueia comandos catastróficos (offline, sem modelo)",
+    )
 
     # doctor
     p_doctor = subparsers.add_parser("doctor", help="Valida o backend Ollama (versão, modelos e contrato do endpoint)")
-    p_doctor.add_argument("--model", action="append", default=None, help="Modelo a verificar (repetível; padrão: tev1:0.8b e nimble)")
+    p_doctor.add_argument(
+        "--model",
+        action="append",
+        default=None,
+        help="Modelo a verificar (repetível; padrão: tev1:0.8b e nimble)",
+    )
     p_doctor.add_argument("--no-smoke", action="store_true", help="Pula o teste de contrato (POST /v1/systemone)")
 
     # mcp
@@ -213,7 +224,8 @@ def main(argv: Optional[List[str]] = None):
 def _resolve_diff_model(args: argparse.Namespace) -> str:
     """--model / --nimble > SYSTEMONE_DIFF_MODEL (non-empty) > default."""
     if args.model:
-        return args.model
+        model: str = args.model  # argparse Namespace attributes are Any
+        return model
     if args.nimble:
         return NIMBLE_MODEL
     return os.environ.get(DIFF_MODEL_ENV) or DEFAULT_DIFF_MODEL

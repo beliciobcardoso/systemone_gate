@@ -29,7 +29,7 @@ systemone-gate = "systemone_gate.cli:main"
 systemone-mcp = "systemone_gate.mcp_server:run_mcp_server"
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "pytest-cov>=5"]
+dev = ["pytest>=8", "pytest-cov>=5", "ruff>=0.15", "mypy>=2.0"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -41,3 +41,30 @@ source = ["systemone_gate"]
 
 [tool.coverage.report]
 show_missing = true
+
+[tool.ruff]
+target-version = "py39"
+# 120 (not 100): the codebase has long Portuguese/English message strings; at 120 only
+# a handful of lines exceed the limit and `ruff format` churn is smaller than at 100.
+line-length = 120
+
+[tool.ruff.lint]
+# E/W pycodestyle, F pyflakes, I isort, B bugbear. UP is intentionally off (would churn annotations).
+# FA102 rejects PEP 604 unions (X | Y) in annotations without `from __future__ import annotations`:
+# the tests run on Python 3.12, so this is what protects the declared Python 3.9 floor from that mistake.
+select = ["E", "F", "W", "I", "B", "FA102"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["systemone_gate"]
+
+[tool.mypy]
+# mypy >= 2.0 no longer accepts python_version 3.9; 3.10 is the lowest it can target.
+# The py39 floor is enforced for syntax by ruff's target-version and by the test suite.
+python_version = "3.10"
+files = ["systemone_gate"]
+check_untyped_defs = true
+no_implicit_optional = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_return_any = true
+disallow_untyped_defs = false

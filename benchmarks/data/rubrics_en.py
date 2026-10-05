@@ -12,18 +12,14 @@ RUBRIC_DIFF_RISK_EN = {
         "criteria": [
             "Low: safe, documentation, comments or cosmetic refactoring",
             "Medium: new isolated function, simple bug fix with low coupling",
-            "High: changes to concurrency, locks, memory allocation or socket structs"
-        ]
+            "High: changes to concurrency, locks, memory allocation or socket structs",
+        ],
     },
     "breaking_change": {
         "type": "choice",
         "instructions": "Does this change break public contracts, APIs or protocols?",
-        "criteria": {
-            "safe": None,
-            "potential_break": None,
-            "breaking_change": None
-        }
-    }
+        "criteria": {"safe": None, "potential_break": None, "breaking_change": None},
+    },
 }
 
 RUBRIC_ERROR_TRIAGE_EN = {
@@ -37,8 +33,8 @@ RUBRIC_ERROR_TRIAGE_EN = {
             "network_socket_timeout": None,
             "protocol_parsing_error": None,
             "test_assertion_failure": None,
-            "environment_or_missing_dep": None
-        }
+            "environment_or_missing_dep": None,
+        },
     },
     "severity": {
         "type": "score",
@@ -46,7 +42,7 @@ RUBRIC_ERROR_TRIAGE_EN = {
         "criteria": [
             "Non-blocking or cosmetic warning",
             "Partial failure or isolated test",
-            "Critical blocking compilation or runtime error"
-        ]
-    }
+            "Critical blocking compilation or runtime error",
+        ],
+    },
 }

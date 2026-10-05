@@ -254,6 +254,20 @@ Para guias passo a passo de como plugar o SystemOne Gate em cada agente específ
 
 ---
 
+## 🛠️ Desenvolvimento
+
+```bash
+pip install -e ".[dev]"   # pytest, ruff e mypy
+scripts/check.sh          # ruff check → ruff format --check → mypy → pytest
+```
+
+- **ruff** (`E,F,W,I,B`): estilo, imports não usados/ordenados e armadilhas comuns (bugbear); também formata. O `format --check` só cobre arquivos Python **novos** (os existentes não foram reformatados em massa); `FORMAT_ALL=1 scripts/check.sh` verifica tudo.
+- **mypy**: checagem de tipos de `systemone_gate/` (os testes não são tipados).
+- **pytest**: suíte hermética (não chama o Ollama real; o teste `contract` é opt-in).
+- Não há CI de propósito: as verificações são locais.
+
+---
+
 ## 📄 Licença
 
 Distribuído sob a licença [MIT](LICENSE).

@@ -8,6 +8,7 @@ Sequential requests against a local Ollama /v1/systemone. `--dry-run` validates 
 rubrics without calling Ollama. `--summarize-only` recomputes the summary from the saved results.
 Does not touch production code or defaults.
 """
+
 import argparse
 import datetime
 import hashlib
@@ -27,6 +28,7 @@ sys.path.insert(0, ROOT)
 sys.path.insert(0, HERE)
 
 import rubric_language_stats as st  # noqa: E402
+
 from systemone_gate.client import SystemOneClient  # noqa: E402
 from systemone_gate.rubrics import get_diff_rubric, get_triage_rubric  # noqa: E402
 
@@ -114,8 +116,14 @@ def run_condition(client, model, rubric, cases, label):
             print(f"  [{label}] {i}/{len(cases)} {case['id']} ERROR {resp['error'][:120]}", flush=True)
             results.append({"id": case["id"], "error": resp["error"], "status": resp.get("status"), "ms": ms})
         else:
-            results.append({"id": case["id"], "answers": compact(resp["answers"]),
-                            "input_tokens": resp.get("usage", {}).get("input_tokens"), "ms": ms})
+            results.append(
+                {
+                    "id": case["id"],
+                    "answers": compact(resp["answers"]),
+                    "input_tokens": resp.get("usage", {}).get("input_tokens"),
+                    "ms": ms,
+                }
+            )
             if i % 10 == 0 or i == len(cases):
                 print(f"  [{label}] {i}/{len(cases)}", flush=True)
     return results
@@ -137,8 +145,15 @@ def triage_predictions(results, cases):
         if r is None:
             continue
         a = r["answers"]["root_cause"]
-        rows.append({"id": case["id"], "true": case["label"], "pred": st.argmax_key(a["probabilities"]),
-                     "choice": a.get("choice"), "confidence": a.get("confidence")})
+        rows.append(
+            {
+                "id": case["id"],
+                "true": case["label"],
+                "pred": st.argmax_key(a["probabilities"]),
+                "choice": a.get("choice"),
+                "confidence": a.get("confidence"),
+            }
+        )
     return rows
 
 
@@ -151,11 +166,19 @@ def diff_predictions(results, cases):
             continue
         risk = r["answers"]["risk_level"]
         bc = r["answers"]["breaking_change"]
-        rows.append({"id": case["id"], "true_risk": str(case["risk_level"]),
-                     "pred_risk": st.argmax_key(risk["probabilities"]), "score": risk.get("score"),
-                     "risk_confidence": risk.get("confidence"),
-                     "true_bc": case["breaking_change"], "pred_bc": st.argmax_key(bc["probabilities"]),
-                     "bc_choice": bc.get("choice"), "bc_confidence": bc.get("confidence")})
+        rows.append(
+            {
+                "id": case["id"],
+                "true_risk": str(case["risk_level"]),
+                "pred_risk": st.argmax_key(risk["probabilities"]),
+                "score": risk.get("score"),
+                "risk_confidence": risk.get("confidence"),
+                "true_bc": case["breaking_change"],
+                "pred_bc": st.argmax_key(bc["probabilities"]),
+                "bc_choice": bc.get("choice"),
+                "bc_confidence": bc.get("confidence"),
+            }
+        )
     return rows
 
 
@@ -165,10 +188,16 @@ def metric_block(y_true, y_pred, labels, confidences):
         return {"n": 0}
     k = sum(1 for t, p in zip(y_true, y_pred) if t == p)
     low, high = st.wilson_interval(k, n)
-    return {"n": n, "correct": k, "accuracy": k / n, "wilson95": [low, high],
-            "macro_f1": st.macro_f1(y_true, y_pred, labels),
-            "mean_confidence": st.mean([c for c in confidences if c is not None]),
-            "labels": list(labels), "confusion": st.confusion_matrix(y_true, y_pred, labels)}
+    return {
+        "n": n,
+        "correct": k,
+        "accuracy": k / n,
+        "wilson95": [low, high],
+        "macro_f1": st.macro_f1(y_true, y_pred, labels),
+        "mean_confidence": st.mean([c for c in confidences if c is not None]),
+        "labels": list(labels),
+        "confusion": st.confusion_matrix(y_true, y_pred, labels),
+    }
 
 
 def summarize(runs, triage, diffs, models):
@@ -179,27 +208,39 @@ def summarize(runs, triage, diffs, models):
         task, lang, model = key.split("|", 2)
         if task == "triage":
             rows = triage_predictions(results, triage)
-            block = metric_block([r["true"] for r in rows], [r["pred"] for r in rows], triage_labels,
-                                 [r["confidence"] for r in rows])
+            block = metric_block(
+                [r["true"] for r in rows], [r["pred"] for r in rows], triage_labels, [r["confidence"] for r in rows]
+            )
             block["choice_agrees_with_argmax"] = sum(1 for r in rows if r["choice"] == r["pred"])
             block["failed_requests"] = len(results) - len(rows)
             summary["conditions"][key] = {"root_cause": block}
         else:
             rows = diff_predictions(results, diffs)
-            risk = metric_block([r["true_risk"] for r in rows], [r["pred_risk"] for r in rows], RISK_LABELS,
-                                [r["risk_confidence"] for r in rows])
+            risk = metric_block(
+                [r["true_risk"] for r in rows],
+                [r["pred_risk"] for r in rows],
+                RISK_LABELS,
+                [r["risk_confidence"] for r in rows],
+            )
             if rows:
-                risk["mae_score"] = st.mean_absolute_error([float(r["true_risk"]) for r in rows],
-                                                           [r["score"] for r in rows])
-            bc = metric_block([r["true_bc"] for r in rows], [r["pred_bc"] for r in rows], BC_LABELS,
-                              [r["bc_confidence"] for r in rows])
+                risk["mae_score"] = st.mean_absolute_error(
+                    [float(r["true_risk"]) for r in rows], [r["score"] for r in rows]
+                )
+            bc = metric_block(
+                [r["true_bc"] for r in rows],
+                [r["pred_bc"] for r in rows],
+                BC_LABELS,
+                [r["bc_confidence"] for r in rows],
+            )
             bc["choice_agrees_with_argmax"] = sum(1 for r in rows if r["bc_choice"] == r["pred_bc"])
             bc["failed_requests"] = len(results) - len(rows)
             summary["conditions"][key] = {"risk_level": risk, "breaking_change": bc}
         rows_by_cond[key] = rows
     for model in models:
-        for task, fields in (("triage", [("root_cause", "true", "pred")]),
-                             ("diff", [("risk_level", "true_risk", "pred_risk"), ("breaking_change", "true_bc", "pred_bc")])):
+        for task, fields in (
+            ("triage", [("root_cause", "true", "pred")]),
+            ("diff", [("risk_level", "true_risk", "pred_risk"), ("breaking_change", "true_bc", "pred_bc")]),
+        ):
             kpt, ken = condition_key(task, "pt", model), condition_key(task, "en", model)
             if kpt not in rows_by_cond or ken not in rows_by_cond:
                 continue
@@ -212,11 +253,15 @@ def summarize(runs, triage, diffs, models):
                 counts = st.paired_counts(a, b)
                 p = st.mcnemar_exact(counts["only_a_right"], counts["only_b_right"])
                 summary["paired"][f"{task}:{name}|{model}"] = {
-                    "n_pairs": len(ids), "pt_acc": sum(a) / len(a) if a else None,
+                    "n_pairs": len(ids),
+                    "pt_acc": sum(a) / len(a) if a else None,
                     "en_acc": sum(b) / len(b) if b else None,
-                    "both_right": counts["both_right"], "only_pt_right": counts["only_a_right"],
-                    "only_en_right": counts["only_b_right"], "both_wrong": counts["both_wrong"],
-                    "mcnemar_exact_p": p}
+                    "both_right": counts["both_right"],
+                    "only_pt_right": counts["only_a_right"],
+                    "only_en_right": counts["only_b_right"],
+                    "both_wrong": counts["both_wrong"],
+                    "mcnemar_exact_p": p,
+                }
     return summary
 
 
@@ -228,14 +273,18 @@ def print_summary(summary):
                 print(f"{key} {name}: no data")
                 continue
             extra = f" MAE={b['mae_score']:.3f}" if "mae_score" in b else ""
-            print(f"{key:28} {name:16} n={b['n']} acc={b['accuracy']:.3f} "
-                  f"CI95=[{b['wilson95'][0]:.3f},{b['wilson95'][1]:.3f}] macroF1={b['macro_f1']:.3f} "
-                  f"conf={b['mean_confidence']:.3f}{extra}")
+            print(
+                f"{key:28} {name:16} n={b['n']} acc={b['accuracy']:.3f} "
+                f"CI95=[{b['wilson95'][0]:.3f},{b['wilson95'][1]:.3f}] macroF1={b['macro_f1']:.3f} "
+                f"conf={b['mean_confidence']:.3f}{extra}"
+            )
     print("\n=== Paired pt vs en ===")
     for key, p in summary["paired"].items():
-        print(f"{key:40} pt={p['pt_acc']:.3f} en={p['en_acc']:.3f} both_right={p['both_right']} "
-              f"only_pt={p['only_pt_right']} only_en={p['only_en_right']} both_wrong={p['both_wrong']} "
-              f"p={p['mcnemar_exact_p']:.4f}")
+        print(
+            f"{key:40} pt={p['pt_acc']:.3f} en={p['en_acc']:.3f} both_right={p['both_right']} "
+            f"only_pt={p['only_pt_right']} only_en={p['only_en_right']} both_wrong={p['both_wrong']} "
+            f"p={p['mcnemar_exact_p']:.4f}"
+        )
 
 
 def determinism_check(client, models, rubrics, triage, diffs, runs):
@@ -252,8 +301,9 @@ def determinism_check(client, models, rubrics, triage, diffs, runs):
             if "error" in resp:
                 report.append({"model": model, "id": case["id"], "identical": None, "error": resp["error"]})
                 continue
-            same = all(first["answers"][k]["probabilities"] == v["probabilities"]
-                       for k, v in compact(resp["answers"]).items())
+            same = all(
+                first["answers"][k]["probabilities"] == v["probabilities"] for k, v in compact(resp["answers"]).items()
+            )
             report.append({"model": model, "id": case["id"], "task": task, "identical": same})
     return report
 
@@ -264,6 +314,7 @@ def environment_meta(models):
             return subprocess.run(cmd, capture_output=True, text=True, timeout=10).stdout.strip()
         except Exception as exc:  # noqa: BLE001 - metadata is best effort
             return f"unavailable: {exc}"
+
     try:
         with urllib.request.urlopen("http://localhost:11434/api/version", timeout=5) as r:
             api_version = json.loads(r.read().decode())["version"]
@@ -273,12 +324,20 @@ def environment_meta(models):
     for name in ("triage_cases.json", "diff_cases.json", "rubrics_en.py"):
         with open(os.path.join(DATA_DIR, name), "rb") as f:
             files[name] = hashlib.sha256(f.read()).hexdigest()[:16]
-    return {"date": datetime.datetime.now().astimezone().isoformat(timespec="seconds"), "models": models,
-            "ollama_version_cli": sh(["ollama", "-v"]), "ollama_api_version": api_version,
-            "ollama_list": sh(["ollama", "list"]), "gpu": sh(["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader"]),
-            "python": platform.python_version(), "platform": platform.platform(), "cpus": os.cpu_count(),
-            "git_head": sh(["git", "-C", ROOT, "rev-parse", "HEAD"]), "data_sha256_16": files,
-            "request_policy": "sequential, one pass per condition, redact=False, default rubric profile"}
+    return {
+        "date": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
+        "models": models,
+        "ollama_version_cli": sh(["ollama", "-v"]),
+        "ollama_api_version": api_version,
+        "ollama_list": sh(["ollama", "list"]),
+        "gpu": sh(["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader"]),
+        "python": platform.python_version(),
+        "platform": platform.platform(),
+        "cpus": os.cpu_count(),
+        "git_head": sh(["git", "-C", ROOT, "rev-parse", "HEAD"]),
+        "data_sha256_16": files,
+        "request_policy": "sequential, one pass per condition, redact=False, default rubric profile",
+    }
 
 
 def main(argv=None):
@@ -295,12 +354,16 @@ def main(argv=None):
     rubrics = load_rubrics()
     validate(triage, diffs, rubrics)
     if args.limit:
-        triage, diffs = triage[:args.limit], diffs[:args.limit]
+        triage, diffs = triage[: args.limit], diffs[: args.limit]
     if args.dry_run:
-        print(f"dry-run OK: {len(triage)} triage cases, {len(diffs)} diff cases, rubrics pt/en consistent; "
-              f"{len(args.models)} models x {len(args.tasks)} tasks x 2 langs = "
-              f"{len(args.models) * len(args.tasks) * 2} conditions, "
-              f"{len(args.models) * 2 * ((len(triage) if 'triage' in args.tasks else 0) + (len(diffs) if 'diff' in args.tasks else 0))} requests")
+        n_cases = (len(triage) if "triage" in args.tasks else 0) + (len(diffs) if "diff" in args.tasks else 0)
+        n_requests = len(args.models) * 2 * n_cases
+        print(
+            f"dry-run OK: {len(triage)} triage cases, {len(diffs)} diff cases, rubrics pt/en consistent; "
+            f"{len(args.models)} models x {len(args.tasks)} tasks x 2 langs = "
+            f"{len(args.models) * len(args.tasks) * 2} conditions, "
+            f"{n_requests} requests"
+        )
         return 0
     if args.summarize_only:
         with open(args.output, encoding="utf-8") as f:
@@ -318,14 +381,22 @@ def main(argv=None):
                 key = condition_key(task, lang, model)
                 print(f"== {key} ({len(data[task])} cases)", flush=True)
                 runs[key] = run_condition(client, model, rubrics[(task, lang)], data[task], key)
-    det = determinism_check(client, args.models, rubrics, triage, diffs, runs) if "triage" in args.tasks and "diff" in args.tasks else []
+    det = (
+        determinism_check(client, args.models, rubrics, triage, diffs, runs)
+        if "triage" in args.tasks and "diff" in args.tasks
+        else []
+    )
     summary = summarize(runs, triage, diffs, args.models)
     print_summary(summary)
     print("\ndeterminism:", json.dumps(det))
     os.makedirs(os.path.dirname(args.output), exist_ok=True)
     with open(args.output, "w", encoding="utf-8") as f:
-        json.dump({"meta": environment_meta(args.models), "runs": runs, "determinism": det, "summary": summary},
-                  f, ensure_ascii=False, indent=1)
+        json.dump(
+            {"meta": environment_meta(args.models), "runs": runs, "determinism": det, "summary": summary},
+            f,
+            ensure_ascii=False,
+            indent=1,
+        )
     print(f"saved {args.output}")
     return 0
 

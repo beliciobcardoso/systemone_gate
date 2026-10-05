@@ -8,7 +8,7 @@ machine. All patterns are linear-time (no nested or ambiguous quantifiers).
 
 import re
 from dataclasses import dataclass
-from typing import Callable, Match, Pattern, Tuple
+from typing import Callable, List, Match, Pattern, Tuple
 
 REDACTION_MARKER = "[REDACTED:%s]"
 _MARKER_PREFIX = "[REDACTED:"
@@ -30,11 +30,11 @@ def _marker(rule: str) -> str:
     return REDACTION_MARKER % rule
 
 
-def _whole(rule: str) -> Callable[[Match], str]:
+def _whole(rule: str) -> Callable[[Match[str]], str]:
     return lambda _m: _marker(rule)
 
 
-def _keep_prefix(rule: str) -> Callable[[Match], str]:
+def _keep_prefix(rule: str) -> Callable[[Match[str]], str]:
     """Keeps group 1 (context) and replaces the secret in group 2."""
     return lambda m: m.group(1) + _marker(rule)
 
@@ -50,7 +50,7 @@ def _looks_like_reference(value: str) -> bool:
     return any(ch in _CODE_CHARS for ch in value)
 
 
-def _redact_assignment(m: Match) -> str:
+def _redact_assignment(m: Match[str]) -> str:
     head, value = m.group(1), m.group(2)
     if value[0] in "\"'":
         inner = value[1:-1]
@@ -70,7 +70,7 @@ _KEYWORD = r"(?:password|passwd|secret(?:[_-]?key)?|api[_-]?key|token)"
 _VALUE_CHAR = r"""[^\s"',;]"""
 
 # Order matters: specific formats first, generic assignments last.
-_RULES: Tuple[Tuple[str, Pattern, Callable[[Match], str]], ...] = (
+_RULES: Tuple[Tuple[str, Pattern[str], Callable[[Match[str]], str]], ...] = (
     ("private_key",
      re.compile(r"-----BEGIN [A-Z ]{0,30}PRIVATE KEY-----[\s\S]*?(?:-----END [A-Z ]{0,30}PRIVATE KEY-----|\Z)"),
      _whole("private_key")),
@@ -120,15 +120,21 @@ def redact_secrets(text: str) -> RedactionResult:
     """
     if not isinstance(text, str):
         raise TypeError("redact_secrets expects str, got %s" % type(text).__name__)
-    findings = []
+    findings: List[str] = []
     current = text
     for rule_id, pattern, replacer in _RULES:
         current = _apply(pattern, replacer, rule_id, current, findings)
     return RedactionResult(text=current, findings=tuple(findings))
 
 
-def _apply(pattern: Pattern, replacer: Callable[[Match], str], rule_id: str, text: str, findings: list) -> str:
-    def substitute(m: Match) -> str:
+def _apply(
+    pattern: Pattern[str],
+    replacer: Callable[[Match[str]], str],
+    rule_id: str,
+    text: str,
+    findings: List[str],
+) -> str:
+    def substitute(m: Match[str]) -> str:
         replacement = replacer(m)
         if replacement != m.group(0):
             findings.append(rule_id)

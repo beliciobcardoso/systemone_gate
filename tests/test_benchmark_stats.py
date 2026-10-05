@@ -1,4 +1,5 @@
 """Hermetic tests for the rubric-language benchmark helpers and its English rubrics."""
+
 import importlib.util
 import json
 import math
@@ -108,10 +109,13 @@ def _shape(rubric):
     return shape
 
 
-@pytest.mark.parametrize("pt, en", [
-    (get_diff_rubric("default"), rubrics_en.RUBRIC_DIFF_RISK_EN),
-    (get_triage_rubric("default"), rubrics_en.RUBRIC_ERROR_TRIAGE_EN),
-])
+@pytest.mark.parametrize(
+    "pt, en",
+    [
+        (get_diff_rubric("default"), rubrics_en.RUBRIC_DIFF_RISK_EN),
+        (get_triage_rubric("default"), rubrics_en.RUBRIC_ERROR_TRIAGE_EN),
+    ],
+)
 def test_english_rubrics_mirror_portuguese_structure(pt, en):
     assert list(pt.keys()) == list(en.keys())
     assert _shape(pt) == _shape(en)

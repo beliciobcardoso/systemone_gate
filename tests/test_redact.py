@@ -1,3 +1,4 @@
+import dataclasses
 import time
 
 import pytest
@@ -33,7 +34,11 @@ SECRET_CASES = [
     ("stripe_key", "stripe " + STRIPE, STRIPE),
     ("stripe_key", "stripe " + STRIPE_RK, STRIPE_RK),
     ("private_key", "before\n" + PEM + "\nafter", "MIIEowIBAAKCAQEA7x9fakefakefake"),
-    ("private_key", "before\n-----BEGIN OPENSSH PRIVATE " + "KEY-----\nb3BlbnNzaC1rZXktdjEAAAAA\n", "b3BlbnNzaC1rZXktdjEAAAAA"),
+    (
+        "private_key",
+        "before\n-----BEGIN OPENSSH PRIVATE " + "KEY-----\nb3BlbnNzaC1rZXktdjEAAAAA\n",
+        "b3BlbnNzaC1rZXktdjEAAAAA",
+    ),
     ("jwt", "t=" + JWT, JWT),
     ("bearer_token", "Authorization: Bearer abcDEF123456.tokenvalue-xyz", "abcDEF123456.tokenvalue-xyz"),
     ("bearer_token", "-H 'authorization: bearer Zm9vYmFyYmF6cXV4'", "Zm9vYmFyYmF6cXV4"),
@@ -139,7 +144,7 @@ def test_non_str_raises_type_error():
 
 def test_result_is_frozen():
     res = redact_secrets("x")
-    with pytest.raises(Exception):
+    with pytest.raises(dataclasses.FrozenInstanceError):
         res.text = "y"  # type: ignore[misc]
 
 

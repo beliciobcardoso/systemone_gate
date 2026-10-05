@@ -11,7 +11,7 @@ NOTE: the default thresholds are NOT calibrated against real data.
 import math
 import os
 from dataclasses import dataclass, field
-from typing import Any, Dict, Mapping, Optional, Tuple
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
 
 ACTION_ALLOW = "allow"
 ACTION_BLOCK = "block"
@@ -150,7 +150,7 @@ def _section(res: Any, key: str) -> Dict[str, Any]:
 
 
 def _score(section: Dict[str, Any], key: str) -> float:
-    value = section.get("score")
+    value: Any = section.get("score")  # raw JSON value; _is_finite_real validates it below
     if not _is_finite_real(value):
         raise InvalidResponse(f"campo 'answers.{key}.score' deve ser número finito")
     return float(value)
@@ -175,11 +175,8 @@ def _probabilities(section: Dict[str, Any], key: str) -> Dict[str, float]:
 
 def _min_confidence(*sections: Dict[str, Any]) -> Optional[float]:
     """Lowest valid confidence in [0, 1] among the sections; None if there is none."""
-    values = [
-        float(c)
-        for c in (section.get("confidence") for section in sections)
-        if _is_finite_real(c) and 0.0 <= c <= 1.0
-    ]
+    candidates: List[Any] = [section.get("confidence") for section in sections]  # raw JSON values
+    values = [float(c) for c in candidates if _is_finite_real(c) and 0.0 <= c <= 1.0]
     return min(values) if values else None
 
 
@@ -220,7 +217,7 @@ def _low_confidence_message(confidence: float, cfg: PolicyConfig) -> str:
 
 
 def decide_diff(review: DiffReview, cfg: PolicyConfig) -> Decision:
-    if is_low_confidence(review.confidence, cfg):
+    if review.confidence is not None and is_low_confidence(review.confidence, cfg):
         return decide_on_error(SURFACE_DIFF, _low_confidence_message(review.confidence, cfg), cfg)
     breaking_prob = review.breaking_probs.get(CHOICE_BREAKING, 0.0)
     if review.risk_score > cfg.diff_risk_threshold and breaking_prob > cfg.diff_breaking_threshold:
@@ -235,7 +232,7 @@ def decide_diff(review: DiffReview, cfg: PolicyConfig) -> Decision:
 def decide_command(check: CommandCheck, cfg: PolicyConfig) -> Decision:
     if check.source == SOURCE_RULES:
         return Decision(ACTION_BLOCK, ("comando casou com regra determinística",))
-    if is_low_confidence(check.confidence, cfg):
+    if check.confidence is not None and is_low_confidence(check.confidence, cfg):
         return decide_on_error(SURFACE_GUARD, _low_confidence_message(check.confidence, cfg), cfg)
     if check.choice == CHOICE_DESTRUCTIVE and check.danger_score > cfg.guard_danger_threshold:
         reason = f"destrutivo com perigo {check.danger_score:.2f} > {cfg.guard_danger_threshold}"
@@ -255,7 +252,13 @@ def decide_on_error(surface: str, message: str, cfg: PolicyConfig) -> Decision:
     return Decision(ACTION_ALLOW, (), warning=message)
 
 
-def _evaluate(res: Any, surface: str, parse, decide, cfg: PolicyConfig) -> Decision:
+def _evaluate(
+    res: Any,
+    surface: str,
+    parse: Callable[[Any], Any],
+    decide: Callable[[Any, PolicyConfig], Decision],
+    cfg: PolicyConfig,
+) -> Decision:
     if isinstance(res, dict) and "error" in res:
         return decide_on_error(surface, str(res["error"]), cfg)
     try:

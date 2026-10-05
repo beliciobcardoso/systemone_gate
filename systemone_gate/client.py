@@ -4,27 +4,27 @@ Supports Nimble (9B), Tev1 (0.8B, 4B) and Jev-compatible decision endpoints.
 """
 
 import copy
+import ipaddress
 import json
 import math
 import os
-import ipaddress
 import re
 import socket
 import sys
+import urllib.error
 import urllib.parse
 import urllib.request
-import urllib.error
-from typing import Dict, Any, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, cast
 
 from .guard_rules import evaluate_command
 from .redact import redact_secrets
 from .rubrics import (
     DEFAULT_PROFILE,
     PROFILES,
+    RUBRIC_AGENT_ROUTING,
+    RUBRIC_COMMAND_SAFETY,
     get_diff_rubric,
     get_triage_rubric,
-    RUBRIC_COMMAND_SAFETY,
-    RUBRIC_AGENT_ROUTING,
 )
 
 RULES_VERDICT_ANSWERS = {
@@ -104,7 +104,7 @@ def _validate_endpoint(endpoint: Any) -> str:
             raise ValueError(f"Endpoint inválido: host remoto em {shown}; "
                              f"defina {ALLOW_REMOTE_ENV_VAR}=1 para permitir")
         _warn_remote_once(endpoint)
-    return endpoint
+    return cast(str, endpoint)  # `endpoint` is Any only for the type-guard above; it is a str here
 
 
 def _resolve_redact(explicit: Optional[bool]) -> bool:
@@ -160,8 +160,10 @@ def _http_error_text(err: urllib.error.HTTPError) -> str:
         parsed = json.loads(snippet)
     except ValueError:
         return snippet
-    if isinstance(parsed, dict) and isinstance(parsed.get("error"), str):
-        return parsed["error"]
+    if isinstance(parsed, dict):
+        error = parsed.get("error")
+        if isinstance(error, str):
+            return error
     return snippet
 
 
@@ -210,7 +212,8 @@ class SystemOneClient:
                 data = json.loads(resp.read().decode("utf-8"))
                 if redactions and isinstance(data, dict):
                     return {**data, "redacted": redactions}
-                return data
+                # Wire JSON is untyped; callers (policy.parse_*) validate the shape.
+                return cast(Dict[str, Any], data)
         except urllib.error.HTTPError as e:  # before URLError: HTTPError is a subclass
             return self._http_error(e, selected_model)
         except (json.JSONDecodeError, UnicodeDecodeError):

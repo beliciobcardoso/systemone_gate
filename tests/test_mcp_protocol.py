@@ -36,8 +36,8 @@ class McpProc:
     def recv(self, timeout=TIMEOUT):
         try:
             line = self._q.get(timeout=timeout)
-        except queue.Empty:
-            raise AssertionError("MCP server did not reply within %ss" % timeout)
+        except queue.Empty as exc:
+            raise AssertionError("MCP server did not reply within %ss" % timeout) from exc
         assert line is not None, "MCP server closed stdout: " + self.proc.stderr.read()
         return json.loads(line)
 
