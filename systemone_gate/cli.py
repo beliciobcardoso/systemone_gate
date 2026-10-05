@@ -3,6 +3,7 @@ Command Line Interface (CLI) for SystemOne Gate.
 Provides dev tools and can start the MCP server directly.
 """
 
+import os
 import sys
 import subprocess
 import json
@@ -28,6 +29,9 @@ from .policy import (
 )
 
 EXIT_CONFIG_ERROR = 2
+DEFAULT_DIFF_MODEL = "tev1:0.8b"
+DIFF_MODEL_ENV = "SYSTEMONE_DIFF_MODEL"
+NIMBLE_MODEL = "nimble"
 GIT_DIFF_TIMEOUT_SECONDS = 30
 
 def _try_parse(parser, res):
@@ -138,7 +142,7 @@ def handle_guard(client: SystemOneClient, command_text: str, model: str) -> int:
 def main(argv: Optional[List[str]] = None):
     parser = argparse.ArgumentParser(
         prog="systemone-gate",
-        description="Gatekeeper e motor de triagem local ultrarrápido para agentes de IA e desenvolvedores."
+        description="Gatekeeper e motor de triagem local de baixa latência para agentes de IA e desenvolvedores."
     )
     parser.add_argument("--plain", action="store_true",
                         help="Saída apenas ASCII (sem emoji); também via SYSTEMONE_PLAIN=1")
@@ -146,7 +150,11 @@ def main(argv: Optional[List[str]] = None):
 
     # diff
     p_diff = subparsers.add_parser("diff", help="Inspeciona alterações staged (git diff --cached)")
-    p_diff.add_argument("--nimble", action="store_true", help="Usa Nimble (9B) em vez do Tev1 padrão")
+    diff_model = p_diff.add_mutually_exclusive_group()
+    diff_model.add_argument("--nimble", action="store_true", help="Atalho para --model nimble (9B)")
+    diff_model.add_argument(
+        "--model", default=None,
+        help=f"Modelo Ollama (padrão: {DEFAULT_DIFF_MODEL}; também via {DIFF_MODEL_ENV})")
 
     # triage
     p_triage = subparsers.add_parser("triage", help="Triagem de erros de compilação, testes ou logs")
@@ -177,6 +185,14 @@ def main(argv: Optional[List[str]] = None):
     with output_ctx:
         _dispatch(parser, args)
 
+def _resolve_diff_model(args: argparse.Namespace) -> str:
+    """--model / --nimble > SYSTEMONE_DIFF_MODEL (non-empty) > default."""
+    if args.model:
+        return args.model
+    if args.nimble:
+        return NIMBLE_MODEL
+    return os.environ.get(DIFF_MODEL_ENV) or DEFAULT_DIFF_MODEL
+
 def _dispatch(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
     try:
         client = SystemOneClient()
@@ -185,8 +201,9 @@ def _dispatch(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None
         sys.exit(2)
 
     if args.command == "diff":
-        model = "nimble" if args.nimble else "tev1:0.8b"
-        sys.exit(handle_diff(client, model=model))
+        if args.model is not None and not args.model.strip():
+            parser.error("--model não pode ser vazio")
+        sys.exit(handle_diff(client, model=_resolve_diff_model(args)))
 
     elif args.command == "triage":
         err_msg = " ".join(args.error_text)
