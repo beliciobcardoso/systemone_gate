@@ -121,6 +121,9 @@ systemone-gate diff
 # Inspecionar diff com o modelo Nimble (análise mais profunda)
 systemone-gate diff --nimble
 
+# Qualquer modelo Ollama (ordem: --model/--nimble > SYSTEMONE_DIFF_MODEL > tev1:0.8b)
+systemone-gate diff --model NOME
+
 # Triagem de erro de build ou teste
 systemone-gate triage "undefined reference to mqtt3_db_open no mosquitto.c"
 
@@ -133,6 +136,10 @@ systemone-gate install-hook
 # Remover o hook (restaura o hook original, se houver backup)
 systemone-gate uninstall-hook
 ```
+
+**Modelo do pre-commit hook:** o hook usa `tev1:0.8b` por padrão (rápido, porém menos preciso). Esse padrão **não foi calibrado nem validado por benchmark**. Para usar o Nimble no hook, rode `SYSTEMONE_DIFF_MODEL=nimble git commit ...` ou exporte `SYSTEMONE_DIFF_MODEL=nimble` no shell.
+
+**Ignorar o hook:** `SYSTEMONE_SKIP=1 git commit ...` pula apenas a verificação do SystemOne Gate (os demais hooks continuam valendo). Evite `git commit --no-verify`, que desativa todos os hooks.
 
 **Saída sem emoji:** se o terminal ou o pipe não suporta UTF-8 (ex.: `PYTHONIOENCODING=ascii`), a CLI troca os emoji por tokens ASCII (`[OK]`, `[ERRO]`, `[AVISO]`) automaticamente. Para forçar esse modo, use `systemone-gate --plain diff` ou `SYSTEMONE_PLAIN=1`. O servidor MCP não é afetado.
 

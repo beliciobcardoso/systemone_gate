@@ -69,7 +69,7 @@
 | DEF-09 | Hook ignora `core.hooksPath` | Defeito | Compatibilidade | S3 | Could | Estático | ✅ Resolvido (#11) |
 | FAL-04 | Latência real ~200 ms vs. "<15 ms" prometido | Falha | Eficiência | S3 | Should | Medido | ⬜ Aberto |
 | FAL-05 | Confiança do modelo baixa (0,03–0,27) | Falha | Adequação funcional | S3 | Should | Medido | ⬜ Aberto |
-| FAL-06 | Hook usa modelo 0.8B para code review | Falha | Adequação funcional | S3 | Should | Estático | ⬜ Aberto |
+| FAL-06 | Hook usa modelo 0.8B para code review | Falha | Adequação funcional | S3 | Should | Estático | ✅ Resolvido (#17) |
 | DT-03 | Erro retornado como `dict` misturado ao sucesso | Dívida | Manutenibilidade | S3 | Should | Estático | ⬜ Aberto |
 | DT-04 | Tools MCP exigem que o agente cole diff/log | Dívida | Eficiência | S3 | Should | Estático | ⬜ Aberto |
 | DT-06 | Sem CI, lint, type-check, formatação | Dívida | Manutenibilidade | S3 | Should | Reproduzido (ausência) | ⬜ Aberto (CI ⛔ descartado) |
@@ -88,7 +88,7 @@
 | RSK-02 | Rubricas em português vs. modelo possivelmente treinado em inglês | Risco | Adequação funcional | S3 | Could | **Hipótese** | ⬜ Aberto |
 | RSK-03 | Privacidade: diffs/comandos podem conter segredos | Risco | Segurança | S3 | Should | Estático | ⬜ Aberto |
 | DT-11 | `AGENTS.md` exige CI verde, testes e cobertura que não existem | Dívida | Manutenibilidade | S3 | Should | Estático | ✅ Resolvido (#10) |
-| DOC-07 | Hook sugere `--no-verify`, que `AGENTS.md` proíbe | Doc. | Usabilidade | S3 | Should | Estático | ⬜ Aberto |
+| DOC-07 | Hook sugere `--no-verify`, que `AGENTS.md` proíbe | Doc. | Usabilidade | S3 | Should | Estático | ✅ Resolvido (#17) |
 | HIG-01..05 | Higiene (ver §9) | — | — | S4 | Won't | Estático | 🟡 Parcial (#14) |
 
 ---
@@ -159,6 +159,7 @@
 - **Esforço:** S
 
 ### FAL-06 · Hook usa o modelo menor para code review
+- **Status:** ✅ **Resolvido** em [#17](https://github.com/beliciobcardoso/systemone_gate/pull/17) — `diff --model`, `--nimble` e `SYSTEMONE_DIFF_MODEL` escolhem o modelo; o padrão continua `tev1:0.8b` e está documentado como **não calibrado**.
 - **Local:** `cli.py:132` (`"nimble" if args.nimble else "tev1:0.8b"`); `hooks.py:15` (sem `--nimble`)
 - **Evidência:** Estático
 - **Classificação:** Falha · Adequação funcional · S3 · Should
@@ -450,6 +451,7 @@
 - **Esforço:** M
 
 ### DOC-07 · Hook sugere `--no-verify`, proibido pelo `AGENTS.md`
+- **Status:** ✅ **Resolvido** em [#17](https://github.com/beliciobcardoso/systemone_gate/pull/17) — a dica agora é `SYSTEMONE_SKIP=1 git commit`, que pula só a verificação do SystemOne (os outros hooks continuam valendo); `--no-verify` saiu do texto.
 - **Local:** `hooks.py:21` ("para forçar o commit … use: git commit --no-verify") × `AGENTS.md:51` ("Proibido `--no-verify`")
 - **Evidência:** Estático
 - **Classificação:** Inconsistência entre produto e política do repositório · Usabilidade · S3 · Should
