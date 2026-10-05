@@ -372,3 +372,39 @@ def test_hint_targets_this_hook_only_and_never_mentions_no_verify():
     assert "--no-verify" not in script
     assert "SYSTEMONE_SKIP=1 git commit" in script
     assert "APENAS esta verificação" in script
+
+
+# --- default timeout of the generated hook (nimble can take up to ~72 s to load after an idle period) ---
+
+
+def _run_rendered_hook(tmp_path, extra_env=None):
+    """Run the rendered hook with a stub interpreter that just echoes the timeout it receives."""
+    stub = tmp_path / "py"
+    stub.write_text('#!/bin/sh\nif [ "$1" = "-c" ]; then exit 0; fi\necho "TIMEOUT=${SYSTEMONE_TIMEOUT-unset}"\n')
+    stub.chmod(0o755)
+    script = tmp_path / "pre-commit"
+    script.write_text(hooks.render_hook_script(str(stub)))
+    script.chmod(0o755)
+    env = {k: v for k, v in os.environ.items() if not k.startswith("SYSTEMONE_")}
+    env.update(extra_env or {})
+    return subprocess.run([str(script)], capture_output=True, text=True, env=env, cwd=str(tmp_path), timeout=30)
+
+
+def test_hook_timeout_constant_covers_the_measured_cold_start():
+    # measured nimble cold starts: 11.8 s, 46.5 s and 72.4 s; the CLI default (30 s) is not enough
+    assert hooks.HOOK_TIMEOUT_SECONDS >= 100
+
+
+def test_hook_exports_a_longer_default_timeout(tmp_path):
+    result = _run_rendered_hook(tmp_path)
+    assert result.returncode == 0
+    assert f"TIMEOUT={hooks.HOOK_TIMEOUT_SECONDS}" in result.stdout
+
+
+def test_hook_keeps_a_timeout_defined_by_the_user(tmp_path):
+    result = _run_rendered_hook(tmp_path, {"SYSTEMONE_TIMEOUT": "7"})
+    assert "TIMEOUT=7" in result.stdout
+
+
+def test_rendered_hook_has_no_unresolved_placeholder():
+    assert "@@" not in hooks.render_hook_script("/usr/bin/python3")

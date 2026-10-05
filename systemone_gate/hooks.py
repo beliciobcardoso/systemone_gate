@@ -11,6 +11,10 @@ from typing import Optional
 
 HOOK_MARKER = "SystemOne Gate"
 PYTHON_PLACEHOLDER = "@@PYTHON@@"
+TIMEOUT_PLACEHOLDER = "@@TIMEOUT@@"
+# The hook reviews diffs with nimble, whose first call after an idle period loads a 9.5 GB model
+# (measured 11.8 s, 46.5 s and 72.4 s). The CLI default of 30 s would skip the review in that case.
+HOOK_TIMEOUT_SECONDS = 120
 GIT_TIMEOUT_SECONDS = 10
 GIT_NOT_FOUND_MESSAGE = (
     "❌ Erro: Diretório .git não encontrado. Certifique-se de estar dentro de um repositório Git."
@@ -44,6 +48,10 @@ if ! "$PY" -c "import systemone_gate" >/dev/null 2>&1; then
     exit 0
 fi
 
+# O primeiro commit depois de uma pausa espera o modelo carregar; um valor já definido pelo usuário vence.
+: "${SYSTEMONE_TIMEOUT:=@@TIMEOUT@@}"
+export SYSTEMONE_TIMEOUT
+
 "$PY" -m systemone_gate.cli diff "$@"
 STATUS=$?
 
@@ -58,7 +66,8 @@ exit 0
 """
 
 def render_hook_script(python_executable: str) -> str:
-    return PRE_COMMIT_TEMPLATE.replace(PYTHON_PLACEHOLDER, shlex.quote(python_executable))
+    script = PRE_COMMIT_TEMPLATE.replace(PYTHON_PLACEHOLDER, shlex.quote(python_executable))
+    return script.replace(TIMEOUT_PLACEHOLDER, str(HOOK_TIMEOUT_SECONDS))
 
 def _is_ours(hook_path: str) -> bool:
     with open(hook_path, "r", encoding="utf-8", errors="ignore") as f:

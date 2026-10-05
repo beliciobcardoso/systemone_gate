@@ -27,8 +27,8 @@ Ele avalia dados estruturados em paralelo gerando apenas **1 a 3 tokens de saíd
 
 | Modelo | Tamanho | Provedor | Latência | Caso de Uso Ideal |
 | :--- | :--- | :--- | :--- | :--- |
-| **`nimble`** | 9.5 GB (9B) | Bespoke Labs | ~390-410 ms (medido, veja abaixo) | Code review profundo, detecção de breaking changes e triagem de erros complexos. |
-| **`tev1:0.8b`** | 811 MB (0.8B) | Together AI | ~145-165 ms (medido, veja abaixo) | Guardrail de comandos shell e Git pre-commit hooks com baixa latência local. |
+| **`nimble`** | 9.5 GB (9B) | Bespoke Labs | ~390-410 ms (medido, veja abaixo) | Padrão da revisão de diff (pre-commit), code review profundo, detecção de breaking changes e triagem de erros complexos. |
+| **`tev1:0.8b`** | 811 MB (0.8B) | Together AI | ~145-165 ms (medido, veja abaixo) | Guardrail de comandos shell com baixa latência local. **Não discrimina o risco de um diff** (veja o parágrafo do pre-commit hook). |
 | **`tev1:4b`** | ~2.5 GB (4B) | Together AI | não medido | Equilíbrio intermediário entre velocidade e precisão. |
 
 
@@ -141,7 +141,7 @@ systemone-gate diff
 # Inspecionar diff com o modelo Nimble (análise mais profunda)
 systemone-gate diff --nimble
 
-# Qualquer modelo Ollama (ordem: --model/--nimble > SYSTEMONE_DIFF_MODEL > tev1:0.8b)
+# Qualquer modelo Ollama (ordem: --model/--nimble > SYSTEMONE_DIFF_MODEL > nimble)
 systemone-gate diff --model NOME
 
 # Triagem de erro de build ou teste
@@ -165,7 +165,7 @@ systemone-gate doctor
 
 **Diagnóstico (`doctor`):** o SystemOne Gate depende de um endpoint de terceiros sem contrato versionado, então este é o caminho rápido para investigar erros como "Failed to connect" ou HTTP 404. O comando verifica, em ordem: (1) se o Ollama responde em `/api/version`; (2) se a versão é **>= 0.35.0** (mínimo exigido; antes disso `/v1/systemone` não existe); (3) se os modelos `tev1:0.8b` e `nimble` estão instalados e com a capability `decision` (use `--model NOME`, repetível, para trocar a lista); (4) um teste de contrato com uma chamada mínima a `/v1/systemone` (pule com `--no-smoke`). Imprime um checklist (✅/⚠️/❌) e sai com 0 se tudo obrigatório passou, 1 se houve falha e 2 para configuração inválida (ex.: `SYSTEMONE_TIMEOUT`).
 
-**Modelo do pre-commit hook:** o hook usa `tev1:0.8b` por padrão (rápido, porém menos preciso). Esse padrão **não foi calibrado nem validado por benchmark**. Para usar o Nimble no hook, rode `SYSTEMONE_DIFF_MODEL=nimble git commit ...` ou exporte `SYSTEMONE_DIFF_MODEL=nimble` no shell. **Medido no benchmark de rubricas** ([`docs/BENCHMARK_RUBRIC_LANGUAGE.md`](docs/BENCHMARK_RUBRIC_LANGUAGE.md), 36 diffs rotulados por um LLM, uma máquina): o `tev1:0.8b` **não discriminou o risco do diff** (acerta 36-39% do nível de risco, contra 33% do acaso, e 33-53% de `breaking_change`, contra 56% de quem responde sempre `safe`), enquanto o `nimble` acertou 72-75% do risco e 69% do `breaking_change`. Se a revisão do diff importa, prefira `SYSTEMONE_DIFF_MODEL=nimble`.
+**Modelo do pre-commit hook:** o hook revisa o diff com o `nimble` por padrão. No benchmark de rubricas ([`docs/BENCHMARK_RUBRIC_LANGUAGE.md`](docs/BENCHMARK_RUBRIC_LANGUAGE.md); 36 diffs rotulados por um LLM, uma máquina; isso não é calibração) o `tev1:0.8b` **não discriminou o risco do diff** (acertou 36-39% do nível de risco, contra 33% do acaso, e 33-53% de `breaking_change`, contra 56% de quem responde sempre `safe`), enquanto o `nimble` acertou 72-75% do risco e 69% do `breaking_change`. **Custo:** o Ollama descarrega o modelo depois de um tempo parado (padrão do Ollama: 5 minutos, ajustável com `OLLAMA_KEEP_ALIVE` **no servidor**), e a primeira chamada depois disso leva de ≈12 a ≈72 s para carregar o `nimble`. Por isso o hook usa **timeout de 120 s** por padrão (a CLI e a biblioteca seguem com 30 s); defina `SYSTEMONE_TIMEOUT` para mudar. Para voltar ao modelo rápido: `SYSTEMONE_DIFF_MODEL=tev1:0.8b git commit ...`. **Hooks já instalados** só ganham o timeout de 120 s se forem reinstalados (`systemone-gate install-hook`); sem isso, o primeiro commit depois de uma pausa pode estourar 30 s e a revisão é pulada com um aviso.
 
 **Ignorar o hook:** `SYSTEMONE_SKIP=1 git commit ...` pula apenas a verificação do SystemOne Gate (os demais hooks continuam valendo). Evite `git commit --no-verify`, que desativa todos os hooks.
 
