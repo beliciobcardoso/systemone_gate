@@ -33,7 +33,7 @@ from .policy import (
 from .rubrics import DEFAULT_PROFILE, PROFILES
 
 EXIT_CONFIG_ERROR = 2
-DEFAULT_DIFF_MODEL = "tev1:0.8b"
+DEFAULT_DIFF_MODEL = "nimble"  # tev1:0.8b did not discriminate diff risk in docs/BENCHMARK_RUBRIC_LANGUAGE.md
 DIFF_MODEL_ENV = "SYSTEMONE_DIFF_MODEL"
 NIMBLE_MODEL = "nimble"
 GIT_DIFF_TIMEOUT_SECONDS = 30
@@ -171,7 +171,7 @@ def main(argv: Optional[List[str]] = None):
     # diff
     p_diff = subparsers.add_parser("diff", help="Inspeciona alterações staged (git diff --cached)")
     diff_model = p_diff.add_mutually_exclusive_group()
-    diff_model.add_argument("--nimble", action="store_true", help="Atalho para --model nimble (9B)")
+    diff_model.add_argument("--nimble", action="store_true", help=f"Atalho para --model {NIMBLE_MODEL} (já é o padrão)")
     diff_model.add_argument(
         "--model", default=None,
         help=f"Modelo Ollama (padrão: {DEFAULT_DIFF_MODEL}; também via {DIFF_MODEL_ENV})")

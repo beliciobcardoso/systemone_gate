@@ -95,7 +95,7 @@ Versionamento semântico ([SemVer 2.0](https://semver.org/lang/pt-BR/)). Enquant
 Passos de um release:
 
 1. Criar `chore/release_X_Y_Z` a partir de `dev` atualizada.
-2. Editar **somente** `__version__`; no `CHANGELOG.md`, mover o conteúdo de `[Unreleased]` para `## [X.Y.Z] - AAAA-MM-DD`, deixando `[Unreleased]` vazio no topo.
+2. Editar **somente** `__version__`; no `CHANGELOG.md`, mover o conteúdo de `[Unreleased]` para `## [X.Y.Z] - AAAA-MM-DD`, deixando `[Unreleased]` vazio no topo. **Confira cada item contra `git log --first-parent vANTERIOR..dev`:** só entra na nova seção o que a tag anterior ainda não tem (um item mergeado antes da promoção pertence à versão anterior).
 3. Rodar `scripts/check.sh` e abrir o PR para `dev` (squash).
 4. Promover `dev` → `main` por merge commit (Autorização 2).
 5. Criar a tag anotada no commit de merge em `main`: `git tag -a vX.Y.Z -m "release X.Y.Z" <sha>` e `git push origin vX.Y.Z`. Opcional: `gh release create vX.Y.Z --notes-file <trecho do CHANGELOG>`.

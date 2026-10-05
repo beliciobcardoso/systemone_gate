@@ -317,3 +317,5 @@ systemone-gate install-hook
 ```
 
 A partir desse momento, qualquer `git commit` executado por você, pelo Cursor, pelo Claude Code ou pelo Aider passará automaticamente pelo crivo do modelo local.
+
+O hook revisa o diff com o `nimble`. O Ollama descarrega o modelo após 5 minutos parado e a primeira chamada depois disso leva de ≈12 a ≈72 s para carregá-lo; o hook usa timeout de 120 s por isso. Para evitar a espera, configure `OLLAMA_KEEP_ALIVE` no servidor Ollama (veja a seção "Manter o modelo carregado" do README).

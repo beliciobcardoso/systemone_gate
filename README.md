@@ -27,8 +27,8 @@ Ele avalia dados estruturados em paralelo gerando apenas **1 a 3 tokens de saíd
 
 | Modelo | Tamanho | Provedor | Latência | Caso de Uso Ideal |
 | :--- | :--- | :--- | :--- | :--- |
-| **`nimble`** | 9.5 GB (9B) | Bespoke Labs | ~390-410 ms (medido, veja abaixo) | Code review profundo, detecção de breaking changes e triagem de erros complexos. |
-| **`tev1:0.8b`** | 811 MB (0.8B) | Together AI | ~145-165 ms (medido, veja abaixo) | Guardrail de comandos shell e Git pre-commit hooks com baixa latência local. |
+| **`nimble`** | 9.5 GB (9B) | Bespoke Labs | ~390-410 ms (medido, veja abaixo) | Padrão da revisão de diff (pre-commit), code review profundo, detecção de breaking changes e triagem de erros complexos. |
+| **`tev1:0.8b`** | 811 MB (0.8B) | Together AI | ~145-165 ms (medido, veja abaixo) | Guardrail de comandos shell com baixa latência local. **Não discrimina o risco de um diff** (veja o parágrafo do pre-commit hook). |
 | **`tev1:4b`** | ~2.5 GB (4B) | Together AI | não medido | Equilíbrio intermediário entre velocidade e precisão. |
 
 
@@ -52,6 +52,38 @@ Medido em 2026-10-05 com `SystemOneClient` (chamadas sequenciais, Ollama local, 
 * Reprodutibilidade: 20 chamadas idênticas ao `tev1:0.8b` e 20 ao `nimble:latest` (rubrica guard) devolveram respostas idênticas, inclusive as probabilidades. Isso foi observado nesta máquina e versão do Ollama; não é uma garantia documentada pelo fabricante.
 
 ---
+
+### Manter o modelo carregado (`OLLAMA_KEEP_ALIVE`)
+
+O Ollama descarrega um modelo depois de um tempo sem uso; **o padrão é 5 minutos**. A primeira chamada depois disso paga o carregamento (medido: ≈12 a ≈72 s para o `nimble`, ≈3-4 s para o `tev1:0.8b`), e é por isso que o pre-commit hook, que usa o `nimble`, tem timeout de 120 s. Manter o modelo carregado evita esse custo.
+
+**Como ver o que está carregado:** `ollama ps` mostra o modelo, o tamanho, o processador e, na coluna `UNTIL`, quando ele será descarregado.
+
+**Como configurar:** é uma configuração do **servidor** Ollama (vale para todos os clientes). A variável `OLLAMA_KEEP_ALIVE` aceita:
+
+| Valor | Efeito |
+| :--- | :--- |
+| `30m`, `24h` | mantém carregado por esse tempo após o último uso |
+| `3600` | número de segundos |
+| `-1` | mantém carregado **indefinidamente** |
+| `0` | descarrega logo após a resposta |
+
+No Linux, com o serviço systemd instalado pelo instalador oficial:
+
+```bash
+sudo systemctl edit ollama.service
+# no editor, acrescente:
+#   [Service]
+#   Environment="OLLAMA_KEEP_ALIVE=30m"
+sudo systemctl daemon-reload
+sudo systemctl restart ollama
+```
+
+Sem systemd, defina a variável ao iniciar o servidor: `OLLAMA_KEEP_ALIVE=30m ollama serve`. Para macOS e Windows, siga o [FAQ oficial do Ollama](https://docs.ollama.com/faq). Reiniciar o serviço descarrega o que estava na memória.
+
+**Custo:** o modelo fica ocupando memória enquanto estiver carregado. Na máquina de teste (RTX 3060 de 12 GB) o `nimble` ocupou 8,9 GB, segundo o `ollama ps`. Prefira um valor finito que cubra uma sessão de trabalho (por exemplo `30m` a `1h`); use `-1` só em uma máquina dedicada, porque nesse caso a memória só é liberada ao reiniciar o serviço ou com `ollama stop <modelo>`.
+
+**O que o SystemOne Gate não faz:** ele **não** define `keep_alive` por requisição. A documentação do Ollama lista esse parâmetro para `/api/generate` e `/api/chat`, não para o `/v1/systemone`, e não foi verificado que este endpoint o aceite.
 
 ## 🚀 Guia de Início Rápido (Do Zero ao Funcionamento)
 
@@ -141,7 +173,7 @@ systemone-gate diff
 # Inspecionar diff com o modelo Nimble (análise mais profunda)
 systemone-gate diff --nimble
 
-# Qualquer modelo Ollama (ordem: --model/--nimble > SYSTEMONE_DIFF_MODEL > tev1:0.8b)
+# Qualquer modelo Ollama (ordem: --model/--nimble > SYSTEMONE_DIFF_MODEL > nimble)
 systemone-gate diff --model NOME
 
 # Triagem de erro de build ou teste
@@ -165,7 +197,7 @@ systemone-gate doctor
 
 **Diagnóstico (`doctor`):** o SystemOne Gate depende de um endpoint de terceiros sem contrato versionado, então este é o caminho rápido para investigar erros como "Failed to connect" ou HTTP 404. O comando verifica, em ordem: (1) se o Ollama responde em `/api/version`; (2) se a versão é **>= 0.35.0** (mínimo exigido; antes disso `/v1/systemone` não existe); (3) se os modelos `tev1:0.8b` e `nimble` estão instalados e com a capability `decision` (use `--model NOME`, repetível, para trocar a lista); (4) um teste de contrato com uma chamada mínima a `/v1/systemone` (pule com `--no-smoke`). Imprime um checklist (✅/⚠️/❌) e sai com 0 se tudo obrigatório passou, 1 se houve falha e 2 para configuração inválida (ex.: `SYSTEMONE_TIMEOUT`).
 
-**Modelo do pre-commit hook:** o hook usa `tev1:0.8b` por padrão (rápido, porém menos preciso). Esse padrão **não foi calibrado nem validado por benchmark**. Para usar o Nimble no hook, rode `SYSTEMONE_DIFF_MODEL=nimble git commit ...` ou exporte `SYSTEMONE_DIFF_MODEL=nimble` no shell. **Medido no benchmark de rubricas** ([`docs/BENCHMARK_RUBRIC_LANGUAGE.md`](docs/BENCHMARK_RUBRIC_LANGUAGE.md), 36 diffs rotulados por um LLM, uma máquina): o `tev1:0.8b` **não discriminou o risco do diff** (acerta 36-39% do nível de risco, contra 33% do acaso, e 33-53% de `breaking_change`, contra 56% de quem responde sempre `safe`), enquanto o `nimble` acertou 72-75% do risco e 69% do `breaking_change`. Se a revisão do diff importa, prefira `SYSTEMONE_DIFF_MODEL=nimble`.
+**Modelo do pre-commit hook:** o hook revisa o diff com o `nimble` por padrão. No benchmark de rubricas ([`docs/BENCHMARK_RUBRIC_LANGUAGE.md`](docs/BENCHMARK_RUBRIC_LANGUAGE.md); 36 diffs rotulados por um LLM, uma máquina; isso não é calibração) o `tev1:0.8b` **não discriminou o risco do diff** (acertou 36-39% do nível de risco, contra 33% do acaso, e 33-53% de `breaking_change`, contra 56% de quem responde sempre `safe`), enquanto o `nimble` acertou 72-75% do risco e 69% do `breaking_change`. **Custo:** o Ollama descarrega o modelo depois de um tempo parado (padrão do Ollama: 5 minutos; veja [Manter o modelo carregado](#manter-o-modelo-carregado-ollama_keep_alive)), e a primeira chamada depois disso leva de ≈12 a ≈72 s para carregar o `nimble`. Por isso o hook usa **timeout de 120 s** por padrão (a CLI e a biblioteca seguem com 30 s); defina `SYSTEMONE_TIMEOUT` para mudar. Para voltar ao modelo rápido: `SYSTEMONE_DIFF_MODEL=tev1:0.8b git commit ...`. **Hooks já instalados** só ganham o timeout de 120 s se forem reinstalados (`systemone-gate install-hook`); sem isso, o primeiro commit depois de uma pausa pode estourar 30 s e a revisão é pulada com um aviso.
 
 **Ignorar o hook:** `SYSTEMONE_SKIP=1 git commit ...` pula apenas a verificação do SystemOne Gate (os demais hooks continuam valendo). Evite `git commit --no-verify`, que desativa todos os hooks.
 

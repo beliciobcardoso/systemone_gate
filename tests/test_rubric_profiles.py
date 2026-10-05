@@ -293,7 +293,7 @@ def test_cli_diff_profile_flag_and_bad_env(fake, sub_env, repo_root, tmp_path):
     [
         (["diff", "--model", "foo", "--profile", "web-backend"], "foo"),
         (["diff", "--nimble", "--profile", "generic"], "nimble"),
-        (["diff", "--profile", "web-backend"], "tev1:0.8b"),
+        (["diff", "--profile", "web-backend"], "nimble"),
     ],
 )
 def test_diff_forwards_resolved_model_and_profile(monkeypatch, argv, expected_model):
