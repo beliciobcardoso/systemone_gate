@@ -1,6 +1,6 @@
 # 🛡️ SystemOne Gate
 
-> **Motor de Decisão Ultrarrápido, Local e com Custo Zero para Agentes de IA e Desenvolvedores de Software.**  
+> **Motor de Decisão Local, sem Custo de Tokens na Nuvem, para Agentes de IA e Desenvolvedores de Software.**  
 > Baseado na arquitetura **System One** (estilo JEV da TypeSafe AI), executado 100% offline via **Ollama 0.35+**.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -16,7 +16,7 @@ Enquanto agentes generativos como Claude, Gemini e GPT-4 geram textos extensos t
 
 Ele avalia dados estruturados em paralelo gerando apenas **1 a 3 tokens de saída** com probabilidades do modelo (não calibradas; veja o campo `confidence`) para decisões críticas:
 
-* 🩺 **Triagem de Erros:** Identifica instantaneamente se uma falha é de compilação, sintaxe, linkedição, memory leak ou timeout.
+* 🩺 **Triagem de Erros:** Classifica se uma falha é de compilação, sintaxe, linkedição, memory leak ou timeout.
 * 🔍 **Code Review de Diffs:** Mede a probabilidade de breaking change e risco arquitetural antes de cada commit.
 * 🛡️ **Guardrail de Comandos Shell:** Avalia se um comando de terminal pode apagar dados ou quebrar o ambiente, com baixa latência local (veja [Desempenho medido](#-desempenho-medido)).
 * 🔀 **Roteamento de Subagentes:** Decide para qual subagente encaminhar uma tarefa de desenvolvimento.

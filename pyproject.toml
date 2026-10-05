@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "systemone-gate"
 dynamic = ["version"]
-description = "Ultra-fast local decision gate and triage engine for AI coding agents powered by Ollama System One."
+description = "Local decision gate and triage engine for AI coding agents and developers, powered by Ollama System One."
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
