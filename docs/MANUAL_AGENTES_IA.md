@@ -24,6 +24,36 @@ flowchart LR
 
 ---
 
+## ⚙️ Pré-requisitos e Setup do Ambiente
+
+Antes de configurar qualquer agente, certifique-se de que o backend local do Ollama está instalado e com os modelos prontos:
+
+1. **Instale ou atualize o Ollama para v0.35+**:
+   ```bash
+   # Linux
+   curl -fsSL https://ollama.com/install.sh | sh
+
+   # macOS / Windows
+   # Baixe em https://ollama.com/download
+   ```
+2. **Verifique a versão**:
+   ```bash
+   ollama -v  # Deve ser >= 0.35.0
+   ```
+3. **Baixe os modelos necessários**:
+   ```bash
+   ollama pull tev1:0.8b  # Modelo de reflexo rápido (<15ms, 811MB)
+   ollama pull nimble     # Modelo de precisão para código (9B, 9.5GB)
+   ```
+4. **Instale o pacote localmente**:
+   ```bash
+   git clone https://github.com/beliciobcardoso/systemone_gate.git
+   cd systemone_gate
+   pip install -e .
+   ```
+
+---
+
 ## 1. Antigravity (Google DeepMind)
 
 O Antigravity suporta nativamente servidores MCP e Skills modulares.

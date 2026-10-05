@@ -33,28 +33,80 @@ Ele avalia dados estruturados em paralelo gerando apenas **1 a 3 tokens de saíd
 
 ---
 
-## 🚀 Instalação Rápida
+## 🚀 Guia de Início Rápido (Do Zero ao Funcionamento)
 
-### 1. Pré-requisitos
-Certifique-se de que o **Ollama 0.35+** está instalado e os modelos estão disponíveis:
+Se você está chegando agora ao projeto, siga este passo a passo para configurar o Ollama e o SystemOne Gate na sua máquina.
 
+### Passo 1: Instalar ou Atualizar o Ollama (Versão 0.35+)
+
+O endpoint `/v1/systemone` é uma funcionalidade recente introduzida no **Ollama v0.35.0**. Certifique-se de estar com a versão 0.35 ou superior.
+
+* **Linux:**
+  ```bash
+  curl -fsSL https://ollama.com/install.sh | sh
+  ```
+* **macOS / Windows:**
+  Baixe o instalador mais recente em [ollama.com/download](https://ollama.com/download).
+
+**Verifique a versão instalada:**
 ```bash
-# Atualize o Ollama e baixe os modelos de decisão
-ollama pull nimble
-ollama pull tev1:0.8b
+ollama -v
+# Deve exibir: ollama version is 0.35.0 (ou superior)
 ```
 
-### 2. Instalar o SystemOne Gate
+---
 
-Clone este repositório e instale em modo editável:
+### Passo 2: Baixar os Modelos de Decisão (System One)
+
+O SystemOne Gate utiliza modelos treinados especificamente para classificação, scores e decisões paralelas (não são chatbots de texto livre):
 
 ```bash
-git clone https://github.com/seu-usuario/systemone_gate.git
+# 1. Tev1 (0.8B) - Ultra-rápido (811 MB de download)
+# Ideal para qualquer máquina, latência < 15ms. Essencial para checagem de comandos shell.
+ollama pull tev1:0.8b
+
+# 2. Nimble (9B) - Alta precisão para código (9.5 GB de download)
+# Recomendado para GPUs com 8GB+ VRAM ou Apple Silicon. Usado em triagem de bugs e code review.
+ollama pull nimble
+```
+
+> 💡 **Nota de Hardware:** Se você estiver em uma máquina mais modesta (sem GPU dedicada ou com pouca VRAM), você pode usar apenas o `tev1:0.8b` para todas as tarefas sem problemas!
+
+---
+
+### Passo 3: Teste de Sanidade (Verificar se a API está ativa)
+
+Com o Ollama rodando em background, faça uma chamada de teste rápida no terminal:
+
+```bash
+curl http://localhost:11434/v1/systemone -d '{
+  "model": "tev1:0.8b",
+  "state": "Erro ao compilar: undefined reference to main",
+  "questions": {
+    "is_linker_error": {
+      "type": "choice",
+      "instructions": "Este é um erro de linkedição?",
+      "criteria": {"yes": null, "no": null}
+    }
+  }
+}'
+```
+
+Se retornar um JSON com `"choice": "yes"` e `"probabilities"`, o backend está 100% pronto!
+
+---
+
+### Passo 4: Instalar o SystemOne Gate
+
+Clone este repositório e instale a CLI:
+
+```bash
+git clone https://github.com/beliciobcardoso/systemone_gate.git
 cd systemone_gate
 pip install -e .
 ```
 
-*(Ou utilize diretamente sem instalar, executando com `python3 -m systemone_gate.cli`)*.
+Pronto! Agora o comando `systemone-gate` e o servidor `systemone-mcp` estão disponíveis no seu terminal.
 
 ---
 
