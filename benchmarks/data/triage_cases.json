@@ -1,0 +1,212 @@
+[
+ {
+  "id": "tri-01",
+  "state": "src/main.c: In function 'main':\nsrc/main.c:42:5: error: expected ';' before 'return'\n   42 |     return 0;\n      |     ^~~~~~",
+  "label": "compilation_syntax",
+  "why": "gcc syntax error: missing semicolon"
+ },
+ {
+  "id": "tri-02",
+  "state": "src/api/user.ts:17:23 - error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.\n17   const u = getUser(req.params.id);\n                       ~~~~~~~~~~~~~~",
+  "label": "compilation_syntax",
+  "why": "TypeScript type error at compile time"
+ },
+ {
+  "id": "tri-03",
+  "state": "Main.java:12: error: cannot find symbol\n        int total = items.sizee();\n                         ^\n  symbol:   method sizee()\n  location: variable items of type List<String>",
+  "label": "compilation_syntax",
+  "why": "javac cannot find symbol (compile error)"
+ },
+ {
+  "id": "tri-04",
+  "state": "  File \"/app/service/handlers.py\", line 88\n    def handle(self, msg:\n                         ^\nSyntaxError: invalid syntax",
+  "label": "compilation_syntax",
+  "why": "Python SyntaxError at import/compile"
+ },
+ {
+  "id": "tri-05",
+  "state": "lib/ring.c:77:9: error: use of undeclared identifier 'RING_CAPACITY'\n        if (n > RING_CAPACITY) {\n                ^\n1 error generated.",
+  "label": "compilation_syntax",
+  "why": "clang undeclared identifier"
+ },
+ {
+  "id": "tri-06",
+  "state": "/usr/bin/ld: build/obj/net.o: in function `net_open':\nnet.c:(.text+0x3a): undefined reference to `ssl_ctx_new'\ncollect2: error: ld returned 1 exit status",
+  "label": "linker_undefined_reference",
+  "why": "ld undefined reference to function"
+ },
+ {
+  "id": "tri-07",
+  "state": "/usr/bin/ld: calc.o: undefined reference to symbol 'sqrt@@GLIBC_2.2.5'\n/usr/bin/ld: /lib/x86_64-linux-gnu/libm.so.6: error adding symbols: DSO missing from command line\ncollect2: error: ld returned 1 exit status",
+  "label": "linker_undefined_reference",
+  "why": "ld multiple/undefined symbol from missing -lm"
+ },
+ {
+  "id": "tri-08",
+  "state": "/usr/bin/ld: CMakeFiles/app.dir/main.cpp.o: in function `main':\nmain.cpp:(.text+0x21): undefined reference to `Widget::render()'\n/usr/bin/ld: undefined reference to `vtable for Widget'\ncollect2: error: ld returned 1 exit status",
+  "label": "linker_undefined_reference",
+  "why": "C++ vtable undefined reference at link time"
+ },
+ {
+  "id": "tri-09",
+  "state": "ld.lld: error: undefined symbol: mqtt_publish\n>>> referenced by client.c:131 (src/client.c:131)\n>>>               client.o:(send_telemetry)\nclang: error: linker command failed with exit code 1 (use -v to see invocation)",
+  "label": "linker_undefined_reference",
+  "why": "lld undefined symbol"
+ },
+ {
+  "id": "tri-10",
+  "state": "  = note: /usr/bin/ld: libsensor.a(read.o): undefined reference to `i2c_smbus_read_byte'\n          collect2: error: ld returned 1 exit status\nerror: could not compile `sensor-daemon` due to previous error",
+  "label": "linker_undefined_reference",
+  "why": "Rust/cc linker undefined reference to C symbol"
+ },
+ {
+  "id": "tri-11",
+  "state": "==4121==ERROR: AddressSanitizer: heap-use-after-free on address 0x60b000000098 at pc 0x0000004f1c3a\nREAD of size 4 at 0x60b000000098 thread T0\n    #0 0x4f1c39 in session_close /app/src/session.c:204",
+  "label": "memory_segfault_or_leak",
+  "why": "ASan heap-use-after-free"
+ },
+ {
+  "id": "tri-12",
+  "state": "==9921== Invalid write of size 1\n==9921==    at 0x4005B2: copy_name (util.c:31)\n==9921== Address 0x522d048 is 0 bytes after a block of size 8 alloc'd\n==9921== LEAK SUMMARY: definitely lost: 240 bytes in 3 blocks",
+  "label": "memory_segfault_or_leak",
+  "why": "valgrind invalid write and leak summary"
+ },
+ {
+  "id": "tri-13",
+  "state": "./bin/parser input.dat\nSegmentation fault (core dumped)\ngdb: #0  0x00007ffff7a4c2b1 in strlen () from /lib/libc.so.6\n#1  0x0000555555555a1e in tokenize (buf=0x0) at lex.c:58",
+  "label": "memory_segfault_or_leak",
+  "why": "plain segmentation fault with core dump"
+ },
+ {
+  "id": "tri-14",
+  "state": "Exception in thread \"pool-3-thread-7\" java.lang.OutOfMemoryError: Java heap space\n\tat java.base/java.util.Arrays.copyOf(Arrays.java:3512)\n\tat com.acme.cache.EntryStore.put(EntryStore.java:97)",
+  "label": "memory_segfault_or_leak",
+  "why": "Java heap exhausted"
+ },
+ {
+  "id": "tri-15",
+  "state": "=================================================================\n==731==ERROR: LeakSanitizer: detected memory leaks\nDirect leak of 4096 byte(s) in 1 object(s) allocated from:\n    #0 0x7f2a in malloc\n    #1 0x401b3c in load_config /app/config.c:55\nSUMMARY: AddressSanitizer: 4096 byte(s) leaked in 1 allocation(s)",
+  "label": "memory_segfault_or_leak",
+  "why": "LeakSanitizer reports leaks"
+ },
+ {
+  "id": "tri-16",
+  "state": "Error: connect ETIMEDOUT 10.20.0.15:5432\n    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1555:16) {\n  errno: -110, code: 'ETIMEDOUT', syscall: 'connect', address: '10.20.0.15', port: 5432\n}",
+  "label": "network_socket_timeout",
+  "why": "connect ETIMEDOUT in Node"
+ },
+ {
+  "id": "tri-17",
+  "state": "Traceback (most recent call last):\n  File \"/app/collector.py\", line 51, in poll\n    data = sock.recv(4096)\nTimeoutError: timed out",
+  "label": "network_socket_timeout",
+  "why": "Python socket read timeout"
+ },
+ {
+  "id": "tri-18",
+  "state": "requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='api.partner.io', port=443): Read timed out. (read timeout=10)",
+  "label": "network_socket_timeout",
+  "why": "requests ReadTimeout"
+ },
+ {
+  "id": "tri-19",
+  "state": "1699999000: Client sensor-17 has exceeded timeout, disconnecting.\n1699999000: Socket error on client sensor-17, disconnecting.\n[mqtt] connect to broker.local:1883 failed: Connection timed out (errno 110)",
+  "label": "network_socket_timeout",
+  "why": "MQTT broker connection lost / keepalive timeout"
+ },
+ {
+  "id": "tri-20",
+  "state": "io.grpc.StatusRuntimeException: DEADLINE_EXCEEDED: deadline exceeded after 4.998s. [remote_addr=orders-svc:9090]\n\tat io.grpc.stub.ClientCalls.toStatusRuntimeException(ClientCalls.java:262)",
+  "label": "network_socket_timeout",
+  "why": "gRPC deadline exceeded"
+ },
+ {
+  "id": "tri-21",
+  "state": "[mqtt] parse error: malformed packet, remaining length field exceeds 4 bytes (got 0xFF 0xFF 0xFF 0xFF 0x7F)\n[mqtt] dropping frame type=PUBLISH len=268435456",
+  "label": "protocol_parsing_error",
+  "why": "MQTT malformed remaining length"
+ },
+ {
+  "id": "tri-22",
+  "state": "google.protobuf.message.DecodeError: Error parsing message with type 'telemetry.v1.Reading': invalid wire type 7 at offset 14",
+  "label": "protocol_parsing_error",
+  "why": "protobuf decode failure"
+ },
+ {
+  "id": "tri-23",
+  "state": "[http] error parsing response from upstream: invalid chunk size line \"ZZ\\r\\n\" (expected hex digits)\n[http] aborting stream after 3 chunks",
+  "label": "protocol_parsing_error",
+  "why": "HTTP malformed chunked encoding"
+ },
+ {
+  "id": "tri-24",
+  "state": "modbus: frame decode failed: byte count 12 does not match PDU length 9 (function 0x03)\nmodbus: discarding frame, bad CRC 0x4A21 != 0x91F0",
+  "label": "protocol_parsing_error",
+  "why": "Modbus frame CRC/length mismatch"
+ },
+ {
+  "id": "tri-25",
+  "state": "json.decoder.JSONDecodeError: Expecting ',' delimiter: line 1 column 87 (char 86)\nrpc: failed to parse request body from client 192.168.1.40: {\"jsonrpc\":\"2.0\",\"method\":\"read\",\"params\":{\"id\":4 \"ch\":2}}",
+  "label": "protocol_parsing_error",
+  "why": "JSON-RPC payload not valid JSON"
+ },
+ {
+  "id": "tri-26",
+  "state": "_____ test_total_price _____\n    def test_total_price():\n>       assert cart.total() == 59.90\nE       assert 54.9 == 59.9\ntests/test_cart.py:22: AssertionError",
+  "label": "test_assertion_failure",
+  "why": "pytest assertion"
+ },
+ {
+  "id": "tri-27",
+  "state": "  ● formatDate › formats ISO date\n    expect(received).toBe(expected) // Object.is equality\n    Expected: \"05/10/2026\"\n    Received: \"10/05/2026\"\n      at Object.<anonymous> (src/utils/date.test.ts:14:36)",
+  "label": "test_assertion_failure",
+  "why": "Jest expect mismatch"
+ },
+ {
+  "id": "tri-28",
+  "state": "[ERROR] Failures:\n[ERROR]   InvoiceServiceTest.testDiscount:57 expected:<90.0> but was:<100.0>\n[ERROR] Tests run: 48, Failures: 1, Errors: 0, Skipped: 0",
+  "label": "test_assertion_failure",
+  "why": "JUnit assertEquals"
+ },
+ {
+  "id": "tri-29",
+  "state": "--- FAIL: TestParseDuration (0.00s)\n    duration_test.go:31: ParseDuration(\"1h30m\") = 5400, want 5400000\nFAIL\nFAIL\tgithub.com/acme/timeutil\t0.004s",
+  "label": "test_assertion_failure",
+  "why": "Go test failure"
+ },
+ {
+  "id": "tri-30",
+  "state": "test/test_ring.c:58:test_ring_wraps_around:FAIL: Expected 3 Was 4\n-----------------------\n12 Tests 1 Failures 0 Ignored\nFAIL",
+  "label": "test_assertion_failure",
+  "why": "C unit test (Unity/Check) assertion"
+ },
+ {
+  "id": "tri-31",
+  "state": "Traceback (most recent call last):\n  File \"/app/main.py\", line 3, in <module>\n    import paho.mqtt.client as mqtt\nModuleNotFoundError: No module named 'paho'",
+  "label": "environment_or_missing_dep",
+  "why": "Python ModuleNotFoundError"
+ },
+ {
+  "id": "tri-32",
+  "state": "npm ERR! code E404\nnpm ERR! 404 Not Found - GET https://registry.npmjs.org/@acme%2fui-kit - Not found\nnpm ERR! 404  '@acme/ui-kit@^3.2.0' is not in this registry.",
+  "label": "environment_or_missing_dep",
+  "why": "npm peer dependency / missing package"
+ },
+ {
+  "id": "tri-33",
+  "state": "make: protoc: Command not found\nmake: *** [Makefile:34: gen/api.pb.cc] Error 127",
+  "label": "environment_or_missing_dep",
+  "why": "command not found tool missing"
+ },
+ {
+  "id": "tri-34",
+  "state": "Error: Missing required environment variable DATABASE_URL\n    at loadConfig (/app/dist/config.js:21:11)\n    at bootstrap (/app/dist/main.js:9:3)",
+  "label": "environment_or_missing_dep",
+  "why": "Missing environment variable"
+ },
+ {
+  "id": "tri-35",
+  "state": "ERROR: Package 'datalib' requires a different Python: 3.8.10 not in '>=3.10'\nERROR: Could not find a version that satisfies the requirement numpy>=2.0 (from versions: 1.24.4)",
+  "label": "environment_or_missing_dep",
+  "why": "pip dependency resolution / wrong Python version"
+ }
+]

@@ -4,22 +4,31 @@ Zero external dependencies (pure standard library).
 Compatible with Claude Desktop, Cursor, Antigravity, Cline, Windsurf, Roo Code.
 """
 
-import sys
 import json
-from typing import Dict, Any
+import subprocess
+import sys
+import traceback
+from typing import Any, Dict
 
+from . import __version__
 from .client import SystemOneClient
-from .rubrics import (
-    RUBRIC_DIFF_RISK,
-    RUBRIC_ERROR_TRIAGE,
-    RUBRIC_COMMAND_SAFETY,
-    RUBRIC_AGENT_ROUTING,
+from .diff_review import review_staged
+from .policy import PolicyConfig, evaluate_diff
+
+GIT_DIFF_TIMEOUT_SECONDS = 30
+NOTHING_STAGED_NOTE = "nenhuma alteração staged"
+PREFER_STAGED_HINT = (
+    " Se a alteração já está staged no git, prefira systemone_review_staged: "
+    "ele lê o diff no servidor e evita passá-lo pelo agente."
 )
 
 MCP_TOOLS = [
     {
         "name": "systemone_triage_error",
-        "description": "Triage and classify build, linker, runtime errors, or test failures using local Ollama Nimble (9B) decision model.",
+        "description": (
+            "Triage and classify build, linker, runtime errors, or test failures using local Ollama "
+            "Nimble (9B) decision model." + PREFER_STAGED_HINT
+        ),
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -38,7 +47,10 @@ MCP_TOOLS = [
     },
     {
         "name": "systemone_review_diff",
-        "description": "Evaluates architectural risk, breaking changes, and critical failure modes in a code patch or git diff using Nimble (9B).",
+        "description": (
+            "Evaluates architectural risk, breaking changes, and critical failure modes in a code patch "
+            "or git diff using Nimble (9B)." + PREFER_STAGED_HINT
+        ),
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -56,8 +68,30 @@ MCP_TOOLS = [
         }
     },
     {
+        "name": "systemone_review_staged",
+        "description": (
+            "Reviews the changes currently staged in git (git diff --cached, read by the server in its "
+            "working directory) per file, skipping lockfiles/binaries, and returns risk, breaking-change "
+            "answers, coverage and the allow/block policy decision. Preferred over "
+            "systemone_review_diff: the diff never passes through the agent."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "model": {
+                    "type": "string",
+                    "description": "Model to use ('nimble' or 'tev1:0.8b'). Defaults to 'nimble'.",
+                    "default": "nimble"
+                }
+            }
+        }
+    },
+    {
         "name": "systemone_command_guard",
-        "description": "Ultra-fast safety check (<15ms via tev1:0.8b) before executing potentially risky shell/bash commands.",
+        "description": (
+            "Low-latency local safety check (deterministic rules first, then tev1:0.8b) before executing "
+            "potentially risky shell/bash commands."
+        ),
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -99,6 +133,85 @@ def send_jsonrpc(obj: Dict[str, Any]):
     sys.stdout.write(line + "\n")
     sys.stdout.flush()
 
+def _text_result(payload: Dict[str, Any], is_error: bool = False) -> Dict[str, Any]:
+    # A tool payload carrying an "error" key is a failure, not an answer.
+    if isinstance(payload, dict) and "error" in payload:
+        is_error = True
+    result: Dict[str, Any] = {
+        "content": [
+            {
+                "type": "text",
+                "text": json.dumps(payload, indent=2, ensure_ascii=False)
+            }
+        ]
+    }
+    if is_error:
+        result["isError"] = True
+    return result
+
+def _staged_diff() -> Dict[str, Any]:
+    """Runs `git diff --cached` in the current directory. Returns {"diff"} or {"error"}."""
+    try:
+        proc = subprocess.run(["git", "diff", "--cached"], capture_output=True, text=True,
+                              errors="replace", timeout=GIT_DIFF_TIMEOUT_SECONDS)
+    except subprocess.TimeoutExpired:
+        return {"error": f"git diff --cached excedeu o tempo limite de {GIT_DIFF_TIMEOUT_SECONDS}s"}
+    except FileNotFoundError:
+        return {"error": "git não encontrado no PATH do servidor MCP"}
+    except OSError:
+        return {"error": "falha ao executar git no servidor MCP"}
+    if proc.returncode != 0:
+        return {"error": "o diretório de trabalho do servidor MCP não é um repositório git "
+                         "ou 'git diff --cached' falhou"}
+    return {"diff": proc.stdout}
+
+
+def _review_staged_tool(client: Any, tool_args: Dict[str, Any]) -> Dict[str, Any]:
+    staged = _staged_diff()
+    if "error" in staged:
+        return staged
+    if not staged["diff"].strip():
+        return {"answers": {},
+                "coverage": {"reviewed": [], "skipped": [], "truncated": []},
+                "note": NOTHING_STAGED_NOTE}
+    try:
+        cfg = PolicyConfig.from_env()
+    except ValueError as exc:
+        return {"error": f"configuração de política inválida: {exc}"}
+    res = review_staged(client, staged["diff"], tool_args.get("model"))
+    if "error" in res:
+        return res
+    decision = evaluate_diff(res, cfg)
+    return {**res, "decision": {"action": decision.action,
+                                "reasons": list(decision.reasons),
+                                "warning": decision.warning}}
+
+
+def _dispatch_tool(client: Any, tool_name: Any, tool_args: Dict[str, Any]) -> Dict[str, Any]:
+    """Run a tool and build the tools/call result. Never raises."""
+    try:
+        if tool_name == "systemone_triage_error":
+            res = client.triage_error(tool_args.get("error_log", ""), model=tool_args.get("model"))
+        elif tool_name == "systemone_review_diff":
+            res = client.review_diff(tool_args.get("diff", ""), model=tool_args.get("model"))
+        elif tool_name == "systemone_review_staged":
+            res = _review_staged_tool(client, tool_args)
+        elif tool_name == "systemone_command_guard":
+            res = client.guard_command(tool_args.get("command", ""))
+        elif tool_name == "systemone_query":
+            res = client.evaluate(
+                state=tool_args.get("state", ""),
+                questions=tool_args.get("questions", {}),
+                model=tool_args.get("model")
+            )
+        else:
+            res = {"error": f"Tool '{tool_name}' não encontrada"}
+        return _text_result(res)
+    except Exception:
+        # stdout is the protocol channel: log details to stderr only.
+        traceback.print_exc(file=sys.stderr)
+        return _text_result({"error": "Internal error while executing tool"}, is_error=True)
+
 def run_mcp_server():
     client = SystemOneClient()
 
@@ -113,11 +226,23 @@ def run_mcp_server():
         try:
             req = json.loads(line)
         except Exception:
+            # Never echo the offending text; keep details minimal on stderr.
+            print("mcp: ignoring invalid JSON line (parse error)", file=sys.stderr)
+            send_jsonrpc({
+                "jsonrpc": "2.0",
+                "id": None,
+                "error": {"code": -32700, "message": "Parse error"}
+            })
+            continue
+
+        if not isinstance(req, dict):
             continue
 
         req_id = req.get("id")
         method = req.get("method")
-        params = req.get("params", {})
+        params = req.get("params")
+        if not isinstance(params, dict):
+            params = {}
 
         if method == "initialize":
             send_jsonrpc({
@@ -130,7 +255,7 @@ def run_mcp_server():
                     },
                     "serverInfo": {
                         "name": "systemone-gate",
-                        "version": "0.1.0"
+                        "version": __version__
                     }
                 }
             })
@@ -148,34 +273,25 @@ def run_mcp_server():
             })
         elif method == "tools/call":
             tool_name = params.get("name")
-            tool_args = params.get("arguments", {})
+            tool_args = params.get("arguments")
+            if tool_args is None:
+                tool_args = {}
 
-            if tool_name == "systemone_triage_error":
-                res = client.triage_error(tool_args.get("error_log", ""), model=tool_args.get("model"))
-            elif tool_name == "systemone_review_diff":
-                res = client.review_diff(tool_args.get("diff", ""), model=tool_args.get("model"))
-            elif tool_name == "systemone_command_guard":
-                res = client.guard_command(tool_args.get("command", ""))
-            elif tool_name == "systemone_query":
-                res = client.evaluate(
-                    state=tool_args.get("state", ""),
-                    questions=tool_args.get("questions", {}),
-                    model=tool_args.get("model")
-                )
-            else:
-                res = {"error": f"Tool '{tool_name}' não encontrada"}
+            if not isinstance(tool_args, dict):
+                send_jsonrpc({
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "error": {
+                        "code": -32602,
+                        "message": "Invalid params: 'arguments' must be an object"
+                    }
+                })
+                continue
 
             send_jsonrpc({
                 "jsonrpc": "2.0",
                 "id": req_id,
-                "result": {
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": json.dumps(res, indent=2, ensure_ascii=False)
-                        }
-                    ]
-                }
+                "result": _dispatch_tool(client, tool_name, tool_args)
             })
         else:
             if req_id is not None:
