@@ -7,6 +7,10 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Changed
+
+- Documentation is now bilingual: English is the primary language and Brazilian Portuguese the secondary one. `README.md`, `docs/AGENT_MANUAL.md` and `examples/cursor_rules.md` are in English, with `*.pt-BR.md` translations and a language switcher at the top of each. `docs/MANUAL_AGENTES_IA.md` was renamed to `docs/AGENT_MANUAL.pt-BR.md`; `examples/python_agent_integration.py` is now English only. `docs/BENCHMARK_RUBRIC_LANGUAGE.md` stays in Portuguese (frozen benchmark record) with an English summary on top.
+
 ## [0.4.0] - 2026-10-06
 
 ### Changed
