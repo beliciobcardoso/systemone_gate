@@ -7,6 +7,12 @@ Designed according to Ollama /v1/systemone schema:
 The diff-risk and error-triage rubrics are language-sensitive and come in
 profiles (see PROFILES, get_diff_rubric, get_triage_rubric). The module
 constants RUBRIC_DIFF_RISK / RUBRIC_ERROR_TRIAGE are the "default" profile.
+
+All rubric text sent to the model is in English: the project is public and
+international, and the benchmark in docs/BENCHMARK_RUBRIC_LANGUAGE.md found no
+detectable accuracy difference against Portuguese. Choice keys are the labels
+the policy code reads and must not be translated or renamed.
+tests/test_rubrics.py rejects Portuguese text in any rubric.
 """
 
 import copy
@@ -15,16 +21,16 @@ from typing import Any, Callable, Dict
 RUBRIC_DIFF_RISK = {
     "risk_level": {
         "type": "score",
-        "instructions": "Avalie o nível de risco técnico deste diff de código:",
+        "instructions": "Rate the technical risk level of this code diff:",
         "criteria": [
-            "Baixo: seguro, documentação, comentários ou refatoração cosmética",
-            "Médio: nova função isolada, correção simples de bug com baixo acoplamento",
-            "Alto: modificação em concorrência, locks, alocação de memória ou structs de socket"
+            "Low: safe, documentation, comments or cosmetic refactoring",
+            "Medium: new isolated function, simple bug fix with low coupling",
+            "High: changes to concurrency, locks, memory allocation or socket structs"
         ]
     },
     "breaking_change": {
         "type": "choice",
-        "instructions": "Esta alteração quebra contratos públicos, APIs ou protocolos?",
+        "instructions": "Does this change break public contracts, APIs or protocols?",
         "criteria": {
             "safe": None,
             "potential_break": None,
@@ -36,7 +42,7 @@ RUBRIC_DIFF_RISK = {
 RUBRIC_ERROR_TRIAGE = {
     "root_cause": {
         "type": "choice",
-        "instructions": "Qual é a causa-raiz principal desta falha ou erro de compilação/teste?",
+        "instructions": "What is the main root cause of this failure or compilation/test error?",
         "criteria": {
             "compilation_syntax": None,
             "linker_undefined_reference": None,
@@ -49,11 +55,11 @@ RUBRIC_ERROR_TRIAGE = {
     },
     "severity": {
         "type": "score",
-        "instructions": "Qual o nível de gravidade deste erro?",
+        "instructions": "What is the severity level of this error?",
         "criteria": [
-            "Aviso não bloqueante ou estético",
-            "Falha parcial ou teste isolado",
-            "Erro bloqueante crítico de compilação ou execução"
+            "Non-blocking or cosmetic warning",
+            "Partial failure or isolated test",
+            "Critical blocking compilation or runtime error"
         ]
     }
 }
@@ -63,11 +69,11 @@ PROFILES = ("default", "generic", "web-backend")
 
 _SEVERITY_QUESTION = {
     "type": "score",
-    "instructions": "Qual o nível de gravidade deste erro?",
+    "instructions": "What is the severity level of this error?",
     "criteria": [
-        "Aviso não bloqueante ou estético",
-        "Falha parcial ou teste isolado",
-        "Erro bloqueante crítico de compilação ou execução"
+        "Non-blocking or cosmetic warning",
+        "Partial failure or isolated test",
+        "Critical blocking compilation or runtime error"
     ]
 }
 
@@ -84,16 +90,16 @@ def _generic_diff() -> Dict[str, Any]:
     return {
         "risk_level": {
             "type": "score",
-            "instructions": "Avalie o nível de risco técnico deste diff de código:",
+            "instructions": "Rate the technical risk level of this code diff:",
             "criteria": [
-                "Baixo: documentação, comentários, testes ou refatoração cosmética sem mudança de comportamento",
-                "Médio: nova funcionalidade isolada ou correção simples de bug com baixo acoplamento",
-                "Alto: mudança em autenticação, autorização, concorrência, tratamento de dados "
-                "persistidos, configuração sensível ou comportamento de código amplamente compartilhado"
+                "Low: documentation, comments, tests or cosmetic refactoring with no behavior change",
+                "Medium: isolated new feature or simple bug fix with low coupling",
+                "High: changes to authentication, authorization, concurrency, handling of persisted "
+                "data, sensitive configuration or the behavior of widely shared code"
             ]
         },
         "breaking_change": _breaking_change_question(
-            "Esta alteração quebra contratos públicos, interfaces ou formatos de dados usados por outros componentes?"),
+            "Does this change break public contracts, interfaces or data formats used by other components?"),
     }
 
 
@@ -102,22 +108,21 @@ def _web_backend_diff() -> Dict[str, Any]:
         "risk_level": {
             "type": "score",
             "instructions": (
-                "Avalie o nível de risco técnico deste diff de um serviço backend web (API, banco de "
-                "dados):"
+                "Rate the technical risk level of this diff of a web backend service (API, database):"
             ),
             "criteria": [
-                "Baixo: documentação, comentários, testes ou refatoração cosmética sem mudança de comportamento",
-                "Médio: novo endpoint ou caso de uso isolado, correção simples de bug com baixo acoplamento",
-                "Alto: migration destrutiva ou irreversível (drop de coluna ou tabela, estreitamento de tipo, "
-                "NOT NULL sem default); alteração de autenticação ou autorização, ou remoção de verificação "
-                "de permissão; query sem filtro de tenant ou dono (vazamento entre tenants); mudança de "
-                "contrato público REST ou GraphQL (campo removido ou renomeado, status code alterado); "
-                "mudança em concorrência, transações ou locking; manipulação de segredos ou configuração sensível"
+                "Low: documentation, comments, tests or cosmetic refactoring with no behavior change",
+                "Medium: new isolated endpoint or use case, simple bug fix with low coupling",
+                "High: destructive or irreversible migration (dropping a column or table, narrowing a type, "
+                "NOT NULL without a default); change to authentication or authorization, or removal of a "
+                "permission check; query without a tenant or owner filter (cross-tenant leak); change to a "
+                "public REST or GraphQL contract (removed or renamed field, changed status code); change to "
+                "concurrency, transactions or locking; handling of secrets or sensitive configuration"
             ]
         },
         "breaking_change": _breaking_change_question(
-            "Esta alteração quebra contratos públicos: API REST/GraphQL (campos, rotas, status codes), "
-            "schema do banco de dados ou schema de eventos e mensagens consumidos por outros serviços?"),
+            "Does this change break public contracts: the REST/GraphQL API (fields, routes, status codes), "
+            "the database schema, or the schema of events and messages consumed by other services?"),
     }
 
 
@@ -125,7 +130,7 @@ def _generic_triage() -> Dict[str, Any]:
     return {
         "root_cause": {
             "type": "choice",
-            "instructions": "Qual é a causa-raiz principal desta falha ou erro de compilação/teste?",
+            "instructions": "What is the main root cause of this failure or compilation/test error?",
             "criteria": {
                 "compilation_or_syntax_error": None,
                 "dependency_or_environment": None,
@@ -144,8 +149,8 @@ def _web_backend_triage() -> Dict[str, Any]:
         "root_cause": {
             "type": "choice",
             "instructions": (
-                "Qual é a causa-raiz principal desta falha ou erro de build/teste/execução do serviço "
-                "backend?"
+                "What is the main root cause of this failure or build/test/runtime error of the backend "
+                "service?"
             ),
             "criteria": {
                 "compilation_or_type_error": None,
@@ -194,7 +199,7 @@ def get_triage_rubric(profile: str = DEFAULT_PROFILE) -> Dict[str, Any]:
 RUBRIC_COMMAND_SAFETY = {
     "is_destructive": {
         "type": "choice",
-        "instructions": "Este comando pode apagar dados, sobrescrever arquivos em lote ou desconfigurar o ambiente?",
+        "instructions": "Can this command delete data, overwrite files in bulk or misconfigure the environment?",
         "criteria": {
             "safe": None,
             "destructive_or_risky": None
@@ -202,11 +207,11 @@ RUBRIC_COMMAND_SAFETY = {
     },
     "danger_score": {
         "type": "score",
-        "instructions": "Nível de periculosidade do comando:",
+        "instructions": "Danger level of the command:",
         "criteria": [
-            "Comando de leitura ou build seguro (ex: ls, git status, cargo check, make)",
-            "Comando que modifica arquivos de trabalho ou ambiente local de forma controlada",
-            "Comando perigoso de exclusão em massa, privilégio elevado ou impacto irreversível"
+            "Safe read or build command (e.g. ls, git status, cargo check, make)",
+            "Command that modifies working files or the local environment in a controlled way",
+            "Dangerous command: mass deletion, elevated privileges or irreversible impact"
         ]
     }
 }
@@ -214,7 +219,7 @@ RUBRIC_COMMAND_SAFETY = {
 RUBRIC_AGENT_ROUTING = {
     "assigned_specialist": {
         "type": "choice",
-        "instructions": "Qual tipo de especialista de IA deve resolver esta solicitação do desenvolvedor?",
+        "instructions": "Which type of AI specialist should handle this developer request?",
         "criteria": {
             "researcher": None,
             "code_architect": None,
@@ -225,11 +230,11 @@ RUBRIC_AGENT_ROUTING = {
     },
     "task_complexity": {
         "type": "score",
-        "instructions": "Complexidade estimada da tarefa:",
+        "instructions": "Estimated task complexity:",
         "criteria": [
-            "Simples: consulta rápida, ajuste de 1 linha ou explicação pontual",
-            "Média: implementação de função ou correção de bug pontual",
-            "Alta: refatoração ampla, design de sistema ou investigação profunda"
+            "Simple: quick lookup, one-line tweak or one-off explanation",
+            "Medium: implementing a function or fixing a specific bug",
+            "High: broad refactoring, system design or deep investigation"
         ]
     }
 }

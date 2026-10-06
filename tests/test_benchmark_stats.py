@@ -21,7 +21,7 @@ def _load(name, path):
 
 
 stats = _load("rubric_language_stats", os.path.join(BENCH, "rubric_language_stats.py"))
-rubrics_en = _load("rubrics_en", os.path.join(BENCH, "data", "rubrics_en.py"))
+rubrics_pt = _load("rubrics_pt", os.path.join(BENCH, "data", "rubrics_pt.py"))
 
 
 def test_argmax_key_picks_highest_and_first_on_tie():
@@ -112,11 +112,11 @@ def _shape(rubric):
 @pytest.mark.parametrize(
     "pt, en",
     [
-        (get_diff_rubric("default"), rubrics_en.RUBRIC_DIFF_RISK_EN),
-        (get_triage_rubric("default"), rubrics_en.RUBRIC_ERROR_TRIAGE_EN),
+        (rubrics_pt.RUBRIC_DIFF_RISK_PT, get_diff_rubric("default")),
+        (rubrics_pt.RUBRIC_ERROR_TRIAGE_PT, get_triage_rubric("default")),
     ],
 )
-def test_english_rubrics_mirror_portuguese_structure(pt, en):
+def test_production_english_rubrics_mirror_the_frozen_portuguese_structure(pt, en):
     assert list(pt.keys()) == list(en.keys())
     assert _shape(pt) == _shape(en)
     for key in pt:
