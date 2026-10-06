@@ -1,5 +1,24 @@
 # Benchmark: rubricas em português vs inglês (RSK-02 / S3)
 
+> **Atualização (2026-10-06): decisão do mantenedor, as rubricas de produção passam a ser em inglês.**
+> O projeto é público, open source e de uso internacional; rubricas em português seriam uma barreira para
+> contribuidores e para quem lê o que é enviado ao modelo. A decisão **não** se apoia em ganho de acurácia:
+> pelo benchmark abaixo não há diferença detectável entre os idiomas (menor p = 0,19), de modo que a troca não
+> degrada o que foi medido. A "Regra de decisão" abaixo continua sendo o critério para trocar *por
+> desempenho*; aqui a troca é por público-alvo. Consequências:
+> - todas as rubricas (`default`, `generic`, `web-backend`, `RUBRIC_COMMAND_SAFETY`, `RUBRIC_AGENT_ROUTING`)
+>   estão em inglês em `systemone_gate/rubrics.py`; as chaves de escolha (os rótulos que a política lê) não mudaram;
+> - o texto do perfil `default` é a tradução fiel que foi medida neste benchmark;
+> - o original em português ficou congelado em `benchmarks/data/rubrics_pt.py`, para o benchmark continuar
+>   reproduzível: a condição `pt` é esse arquivo e a condição `en` é a rubrica de produção;
+> - os perfis `generic` e `web-backend`, `RUBRIC_COMMAND_SAFETY` e `RUBRIC_AGENT_ROUTING` **não foram medidos** neste
+>   benchmark; o guard foi comparado em uma verificação posterior (seção "Verificação do guard" no fim);
+> - os scores mudam com o prompt: qualquer coleta de calibração feita com a rubrica em português é inválida
+>   (o hash da rubrica registrado na coleta detecta isso).
+>
+> O restante deste documento é o registro do experimento original e foi mantido como estava, inclusive
+> "Decisão: manter português" abaixo, que era a conclusão *por desempenho* na data.
+
 Experimento. Nenhum código de produção nem default foi alterado.
 
 ## Pergunta
@@ -11,8 +30,9 @@ português degrada a acurácia em relação a uma tradução fiel em inglês?
 ## Método
 
 - Condições: idioma {pt, en} x modelo {`tev1:0.8b`, `nimble:latest`} x tarefa {triage, diff} = 8 condições, 284 requisições.
-- `pt` = rubricas do perfil `default` importadas do pacote (`RUBRIC_ERROR_TRIAGE`, `RUBRIC_DIFF_RISK`).
-- `en` = tradução fiel em `benchmarks/data/rubrics_en.py`: mesmas chaves de pergunta, mesmas chaves de escolha
+- `pt` = rubricas do perfil `default`, então em produção (`RUBRIC_ERROR_TRIAGE`, `RUBRIC_DIFF_RISK`); hoje congeladas em
+  `benchmarks/data/rubrics_pt.py`.
+- `en` = tradução fiel (então em `benchmarks/data/rubrics_en.py`, hoje a própria rubrica de produção): mesmas chaves de pergunta, mesmas chaves de escolha
   (são os rótulos, não traduzidas), mesmo número e ordem de critérios de score. Só `instructions` e descrições de
   `criteria` foram traduzidas, sem acrescentar nem remover informação. Um teste hermético
   (`tests/test_benchmark_stats.py`) verifica essa paridade estrutural.
@@ -122,6 +142,9 @@ não foi medido.
 
 ### Regra de decisão
 
+(Esta regra e a decisão abaixo eram o critério *por desempenho*; foram superadas pela decisão do mantenedor no topo
+deste documento.)
+
 Mudar o idioma default de produção SOMENTE se en superar pt com p < 0,05 para AMBOS os modelos na mesma tarefa.
 Resultado: nenhuma tarefa atinge p < 0,05 em nenhum modelo (menor p = 0,189). **Decisão: manter português.** Nenhum
 código nem default foi alterado.
@@ -134,3 +157,46 @@ discrimina risco em nenhum idioma.
 
 Este conjunto rotulado pode servir de semente para calibração de limiares (FAL-03/FAL-05), mas **não é suficiente**
 para isso: poucos casos, rótulos de LLM, distribuição sintética e `breaking_change` desbalanceado.
+
+## Verificação do guard após a troca para inglês (2026-10-06)
+
+O benchmark acima cobre só triagem e diff do perfil `default`. `RUBRIC_COMMAND_SAFETY` (guard) foi comparada depois,
+com os 84 comandos sintéticos do dataset de calibração (`benchmarks/data/calibration/`), coletados nos dois idiomas
+com `benchmarks/calibrate_collect.py` e analisados com `benchmarks/calibrate_analyze.py --preliminary`.
+
+Reprodução: as duas coletas brutas estão em `benchmarks/results/guard_rubric_language_pt.json` e
+`guard_rubric_language_en.json` (mesmo digest do `tev1:0.8b`, `8d11b3146b7f…`; a coleta `en` foi feita com o pacote ainda
+sem commit, `git_dirty_package: true`, antes desta mudança). O texto da rubrica `pt` do guard está congelado em
+`benchmarks/data/rubrics_pt.py` (`RUBRIC_COMMAND_SAFETY_PT`). A diferença de AUC sai de:
+
+```bash
+python benchmarks/compare_collections.py benchmarks/results/guard_rubric_language_pt.json \
+    benchmarks/results/guard_rubric_language_en.json --labels pt en
+```
+
+Para coletar o lado `pt` de novo é preciso apontar a coleta para a rubrica congelada (não automatizado).
+
+| Modelo | Idioma | AUC do `danger_score`* | Score médio bloqueáveis / seguros | Defaults atuais: recall / FPR |
+|---|---|---|---|---|
+| `tev1:0.8b` (modelo de produção do guard) | pt | 0,83 | 0,61 / 0,38 | 38,5% / 0,0% |
+| `tev1:0.8b` | en | 0,72 | 0,44 / 0,33 | 38,5% / 0,0% |
+| `nimble:latest` | pt | 0,92 | 1,67 / 0,75 | 87,2% / 11,1% |
+| `nimble:latest` | en | 0,91 | 1,70 / 0,78 | 84,6% / 17,8% |
+
+\* Bloqueáveis que as regras determinísticas não pegam (24) contra seguros (45). Diferença pareada de AUC (en − pt),
+bootstrap pareado com 2000 reamostragens (semente fixa) sobre os 69 casos: `tev1:0.8b` **−0,104 [IC 95% −0,182; −0,030]**;
+`nimble:latest` −0,014 [−0,040; +0,006].
+
+Leitura:
+
+- Para o `nimble` não há mudança detectável no ranqueamento, em linha com o benchmark original. Nos defaults atuais o
+  FPR sobe de 11,1% para 17,8% (3 falsos positivos a mais em 45), dentro do que o n pequeno permite.
+- Para o `tev1:0.8b`, a rubrica em inglês **piora** a separação entre comandos perigosos e seguros, e o intervalo
+  exclui zero. Isto contraria "nenhuma diferença detectável" do benchmark de triagem/diff e vale para o guard.
+- **Efeito prático hoje: nenhum.** Com o limiar padrão (1,5) o `tev1:0.8b` não bloqueia nada por conta própria em
+  nenhum dos idiomas (recall igual ao das regras sozinhas, 38,5%); o guard efetivo continua sendo as regras
+  determinísticas. O custo da troca está em calibrar o modelo como gate no futuro: o melhor recall fora da amostra da
+  variante `score_only` foi 66,7% (pt) contra 64,1% (en), nenhum perto de 90%.
+- Limites: rótulos sintéticos ainda sem revisão humana, n = 69, um único prompt em inglês. Uma redação diferente da
+  rubrica em inglês poderia recuperar parte da diferença; não foi testada para não ajustar o prompt em cima de
+  rótulos não revisados. Refazer esta comparação depois da revisão dos rótulos.

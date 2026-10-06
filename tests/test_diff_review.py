@@ -203,8 +203,8 @@ def test_per_file_truncation():
     sent = client.calls[0]["text"]
     lines = sent.splitlines()
     assert len(lines) == 51
-    assert lines[-1].startswith("... [truncado ") and lines[-1].endswith(" linhas]")
-    assert "\n... [truncado" not in client.calls[1]["text"]
+    assert lines[-1].startswith("... [truncated ") and lines[-1].endswith(" lines]")
+    assert "\n... [truncated" not in client.calls[1]["text"]
     assert res["coverage"]["truncated"] == ["big.py"]
 
 
@@ -212,7 +212,7 @@ def test_truncation_marker_count():
     diff = make_file_diff("big.py", [f"l{i}" for i in range(10)])  # 5 header + 10
     client = StubClient()
     review_staged(client, diff, "m", max_lines_per_file=5)
-    assert client.calls[0]["text"].splitlines()[-1] == "... [truncado 10 linhas]"
+    assert client.calls[0]["text"].splitlines()[-1] == "... [truncated 10 lines]"
 
 
 def test_max_files_cap():

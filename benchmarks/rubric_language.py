@@ -1,4 +1,4 @@
-"""A/B benchmark: Portuguese (production) vs English rubrics (experiment RSK-02 / S3).
+"""A/B benchmark: Portuguese (frozen original) vs English (now production) rubrics (experiment RSK-02 / S3).
 
 Usage:
   python benchmarks/rubric_language.py [--models tev1:0.8b nimble:latest] [--tasks triage diff]
@@ -60,12 +60,14 @@ def load_data():
 
 
 def load_rubrics():
-    en = _load_module("rubrics_en", os.path.join(DATA_DIR, "rubrics_en.py"))
+    # `pt` is the Portuguese original frozen in data/rubrics_pt.py; `en` is the production rubric, which is
+    # English since the switch documented in docs/BENCHMARK_RUBRIC_LANGUAGE.md.
+    pt = _load_module("rubrics_pt", os.path.join(DATA_DIR, "rubrics_pt.py"))
     return {
-        ("triage", "pt"): get_triage_rubric("default"),
-        ("triage", "en"): en.RUBRIC_ERROR_TRIAGE_EN,
-        ("diff", "pt"): get_diff_rubric("default"),
-        ("diff", "en"): en.RUBRIC_DIFF_RISK_EN,
+        ("triage", "pt"): pt.RUBRIC_ERROR_TRIAGE_PT,
+        ("triage", "en"): get_triage_rubric("default"),
+        ("diff", "pt"): pt.RUBRIC_DIFF_RISK_PT,
+        ("diff", "en"): get_diff_rubric("default"),
     }
 
 
@@ -321,7 +323,7 @@ def environment_meta(models):
     except Exception as exc:  # noqa: BLE001
         api_version = f"unavailable: {exc}"
     files = {}
-    for name in ("triage_cases.json", "diff_cases.json", "rubrics_en.py"):
+    for name in ("triage_cases.json", "diff_cases.json", "rubrics_pt.py"):
         with open(os.path.join(DATA_DIR, name), "rb") as f:
             files[name] = hashlib.sha256(f.read()).hexdigest()[:16]
     return {

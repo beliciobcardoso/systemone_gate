@@ -37,7 +37,7 @@ _VERSION_RE = re.compile(r"^v?(\d+)\.(\d+)(?:\.(\d+))?")
 SMOKE_RUBRIC = {
     "ping": {
         "type": "choice",
-        "instructions": "A afirmação é verdadeira? Afirmação: 1 + 1 = 2",
+        "instructions": "Is the statement true? Statement: 1 + 1 = 2",
         "criteria": {"yes": None, "no": None},
     }
 }

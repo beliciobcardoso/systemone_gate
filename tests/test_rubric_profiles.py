@@ -12,23 +12,23 @@ from systemone_gate.diff_review import review_staged
 ORIGINAL_DIFF = {
     "risk_level": {
         "type": "score",
-        "instructions": "Avalie o nível de risco técnico deste diff de código:",
+        "instructions": "Rate the technical risk level of this code diff:",
         "criteria": [
-            "Baixo: seguro, documentação, comentários ou refatoração cosmética",
-            "Médio: nova função isolada, correção simples de bug com baixo acoplamento",
-            "Alto: modificação em concorrência, locks, alocação de memória ou structs de socket",
+            "Low: safe, documentation, comments or cosmetic refactoring",
+            "Medium: new isolated function, simple bug fix with low coupling",
+            "High: changes to concurrency, locks, memory allocation or socket structs",
         ],
     },
     "breaking_change": {
         "type": "choice",
-        "instructions": "Esta alteração quebra contratos públicos, APIs ou protocolos?",
+        "instructions": "Does this change break public contracts, APIs or protocols?",
         "criteria": {"safe": None, "potential_break": None, "breaking_change": None},
     },
 }
 ORIGINAL_TRIAGE = {
     "root_cause": {
         "type": "choice",
-        "instructions": "Qual é a causa-raiz principal desta falha ou erro de compilação/teste?",
+        "instructions": "What is the main root cause of this failure or compilation/test error?",
         "criteria": {
             "compilation_syntax": None,
             "linker_undefined_reference": None,
@@ -41,11 +41,11 @@ ORIGINAL_TRIAGE = {
     },
     "severity": {
         "type": "score",
-        "instructions": "Qual o nível de gravidade deste erro?",
+        "instructions": "What is the severity level of this error?",
         "criteria": [
-            "Aviso não bloqueante ou estético",
-            "Falha parcial ou teste isolado",
-            "Erro bloqueante crítico de compilação ou execução",
+            "Non-blocking or cosmetic warning",
+            "Partial failure or isolated test",
+            "Critical blocking compilation or runtime error",
         ],
     },
 }
@@ -122,12 +122,12 @@ def test_generic_has_no_c_network_jargon():
 def test_web_backend_diff_covers_required_topics():
     r = rubrics.get_diff_rubric("web-backend")
     high = r["risk_level"]["criteria"][2].lower()
-    for topic in ("migra", "drop", "not null", "autentica", "autoriza", "tenant", "rest", "graphql",
-                  "transa", "concorr", "segredo"):
+    for topic in ("migration", "drop", "not null", "authentication", "authorization", "tenant", "rest", "graphql",
+                  "transaction", "concurrency", "secret"):
         assert topic in high, topic
-    assert high.startswith("alto")
+    assert high.startswith("high")
     instr = r["breaking_change"]["instructions"].lower()
-    for topic in ("api", "schema", "evento"):
+    for topic in ("api", "schema", "event"):
         assert topic in instr, topic
 
 
