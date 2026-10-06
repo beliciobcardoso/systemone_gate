@@ -82,8 +82,8 @@ def _warn_remote_once(url: str) -> None:
     if _remote_warned:
         return
     _remote_warned = True
-    print(f"[systemone_gate] AVISO: endpoint remoto {_safe_url(url)}; diffs, comandos e logs "
-          f"sairão desta máquina ({ALLOW_REMOTE_ENV_VAR} ativo)", file=sys.stderr)
+    print(f"[systemone_gate] Warning: remote endpoint {_safe_url(url)}; diffs, commands and logs "
+          f"will leave this machine ({ALLOW_REMOTE_ENV_VAR} is set)", file=sys.stderr)
 
 
 def _validate_endpoint(endpoint: Any) -> str:
@@ -94,15 +94,15 @@ def _validate_endpoint(endpoint: Any) -> str:
         host = parts.hostname
         parts.port  # noqa: B018 - raises ValueError on an invalid port
     except (ValueError, AttributeError):
-        raise ValueError(f"Endpoint inválido: {shown}") from None
+        raise ValueError(f"Invalid endpoint: {shown}") from None
     if parts.scheme.lower() not in ALLOWED_SCHEMES:
-        raise ValueError(f"Endpoint inválido: esquema '{parts.scheme}' não permitido em {shown} (use http ou https)")
+        raise ValueError(f"Invalid endpoint: scheme '{parts.scheme}' not allowed in {shown} (use http or https)")
     if not host:
-        raise ValueError(f"Endpoint inválido: sem host em {shown}")
+        raise ValueError(f"Invalid endpoint: no host in {shown}")
     if not _is_loopback_host(host):
         if not _allow_remote():
-            raise ValueError(f"Endpoint inválido: host remoto em {shown}; "
-                             f"defina {ALLOW_REMOTE_ENV_VAR}=1 para permitir")
+            raise ValueError(f"Invalid endpoint: remote host in {shown}; "
+                             f"set {ALLOW_REMOTE_ENV_VAR}=1 to allow it")
         _warn_remote_once(endpoint)
     return cast(str, endpoint)  # `endpoint` is Any only for the type-guard above; it is a str here
 
@@ -119,9 +119,9 @@ def _validate_timeout(value: Any, source: str) -> float:
     try:
         number = float(value)
     except (TypeError, ValueError):
-        raise ValueError(f"{source} inválido: {value!r} (esperado número positivo de segundos)") from None
+        raise ValueError(f"Invalid {source}: {value!r} (expected a positive number of seconds)") from None
     if not math.isfinite(number) or number <= 0:
-        raise ValueError(f"{source} inválido: {value!r} (esperado número positivo de segundos)")
+        raise ValueError(f"Invalid {source}: {value!r} (expected a positive number of seconds)")
     return number
 
 
@@ -145,7 +145,7 @@ def _resolve_profile(explicit: Optional[str]) -> str:
             return DEFAULT_PROFILE
         source, value = PROFILE_ENV_VAR, raw
     if value not in PROFILES:
-        raise ValueError(f"{source} inválido: {value!r} (válidos: {', '.join(PROFILES)})")
+        raise ValueError(f"Invalid {source}: {value!r} (valid: {', '.join(PROFILES)})")
     return value
 
 
@@ -217,12 +217,12 @@ class SystemOneClient:
         except urllib.error.HTTPError as e:  # before URLError: HTTPError is a subclass
             return self._http_error(e, selected_model)
         except (json.JSONDecodeError, UnicodeDecodeError):
-            return self._error("Resposta inválida do Ollama (JSON malformado)", "invalid_response", selected_model)
+            return self._error("Invalid Ollama response (malformed JSON)", "invalid_response", selected_model)
         except Exception as e:
             if _is_timeout(e):
                 return self._error(
-                    f"Timeout após {effective_timeout:g}s aguardando {self.endpoint} "
-                    f"(no primeiro uso o modelo pode estar carregando; aumente {TIMEOUT_ENV_VAR})",
+                    f"Timeout after {effective_timeout:g}s waiting for {self.endpoint} "
+                    f"(on first use the model may still be loading; raise {TIMEOUT_ENV_VAR})",
                     "timeout", selected_model)
             if isinstance(e, urllib.error.URLError):
                 return self._error(f"Failed to connect to Ollama at {self.endpoint}: {e}", "connection", selected_model)
@@ -241,11 +241,11 @@ class SystemOneClient:
 
     def _http_error(self, err: urllib.error.HTTPError, model: str) -> Dict[str, Any]:
         detail = _http_error_text(err)
-        message = f"Ollama respondeu HTTP {err.code} em {self.endpoint}"
+        message = f"Ollama answered HTTP {err.code} at {self.endpoint}"
         if detail:
             message += f": {detail}"
         if err.code == 404:
-            message += f" (endpoint /v1/systemone não encontrado (Ollama < 0.35?) ou modelo '{model}' ausente)"
+            message += f" (endpoint /v1/systemone not found (Ollama < 0.35?) or model '{model}' missing)"
         return self._error(message, "http", model, status=err.code)
 
     def triage_error(self, error_text: str, model: Optional[str] = None,

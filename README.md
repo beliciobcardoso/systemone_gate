@@ -204,7 +204,7 @@ systemone-gate doctor
 
 **Skipping the hook:** `SYSTEMONE_SKIP=1 git commit ...` skips only the SystemOne Gate check (the other hooks still run). Avoid `git commit --no-verify`, which disables all hooks.
 
-**Emoji-free output:** if the terminal or pipe does not support UTF-8 (e.g. `PYTHONIOENCODING=ascii`), the CLI automatically swaps emoji for ASCII tokens (`[OK]`, `[ERRO]`, `[AVISO]`). To force this mode, use `systemone-gate --plain diff` or `SYSTEMONE_PLAIN=1`. The MCP server is not affected.
+**Emoji-free output:** if the terminal or pipe does not support UTF-8 (e.g. `PYTHONIOENCODING=ascii`), the CLI automatically swaps emoji for ASCII tokens (`[OK]`, `[ERROR]`, `[WARN]`). To force this mode, use `systemone-gate --plain diff` or `SYSTEMONE_PLAIN=1`. The MCP server is not affected.
 
 **Timeout:** the default is 30 s per call. On first use after startup Ollama loads the model into memory (Nimble is 9.5 GB) and may take longer; raise it with `SYSTEMONE_TIMEOUT` (seconds, positive number), for example `SYSTEMONE_TIMEOUT=120 systemone-gate triage "..."`. An invalid value makes the CLI exit with code 2. The endpoint can be changed with `OLLAMA_SYSTEMONE_URL`.
 

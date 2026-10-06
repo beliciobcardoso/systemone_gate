@@ -103,28 +103,28 @@ def _classify_target(target: str) -> Optional[str]:
 def _check_rm(cmd: SimpleCommand) -> Optional[RuleMatch]:
     flags, targets = _split_args(cmd.args)
     if "--no-preserve-root" in flags:
-        return RuleMatch("rm-recursive-root", "rm com --no-preserve-root remove o sistema de arquivos raiz")
+        return RuleMatch("rm-recursive-root", "rm with --no-preserve-root removes the root filesystem")
     if not _has_recursive(flags, "rR"):
         return None
     kinds = {_classify_target(t) for t in targets}
     if "root" in kinds:
-        return RuleMatch("rm-recursive-root", "remoção recursiva da raiz do sistema de arquivos")
+        return RuleMatch("rm-recursive-root", "recursive removal of the filesystem root")
     if "home" in kinds:
-        return RuleMatch("rm-recursive-home", "remoção recursiva do diretório home inteiro")
+        return RuleMatch("rm-recursive-home", "recursive removal of the entire home directory")
     if "system" in kinds:
-        return RuleMatch("rm-recursive-system-dir", "remoção recursiva de diretório de sistema")
+        return RuleMatch("rm-recursive-system-dir", "recursive removal of a system directory")
     return None
 
 
 def _check_dd(cmd: SimpleCommand) -> Optional[RuleMatch]:
     if any(_DD_OF.match(a) for a in cmd.args):
-        return RuleMatch("dd-block-device", "dd gravando direto em dispositivo de bloco destrói o disco")
+        return RuleMatch("dd-block-device", "dd writing directly to a block device destroys the disk")
     return None
 
 
 def _check_mkfs(cmd: SimpleCommand) -> Optional[RuleMatch]:
     if any(a.startswith("/dev/") for a in cmd.args):
-        return RuleMatch("mkfs-device", "formatação de dispositivo apaga todos os dados dele")
+        return RuleMatch("mkfs-device", "formatting a device erases all of its data")
     return None
 
 
@@ -133,7 +133,7 @@ def _check_chmod(cmd: SimpleCommand) -> Optional[RuleMatch]:
     if not _has_recursive(flags, "R"):
         return None
     if any(_classify_target(t) in ("root", "system") for t in targets):
-        return RuleMatch("chmod-recursive-root", "chmod/chown recursivo na raiz ou em diretório de sistema")
+        return RuleMatch("chmod-recursive-root", "recursive chmod/chown on the root or a system directory")
     return None
 
 
@@ -157,7 +157,7 @@ def _check_git(cmd: SimpleCommand) -> Optional[RuleMatch]:
         if _push_ref(target) in _PROTECTED_BRANCHES and (forced or target.startswith("+")):
             return RuleMatch(
                 "git-force-push-protected",
-                "force push em main/master reescreve o histórico compartilhado",
+                "force push to main/master rewrites shared history",
             )
     return None
 
@@ -176,19 +176,19 @@ def _check_shell_download(cmd: SimpleCommand) -> Optional[RuleMatch]:
 
 
 def _download_match() -> RuleMatch:
-    return RuleMatch("download-pipe-shell", "execução de script baixado da rede sem inspeção")
+    return RuleMatch("download-pipe-shell", "running a script downloaded from the network without inspection")
 
 
 def _sql_match(text: str, loose_truncate: bool) -> Optional[RuleMatch]:
     truncate = _SQL_TRUNCATE_LOOSE if loose_truncate else _SQL_TRUNCATE_STRICT
     for statement in text.split(";"):
         if _SQL_DROP.search(statement):
-            return RuleMatch("sql-drop", "DROP de tabela/banco/schema é irreversível")
+            return RuleMatch("sql-drop", "DROP of a table/database/schema is irreversible")
         if truncate.search(statement):
             return RuleMatch("sql-truncate", "TRUNCATE apaga todas as linhas da tabela")
         found = _SQL_DELETE.search(statement)
         if found and not _SQL_WHERE.search(found.group("rest")):
-            return RuleMatch("sql-delete-no-where", "DELETE sem WHERE apaga todas as linhas da tabela")
+            return RuleMatch("sql-delete-no-where", "DELETE without WHERE removes every row of the table")
     return None
 
 
@@ -238,7 +238,7 @@ def _check_segment(
     seg: Segment, cmd: SimpleCommand, nxt: Optional[SimpleCommand], depth: int
 ) -> Optional[RuleMatch]:
     if _REDIRECT_DEV.search(mask_quotes(seg.text)):
-        return RuleMatch("redirect-block-device", "redirecionamento para dispositivo de bloco destrói o disco")
+        return RuleMatch("redirect-block-device", "redirecting to a block device destroys the disk")
     return (
         _check_command(cmd)
         or _check_sql(seg, cmd, nxt)
@@ -251,7 +251,7 @@ def _evaluate(text: str, depth: int) -> Optional[RuleMatch]:
     if depth > MAX_DEPTH:
         return None
     if _FORK_BOMB.search(mask_quotes(text)):
-        return RuleMatch("fork-bomb", "fork bomb esgota os recursos da máquina")
+        return RuleMatch("fork-bomb", "fork bomb exhausts the machine resources")
     segments, subs = scan(text)
     commands = [normalize(tokenize(seg.text)) for seg in segments]
     for idx, seg in enumerate(segments):

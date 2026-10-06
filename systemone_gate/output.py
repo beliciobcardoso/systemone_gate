@@ -20,15 +20,15 @@ PROBE_SYMBOL = "✅"
 
 EMOJI_TO_ASCII = {
     "✅": "[OK]",
-    "❌": "[ERRO]",
-    "⚠": "[AVISO]",
+    "❌": "[ERROR]",
+    "⚠": "[WARN]",
     "ℹ": "[INFO]",
-    "🔍": "[INSPECAO]",
-    "🩺": "[TRIAGEM]",
+    "🔍": "[INSPECT]",
+    "🩺": "[TRIAGE]",
     "🛡": "[GUARD]",
-    "💡": "[DICA]",
-    "📁": "[ARQUIVOS]",
-    "📊": "[RISCO]",
+    "💡": "[HINT]",
+    "📁": "[FILES]",
+    "📊": "[RISK]",
     "·": "-",
     "•": "*",
 }

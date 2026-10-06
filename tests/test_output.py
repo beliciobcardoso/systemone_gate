@@ -8,7 +8,7 @@ import pytest
 from systemone_gate import cli
 from systemone_gate.output import EMOJI_TO_ASCII, PlainWriter, plain_output, to_plain_text
 
-NO_STAGED_MARKER = "Nenhuma alteração staged"
+NO_STAGED_MARKER = "No staged changes"
 
 
 class AsciiStream(io.TextIOWrapper):
@@ -37,8 +37,14 @@ def test_every_production_symbol_is_mapped_to_ascii(symbol):
 
 def test_known_tokens():
     assert to_plain_text("✅ ok") == "[OK] ok"
-    assert to_plain_text("❌ x") == "[ERRO] x"
-    assert to_plain_text("⚠️  y") == "[AVISO]  y"
+    assert to_plain_text("❌ x") == "[ERROR] x"
+    assert to_plain_text("⚠️  y") == "[WARN]  y"
+
+
+def test_every_ascii_token_is_english():
+    tokens = {"🔍": "[INSPECT]", "🩺": "[TRIAGE]", "🛡": "[GUARD]", "💡": "[HINT]", "📁": "[FILES]", "📊": "[RISK]"}
+    for symbol, token in tokens.items():
+        assert to_plain_text(symbol) == token
 
 
 def test_variation_selector_is_dropped_even_alone():
@@ -69,7 +75,7 @@ def test_writer_handles_symbol_split_across_partial_writes():
     writer = PlainWriter(target)
     writer.write("⚠")
     writer.write("️ aviso")
-    assert _read(target) == "[AVISO] aviso"
+    assert _read(target) == "[WARN] aviso"
 
 
 def test_writer_rejects_non_str_like_a_text_stream():
@@ -172,7 +178,7 @@ def test_plain_output_wraps_only_streams_that_cannot_encode(monkeypatch):
         assert isinstance(sys.stderr, PlainWriter)
         print("❌ falha", file=sys.stderr)
     assert sys.stderr is err
-    assert _read(err) == "[ERRO] falha\n"
+    assert _read(err) == "[ERROR] falha\n"
 
 
 def test_stream_without_encoding_is_treated_as_ascii(monkeypatch):
@@ -255,14 +261,14 @@ def test_ascii_stream_does_not_crash_and_exit_code_is_unchanged(tmp_path, repo_r
     out = _run_cli(repo, repo_root, {"PYTHONIOENCODING": "ascii"}, ["diff"])
     assert out.returncode == 0, out.stderr
     text = out.stdout.decode("ascii")
-    assert "[INFO]" in text and "Commit liberado" in text
+    assert "[INFO]" in text and "Commit allowed" in text
     assert b"Traceback" not in out.stderr
 
 
 def test_ascii_stream_error_path_keeps_exit_code(tmp_path, repo_root):
     out = _run_cli(tmp_path, repo_root, {"PYTHONIOENCODING": "ascii"}, ["diff"])  # not a git repo
     assert out.returncode == 1
-    assert b"[ERRO]" in out.stderr and b"Traceback" not in out.stderr
+    assert b"[ERROR]" in out.stderr and b"Traceback" not in out.stderr
 
 
 @pytest.mark.parametrize("args, env", [(["--plain", "diff"], {}), (["diff"], {"SYSTEMONE_PLAIN": "1"})])

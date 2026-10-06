@@ -11,7 +11,7 @@ from .guard_rules import evaluate_command
 
 EXIT_ALLOW = 0
 EXIT_BLOCK = 2
-INVALID_PAYLOAD_WARNING = "[SystemOne Gate] aviso: payload inválido, comando não verificado."
+INVALID_PAYLOAD_WARNING = "[SystemOne Gate] Warning: invalid payload, command not checked."
 
 
 def run_pretooluse(stdin_text: str) -> Tuple[int, str]:
@@ -31,4 +31,4 @@ def run_pretooluse(stdin_text: str) -> Tuple[int, str]:
     match = evaluate_command(command)
     if match is None:
         return EXIT_ALLOW, ""
-    return EXIT_BLOCK, f"[SystemOne Gate] Comando bloqueado: {match.reason} (regra {match.rule_id})"
+    return EXIT_BLOCK, f"[SystemOne Gate] Command blocked: {match.reason} (rule {match.rule_id})"

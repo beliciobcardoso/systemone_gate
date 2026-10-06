@@ -19,7 +19,7 @@ def test_http_404_json_error_and_hint(fake, client):
     assert res["model"] == "x"
     assert "404" in res["error"]
     assert "model 'x' not found" in res["error"]
-    assert "endpoint /v1/systemone não encontrado (Ollama < 0.35?) ou modelo 'x' ausente" in res["error"]
+    assert "endpoint /v1/systemone not found (Ollama < 0.35?) or model 'x' missing" in res["error"]
     assert "Failed to connect" not in res["error"]
 
 
@@ -28,7 +28,7 @@ def test_http_404_non_json_body_uses_raw_snippet(fake, client):
     fake.status_body = b"404 page not found"
     res = client(fake.url).evaluate("s", QUESTIONS)
     assert "404 page not found" in res["error"]
-    assert "endpoint /v1/systemone não encontrado" in res["error"]
+    assert "endpoint /v1/systemone not found" in res["error"]
     assert res["error_kind"] == "http"
 
 
@@ -38,7 +38,7 @@ def test_http_400_includes_server_text_without_404_hint(fake, client):
     res = client(fake.url).evaluate("s", QUESTIONS)
     assert res["status"] == 400 and res["error_kind"] == "http"
     assert "400" in res["error"] and "bad questions" in res["error"]
-    assert "não encontrado" not in res["error"]
+    assert "not found" not in res["error"]
 
 
 def test_http_500_with_body(fake, client):
@@ -97,7 +97,7 @@ def test_timeout_kind_and_message(fake, client):
     fake.delay = 2
     res = client(fake.url).evaluate("s", QUESTIONS, timeout=0.3)
     assert res["error_kind"] == "timeout"
-    assert "Timeout após 0.3s" in res["error"]
+    assert "Timeout after 0.3s" in res["error"]
     assert fake.url in res["error"]
     assert "SYSTEMONE_TIMEOUT" in res["error"]
     assert "Failed to connect" not in res["error"]
@@ -108,7 +108,7 @@ def test_invalid_json_body_kind(fake, client):
     fake.raw_body = b"<<not json>>"
     res = client(fake.url).evaluate("s", QUESTIONS)
     assert res["error_kind"] == "invalid_response"
-    assert "Resposta inválida do Ollama (JSON malformado)" in res["error"]
+    assert "Invalid Ollama response (malformed JSON)" in res["error"]
 
 
 def test_invalid_utf8_success_body_kind(fake, client):
@@ -202,7 +202,7 @@ def test_cli_exits_2_on_invalid_timeout_env(fake, sub_env, repo_root):
     out = subprocess.run([sys.executable, "-m", "systemone_gate.cli", "triage", "x"],
                          cwd=repo_root, env=env, capture_output=True, text=True, timeout=30)
     assert out.returncode == 2
-    assert "Configuração inválida" in out.stderr and "SYSTEMONE_TIMEOUT" in out.stderr
+    assert "Invalid configuration" in out.stderr and "SYSTEMONE_TIMEOUT" in out.stderr
     assert fake.requests == []
 
 

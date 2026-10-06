@@ -276,9 +276,9 @@ def test_evaluate_command_error_dict_allow_and_block():
 def test_evaluate_command_malformed():
     d = evaluate_command({"answers": {}}, CFG)
     assert d.action == "allow"
-    assert d.warning.startswith("resposta inválida: ")
+    assert d.warning.startswith("invalid response: ")
     blocked = evaluate_command({"answers": {}}, PolicyConfig(guard_on_error="block"))
-    assert blocked.action == "block" and blocked.reasons[0].startswith("resposta inválida: ")
+    assert blocked.action == "block" and blocked.reasons[0].startswith("invalid response: ")
 
 
 def test_evaluate_command_valid():
@@ -288,7 +288,7 @@ def test_evaluate_command_valid():
 
 def test_evaluate_diff_paths():
     assert evaluate_diff({"error": "x"}, CFG).warning == "x"
-    assert evaluate_diff({}, CFG).warning.startswith("resposta inválida: ")
+    assert evaluate_diff({}, CFG).warning.startswith("invalid response: ")
     blocking = diff_res(1.9, "breaking_change", {"breaking_change": 0.9})
     assert evaluate_diff(blocking, CFG).action == "block"
     assert evaluate_diff(diff_res(), CFG).action == "allow"
@@ -368,14 +368,14 @@ def test_diff_below_min_allow_mode_allows_with_warning():
     review = DiffReview(2.0, "breaking_change", {"breaking_change": 0.9}, 0.27)
     d = decide_diff(review, MINC)
     assert d.action == "allow"
-    assert d.warning == "confiança 0.27 abaixo do mínimo 0.50; veredito do modelo ignorado"
+    assert d.warning == "confidence 0.27 below the minimum 0.50; model verdict ignored"
 
 
 def test_diff_below_min_block_mode_blocks():
     review = DiffReview(0.1, "safe", {"breaking_change": 0.0}, 0.27)
     d = decide_diff(review, MINC_BLOCK)
     assert d.action == "block"
-    assert d.reasons == ("confiança 0.27 abaixo do mínimo 0.50; veredito do modelo ignorado",)
+    assert d.reasons == ("confidence 0.27 below the minimum 0.50; model verdict ignored",)
     assert d.warning is None
 
 
@@ -396,9 +396,9 @@ def test_command_below_min_modes():
     check = CommandCheck("destructive_or_risky", 1.9, "model", 0.1)
     allowed = decide_command(check, MINC)
     assert allowed.action == "allow"
-    assert allowed.warning == "confiança 0.10 abaixo do mínimo 0.50; veredito do modelo ignorado"
+    assert allowed.warning == "confidence 0.10 below the minimum 0.50; model verdict ignored"
     blocked = decide_command(CommandCheck("safe", 0.0, "model", 0.1), MINC_BLOCK)
-    assert blocked.action == "block" and "abaixo do mínimo" in blocked.reasons[0]
+    assert blocked.action == "block" and "below the minimum" in blocked.reasons[0]
 
 
 def test_command_modes_are_per_surface():
@@ -410,13 +410,13 @@ def test_command_modes_are_per_surface():
 @pytest.mark.parametrize("conf", [None, 0.0, 0.01, 1.0])
 def test_rules_source_never_indeterminate(conf):
     d = decide_command(CommandCheck("destructive_or_risky", 2.0, "rules", conf), MINC)
-    assert d == Decision("block", ("comando casou com regra determinística",))
+    assert d == Decision("block", ("command matched a deterministic rule",))
 
 
 def test_evaluate_applies_min_confidence_end_to_end():
     res = with_conf(cmd_res("destructive_or_risky", 1.9), is_destructive=0.2, danger_score=0.3)
     assert evaluate_command(res, CFG).action == "block"
-    assert evaluate_command(res, MINC).warning.startswith("confiança 0.20")
+    assert evaluate_command(res, MINC).warning.startswith("confidence 0.20")
     assert evaluate_command(res, MINC_BLOCK).action == "block"
     rules = cmd_res("destructive_or_risky", 2.0, source="rules")
     rules = with_conf(rules, is_destructive=1.0, danger_score=1.0)

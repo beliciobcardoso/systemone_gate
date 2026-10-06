@@ -127,14 +127,14 @@ def test_ignore_lockfiles(path):
 
 @pytest.mark.parametrize("path", ["app.min.js", "a/b.min.css", "bundle.js.map"])
 def test_ignore_minified(path):
-    assert ignore_reason(FileDiff(path, "x")) == "minificado/gerado"
+    assert ignore_reason(FileDiff(path, "x")) == "minified/generated"
 
 
 def test_ignore_binary():
     text = "diff --git a/i.png b/i.png\nBinary files a/i.png and b/i.png differ\n"
-    assert ignore_reason(FileDiff("i.png", text)) == "binário"
+    assert ignore_reason(FileDiff("i.png", text)) == "binary"
     text = "diff --git a/i.png b/i.png\nGIT binary patch\nliteral 10\n"
-    assert ignore_reason(FileDiff("i.png", text)) == "binário"
+    assert ignore_reason(FileDiff("i.png", text)) == "binary"
 
 
 def test_not_ignored():
@@ -222,7 +222,7 @@ def test_max_files_cap():
     assert len(client.calls) == 2
     assert res["coverage"]["reviewed"] == ["f0.py", "f1.py"]
     assert res["coverage"]["skipped"] == [
-        {"path": f"f{i}.py", "reason": "limite de arquivos"} for i in (2, 3, 4)
+        {"path": f"f{i}.py", "reason": "file limit"} for i in (2, 3, 4)
     ]
 
 
@@ -235,7 +235,7 @@ def test_ignored_files_do_not_consume_max_files():
     res = review_staged(client, diff, "m", max_files=1)
     assert res["coverage"]["reviewed"] == ["a.py"]
     reasons = {s["path"]: s["reason"] for s in res["coverage"]["skipped"]}
-    assert reasons == {"yarn.lock": "lockfile", "b.py": "limite de arquivos"}
+    assert reasons == {"yarn.lock": "lockfile", "b.py": "file limit"}
 
 
 def test_error_propagates_unchanged_from_any_file():
@@ -250,7 +250,7 @@ def test_error_propagates_unchanged_from_any_file():
 def test_malformed_response_becomes_error():
     for bad in ({}, {"answers": None}, {"answers": "x"}, None):
         res = review_staged(StubClient([bad]), make_file_diff("a.py", ["1"]), "m")
-        assert res == {"error": "resposta inválida do modelo para a.py"}
+        assert res == {"error": "invalid model response for a.py"}
 
 
 @pytest.mark.parametrize("answers", [
@@ -266,7 +266,7 @@ def test_malformed_response_becomes_error():
 def test_non_numeric_fields_become_error_not_typeerror(answers):
     client = StubClient([{"answers": answers}, answer(0.1, 0.1)])
     res = review_staged(client, make_file_diff("a.py", ["1"]) + make_file_diff("b.py", ["2"]), "m")
-    assert res["error"].startswith("resposta inválida do modelo para a.py: campo '")
+    assert res["error"].startswith("invalid model response for a.py: field '")
 
 
 def test_cli_non_numeric_score_warns_and_exits_zero(monkeypatch, capsys):
@@ -274,7 +274,7 @@ def test_cli_non_numeric_score_warns_and_exits_zero(monkeypatch, capsys):
     code = run_cli(monkeypatch, make_file_diff("a.py", ["x"]) + make_file_diff("b.py", ["y"]),
                    StubClient([bad, answer(0.1, 0.1)]))
     assert code == 0
-    assert "malformado" in capsys.readouterr().err
+    assert "malformed" in capsys.readouterr().err
 
 
 def test_only_ignored_files_approves():
@@ -287,7 +287,7 @@ def test_only_ignored_files_approves():
     assert res["answers"]["risk_level"]["score"] == 0.0
     assert res["answers"]["breaking_change"] == {"choice": "safe", "probabilities": {}}
     assert res["coverage"]["reviewed"] == []
-    assert [s["reason"] for s in res["coverage"]["skipped"]] == ["lockfile", "binário"]
+    assert [s["reason"] for s in res["coverage"]["skipped"]] == ["lockfile", "binary"]
 
 
 def test_headerless_diff_is_reviewed_whole():
@@ -338,19 +338,19 @@ def test_cli_prints_coverage_and_approves(monkeypatch, capsys):
     code = run_cli(monkeypatch, diff, client, max_lines=100)
     out = capsys.readouterr().out
     assert code == 0
-    assert "Arquivos avaliados: 2" in out
-    assert "ignorados: 2 (lockfile, binário)" in out
-    assert "truncados: 1" in out
+    assert "Files reviewed: 2" in out
+    assert "skipped: 2 (lockfile, binary)" in out
+    assert "truncated: 1" in out
     assert "package-lock.json" in out and "big.py" in out
-    assert out.index("Inspecionando") < out.index("Arquivos avaliados") < out.index("Relatório")
-    assert "[APROVADO]" in out
+    assert out.index("Inspecting") < out.index("Files reviewed") < out.index("Impact Report")
+    assert "[APPROVED]" in out
 
 
 def test_cli_blocks_only_above_thresholds(monkeypatch, capsys):
     diff = make_file_diff("a.py", ["x"])
     code = run_cli(monkeypatch, diff, StubClient([answer(1.9, 0.7, "breaking_change")]))
     assert code == 1
-    assert "BLOQUEIO" in capsys.readouterr().err
+    assert "BLOCKED" in capsys.readouterr().err
     code = run_cli(monkeypatch, diff, StubClient([answer(1.9, 0.6)]))
     assert code == 0
     code = run_cli(monkeypatch, diff, StubClient([answer(1.8, 0.9)]))
@@ -373,4 +373,4 @@ def test_cli_empty_diff(monkeypatch, capsys):
     client = StubClient()
     assert run_cli(monkeypatch, "  \n", client) == 0
     assert client.calls == []
-    assert "Commit liberado" in capsys.readouterr().out
+    assert "Commit allowed" in capsys.readouterr().out

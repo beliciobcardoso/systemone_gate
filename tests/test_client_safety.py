@@ -35,21 +35,21 @@ def test_loopback_http_endpoints_are_accepted(url, capsys):
 
 
 @pytest.mark.parametrize("url,fragment", [
-    ("file:///etc/passwd", "esquema"),
-    ("ftp://localhost/x", "esquema"),
-    ("", "esquema"),
-    ("localhost:11434/v1/systemone", "esquema"),
-    ("//localhost/x", "esquema"),
+    ("file:///etc/passwd", "scheme"),
+    ("ftp://localhost/x", "scheme"),
+    ("", "scheme"),
+    ("localhost:11434/v1/systemone", "scheme"),
+    ("//localhost/x", "scheme"),
     ("http:///x", "host"),
-    ("http://10.0.0.5:11434/", "host remoto"),
-    ("http://192.168.1.10/", "host remoto"),
-    ("https://api.example.com/v1/systemone", "host remoto"),
-    ("http://localhost.evil.com/", "host remoto"),
-    ("http://127.0.0.1.evil.com/", "host remoto"),
-    ("http://[2001:db8::1]/", "host remoto"),
-    ("http://0.0.0.0:11434/", "host remoto"),
-    ("http://localhost:notaport/", "Endpoint inválido"),
-    ("http://[::1/", "Endpoint inválido"),
+    ("http://10.0.0.5:11434/", "remote host"),
+    ("http://192.168.1.10/", "remote host"),
+    ("https://api.example.com/v1/systemone", "remote host"),
+    ("http://localhost.evil.com/", "remote host"),
+    ("http://127.0.0.1.evil.com/", "remote host"),
+    ("http://[2001:db8::1]/", "remote host"),
+    ("http://0.0.0.0:11434/", "remote host"),
+    ("http://localhost:notaport/", "Invalid endpoint"),
+    ("http://[::1/", "Invalid endpoint"),
 ])
 def test_invalid_or_remote_endpoints_are_rejected(url, fragment):
     with pytest.raises(ValueError) as exc:
@@ -58,7 +58,7 @@ def test_invalid_or_remote_endpoints_are_rejected(url, fragment):
 
 
 def test_remote_error_mentions_allow_variable():
-    with pytest.raises(ValueError, match="SYSTEMONE_ALLOW_REMOTE=1 para permitir"):
+    with pytest.raises(ValueError, match="SYSTEMONE_ALLOW_REMOTE=1 to allow it"):
         SystemOneClient(endpoint="http://example.com/")
 
 
@@ -77,7 +77,7 @@ def test_allow_remote_env_permits_and_warns_once(monkeypatch, capsys, value):
     SystemOneClient(endpoint="http://10.0.0.5:11434/")
     err = capsys.readouterr().err
     assert err.count("\n") == 1
-    assert "saírão desta máquina" in err or "sairão desta máquina" in err
+    assert "will leave this machine" in err
 
 
 def test_warning_does_not_leak_userinfo(monkeypatch, capsys):
@@ -95,7 +95,7 @@ def test_allow_remote_empty_or_zero_does_not_permit(monkeypatch, value):
 
 def test_allow_remote_does_not_permit_bad_scheme(monkeypatch):
     monkeypatch.setenv("SYSTEMONE_ALLOW_REMOTE", "1")
-    with pytest.raises(ValueError, match="esquema"):
+    with pytest.raises(ValueError, match="scheme"):
         SystemOneClient(endpoint="file:///etc/passwd")
 
 
@@ -111,9 +111,9 @@ def _construct_in_subprocess(repo_root, env_extra):
 
 def test_env_url_is_validated(repo_root):
     bad = _construct_in_subprocess(repo_root, {"OLLAMA_SYSTEMONE_URL": "file:///etc/passwd"})
-    assert bad.returncode != 0 and "esquema" in bad.stderr
+    assert bad.returncode != 0 and "scheme" in bad.stderr
     remote = _construct_in_subprocess(repo_root, {"OLLAMA_SYSTEMONE_URL": "http://example.com/x"})
-    assert remote.returncode != 0 and "host remoto" in remote.stderr
+    assert remote.returncode != 0 and "remote host" in remote.stderr
     ok = _construct_in_subprocess(repo_root, {"OLLAMA_SYSTEMONE_URL": "http://127.0.0.1:1/x"})
     assert ok.returncode == 0 and ok.stdout.strip() == "http://127.0.0.1:1/x"
 
@@ -125,7 +125,7 @@ def test_cli_reports_invalid_endpoint_as_config_error(repo_root):
     res = subprocess.run([sys.executable, "-m", "systemone_gate.cli", "triage", "boom"],
                          env=env, capture_output=True, text=True, timeout=30)
     assert res.returncode == 2
-    assert "Configuração inválida" in res.stderr
+    assert "Invalid configuration" in res.stderr
 
 
 # ---- redaction wiring -------------------------------------------------------
