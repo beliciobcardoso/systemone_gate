@@ -81,8 +81,19 @@ _EXTRA_SENSITIVE = (
 )
 
 _REQUIRED = ("id", "state", "should_block", "label_source", "label_evidence", "review_status")
-_OPTIONAL = ("second_label", "resolved_by", "tags", "provenance", "language", "rules_catch")
+_OPTIONAL = (
+    "second_label",
+    "second_labeler",
+    "second_rationale",
+    "primary_label",
+    "resolved_by",
+    "tags",
+    "provenance",
+    "language",
+    "rules_catch",
+)
 _PROVENANCE_KEYS = ("repo", "commit", "license", "url")
+MAX_RATIONALE_CHARS = 500
 
 
 class CalibrationDataError(ValueError):
@@ -124,6 +135,28 @@ def _check_review(case: Mapping[str, Any]) -> List[str]:
         return ["second_label deve ser bool ou null"]
     if resolver is not None and not (isinstance(resolver, str) and _HANDLE_RE.fullmatch(resolver)):
         errors.append("resolved_by deve ser um handle ^[a-z0-9][a-z0-9_-]{1,38}$ ou null (sem e-mail ou nome)")
+    labeler = case.get("second_labeler")
+    if labeler is not None and not (isinstance(labeler, str) and _HANDLE_RE.fullmatch(labeler)):
+        errors.append("second_labeler deve ser um handle ^[a-z0-9][a-z0-9_-]{1,38}$ ou null")
+    if second is not None and labeler is None:
+        errors.append("second_label exige second_labeler (quem rotulou, para a proveniência do rótulo)")
+    if second is None and labeler is not None:
+        errors.append("second_labeler só é permitido junto com second_label")
+    rationale = case.get("second_rationale")
+    if rationale is not None:
+        if not isinstance(rationale, str) or not rationale.strip():
+            errors.append("second_rationale deve ser texto não vazio ou null")
+        elif len(rationale) > MAX_RATIONALE_CHARS:
+            errors.append(f"second_rationale excede {MAX_RATIONALE_CHARS} caracteres")
+        if second is None:
+            errors.append("second_rationale só é permitido junto com second_label")
+    original = case.get("primary_label")
+    if original is not None and not isinstance(original, bool):
+        errors.append("primary_label deve ser bool ou null")
+    if status == STATUS_RESOLVED and not isinstance(original, bool):
+        errors.append("review_status 'resolved' exige primary_label (o rótulo original do primário, para auditoria)")
+    if status != STATUS_RESOLVED and original is not None:
+        errors.append("primary_label só é permitido com review_status 'resolved'")
     if status != STATUS_RESOLVED and resolver is not None:
         errors.append("resolved_by só é permitido com review_status 'resolved'")
     if status == STATUS_UNREVIEWED and second is not None:
@@ -205,7 +238,7 @@ def validate_case(case: Mapping[str, Any], surface: str) -> List[str]:
 
 def _string_fields(case: Mapping[str, Any]) -> Iterator[Tuple[str, str]]:
     """Every free-text value of a case, with its field name, for the public-repo secret scan."""
-    for key in ("state", "label_evidence", "language"):
+    for key in ("state", "label_evidence", "language", "second_rationale"):
         if isinstance(case.get(key), str):
             yield key, case[key]
     for tag in case.get("tags") or []:

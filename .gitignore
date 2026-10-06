@@ -32,3 +32,7 @@ ENV/
 htmlcov/
 .mypy_cache/
 .ruff_cache/
+
+# Blind-labeling artifacts: the disputes sheet holds the primary labels and must not be shared with the second labeler
+benchmarks/results/label_task.json
+benchmarks/results/label_disputes.md
