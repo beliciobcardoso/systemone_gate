@@ -7,6 +7,8 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-06
+
 ### Changed
 
 - **Behavior change:** every message the library, CLI, git hook and MCP server print or return is now in English: CLI output and `--help`, `doctor` checks and hints, the pre-commit hook script, the deterministic guard-rule reasons returned to agents, policy and client error messages, the MCP tool errors and the `systemone_review_staged` note (`no staged changes`), the diff coverage lines and skip reasons (`binary`, `minified/generated`, `file limit`), and the ASCII fallback tokens (`[ERRO]`, `[AVISO]`, `[INSPECAO]`, `[TRIAGEM]`, `[DICA]`, `[ARQUIVOS]` and `[RISCO]` are now `[ERROR]`, `[WARN]`, `[INSPECT]`, `[TRIAGE]`, `[HINT]`, `[FILES]` and `[RISK]`). Anything that matched the Portuguese text (scripts parsing stderr, assertions on `reasons`, the `invalid response: ` prefix) must be updated. JSON field names, error kinds, exit codes and choice keys are unchanged. A pre-commit hook installed by an earlier version keeps its Portuguese messages until it is reinstalled with `systemone-gate install-hook`.
