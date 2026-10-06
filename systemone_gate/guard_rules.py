@@ -11,11 +11,21 @@ Known limits (by design): no variable expansion, no `xargs`, no scripts or
 Makefiles invoked indirectly. This is a safety net, not a sandbox.
 """
 
-import posixpath
 import re
-from dataclasses import dataclass
-from typing import List, Optional, Sequence, Tuple
+from typing import Optional, Sequence
 
+from .guard_common import (
+    BLOCK_DEV_PREFIX,
+    DB_DATA_DIR,
+    PROTECTED_BRANCHES,
+    RuleMatch,
+    classify_target,
+    git_subcommand,
+    has_recursive,
+    resolve_literal_path,
+    split_args,
+)
+from .guard_ops import check_ops
 from .shell_parse import Segment, SimpleCommand, mask_quotes, normalize, scan, tokenize
 
 MAX_DEPTH = 4
@@ -23,13 +33,11 @@ MAX_DEPTH = 4
 SHELLS = frozenset({"sh", "bash", "zsh", "dash", "ksh"})
 SQL_CLIENTS = frozenset({"psql", "mysql", "mariadb", "sqlite3", "sqlcmd", "clickhouse-client"})
 
-_HOME_FORMS = frozenset({"~", "$HOME", "${HOME}"})
-_SYSTEM_DIRS = frozenset({
-    "/etc", "/usr", "/bin", "/sbin", "/lib", "/lib64", "/boot", "/var",
-    "/home", "/root", "/dev", "/sys", "/proc", "/opt", "/srv",
-})
-_PROTECTED_BRANCHES = frozenset({"main", "master"})
-_BLOCK_DEV = r"/dev/(?:sd|nvme|hd|vd|mmcblk|disk)"
+_CONFIG_PARENTS = frozenset({"etc", "boot"})
+_SYSTEM_LIB_DIRS = frozenset({"/usr/bin", "/usr/sbin", "/usr/lib", "/usr/lib64"})
+_REGENERABLE_VAR_LIB = frozenset({"apt", "dpkg", "cloud"})
+_REPO_GIT_DIRS = (".git", "./.git", "../.git")
+_BLOCK_DEV = BLOCK_DEV_PREFIX
 
 _FORK_BOMB = re.compile(r"([:\w]{1,32})\s*\(\s*\)\s*\{\s*\1\s*\|\s*\1\s*&\s*\}\s*;\s*\1")
 _REDIRECT_DEV = re.compile(r">>?\s*" + _BLOCK_DEV)
@@ -43,76 +51,51 @@ _SQL_LEADING = frozenset({"DROP", "TRUNCATE", "DELETE"})
 _DOWNLOAD_SUBST = re.compile(r"^\s*(?:\$\(|`|<\()\s*(?:curl|wget)\b")
 
 
-@dataclass(frozen=True)
-class RuleMatch:
-    rule_id: str
-    reason: str
-
-
-def _split_args(args: Sequence[str]) -> Tuple[List[str], List[str]]:
-    """Separate option-like tokens from positional targets (honours `--`)."""
-    flags: List[str] = []
-    targets: List[str] = []
-    only_targets = False
-    for arg in args:
-        if only_targets or arg == "-" or not arg.startswith("-"):
-            targets.append(arg)
-        elif arg == "--":
-            only_targets = True
-        else:
-            flags.append(arg)
-    return flags, targets
-
-
-def _has_recursive(flags: Sequence[str], letters: str) -> bool:
-    for flag in flags:
-        if flag == "--recursive":
-            return True
-        if not flag.startswith("--") and any(c in flag[1:] for c in letters):
-            return True
-    return False
-
-
-def _resolve_literal_path(base: str) -> str:
-    """Collapse `.`/`..`/repeated slashes in a literal absolute path.
-
-    Paths with expansions (`$VAR`, backticks) are left untouched: they cannot
-    be resolved statically.
-    """
-    if not base.startswith("/") or "$" in base or "`" in base:
-        return base
-    resolved = posixpath.normpath(base)
-    return "/" + resolved.lstrip("/")  # POSIX keeps a leading `//` as is
-
-
-def _classify_target(target: str) -> Optional[str]:
-    """'root' | 'home' | 'system' for catastrophic recursive targets."""
-    base = target[:-2] if target.endswith("/*") else target
-    if base:
-        base = _resolve_literal_path(base)
-    base = base.rstrip("/")
-    if base == "" and target.startswith("/"):
-        return "root"
-    if base in _HOME_FORMS:
-        return "home"
-    if base in _SYSTEM_DIRS:
-        return "system"
-    return None
-
-
 def _check_rm(cmd: SimpleCommand) -> Optional[RuleMatch]:
-    flags, targets = _split_args(cmd.args)
+    flags, targets = split_args(cmd.args)
     if "--no-preserve-root" in flags:
         return RuleMatch("rm-recursive-root", "rm with --no-preserve-root removes the root filesystem")
-    if not _has_recursive(flags, "rR"):
+    if not has_recursive(flags, "rR"):
         return None
-    kinds = {_classify_target(t) for t in targets}
+    kinds = {classify_target(t) for t in targets}
     if "root" in kinds:
         return RuleMatch("rm-recursive-root", "recursive removal of the filesystem root")
     if "home" in kinds:
         return RuleMatch("rm-recursive-home", "recursive removal of the entire home directory")
     if "system" in kinds:
         return RuleMatch("rm-recursive-system-dir", "recursive removal of a system directory")
+    return _check_rm_service_or_git(targets)
+
+
+def _is_service_dir(target: str) -> bool:
+    """Config or service state: `/etc/<x>`, `/boot/<x>`, `/usr/{bin,lib}`, `/var/lib[/<x>]`, DB data dirs."""
+    if not target.startswith("/"):
+        return False
+    base = target[:-2] if target.endswith("/*") else target
+    path = resolve_literal_path(base).rstrip("/")
+    parts = [p for p in path.split("/") if p]
+    if len(parts) == 2 and parts[0] in _CONFIG_PARENTS:
+        return True
+    if path in _SYSTEM_LIB_DIRS or DB_DATA_DIR.match(path + "/"):
+        return True
+    if parts[:2] == ["var", "lib"]:
+        return len(parts) == 2 or (len(parts) == 3 and parts[2] not in _REGENERABLE_VAR_LIB)
+    return False
+
+
+def _is_repo_git_dir(target: str) -> bool:
+    """The repository's own `.git` (relative to the working directory), or a path inside it."""
+    base = target[:-2] if target.endswith("/*") else target
+    base = base.rstrip("/")
+    return base in _REPO_GIT_DIRS or base.startswith((".git/", "./.git/"))
+
+
+def _check_rm_service_or_git(targets: Sequence[str]) -> Optional[RuleMatch]:
+    for target in targets:
+        if _is_repo_git_dir(target):
+            return RuleMatch("rm-recursive-git-dir", "recursive removal of the repository .git destroys its history")
+        if _is_service_dir(target):
+            return RuleMatch("rm-recursive-service-dir", "recursive removal of a system config or service directory")
     return None
 
 
@@ -129,10 +112,10 @@ def _check_mkfs(cmd: SimpleCommand) -> Optional[RuleMatch]:
 
 
 def _check_chmod(cmd: SimpleCommand) -> Optional[RuleMatch]:
-    flags, targets = _split_args(cmd.args)
-    if not _has_recursive(flags, "R"):
+    flags, targets = split_args(cmd.args)
+    if not has_recursive(flags, "R"):
         return None
-    if any(_classify_target(t) in ("root", "system") for t in targets):
+    if any(classify_target(t) in ("root", "system") for t in targets):
         return RuleMatch("chmod-recursive-root", "recursive chmod/chown on the root or a system directory")
     return None
 
@@ -144,17 +127,15 @@ def _push_ref(target: str) -> str:
 
 
 def _check_git(cmd: SimpleCommand) -> Optional[RuleMatch]:
-    args, i = list(cmd.args), 0
-    while i < len(args) and args[i].startswith("-"):
-        i += 2 if args[i] in ("-C", "-c") else 1
-    if i >= len(args) or args[i] != "push":
+    sub, rest = git_subcommand(cmd.args)
+    if sub != "push":
         return None
-    flags, targets = _split_args(args[i + 1:])
+    flags, targets = split_args(rest)
     forced = "--force" in flags or any(
         not f.startswith("--") and "f" in f[1:] for f in flags
     )
     for target in targets:
-        if _push_ref(target) in _PROTECTED_BRANCHES and (forced or target.startswith("+")):
+        if _push_ref(target) in PROTECTED_BRANCHES and (forced or target.startswith("+")):
             return RuleMatch(
                 "git-force-push-protected",
                 "force push to main/master rewrites shared history",
@@ -185,7 +166,7 @@ def _sql_match(text: str, loose_truncate: bool) -> Optional[RuleMatch]:
         if _SQL_DROP.search(statement):
             return RuleMatch("sql-drop", "DROP of a table/database/schema is irreversible")
         if truncate.search(statement):
-            return RuleMatch("sql-truncate", "TRUNCATE apaga todas as linhas da tabela")
+            return RuleMatch("sql-truncate", "TRUNCATE removes every row of the table")
         found = _SQL_DELETE.search(statement)
         if found and not _SQL_WHERE.search(found.group("rest")):
             return RuleMatch("sql-delete-no-where", "DELETE without WHERE removes every row of the table")
@@ -230,8 +211,8 @@ def _check_command(cmd: SimpleCommand) -> Optional[RuleMatch]:
     if cmd.name in ("chmod", "chown", "chgrp"):
         return _check_chmod(cmd)
     if cmd.name == "git":
-        return _check_git(cmd)
-    return None
+        return _check_git(cmd) or check_ops(cmd)
+    return check_ops(cmd)
 
 
 def _check_segment(

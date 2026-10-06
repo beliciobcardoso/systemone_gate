@@ -51,7 +51,7 @@ Measured on 2026-10-05 with `SystemOneClient` (sequential calls, local Ollama, R
 
 * These numbers were measured with the rubrics still in Portuguese. The switch to English (2026-10-06) changes the prompt size and **has not been re-measured**; run `python benchmarks/latency.py` to update.
 * Latency depends on hardware, on whether the model is already resident in memory, and on payload size; do not extrapolate these numbers to another machine. The test diff uses short lines because the endpoint rejects inputs above ~2050 tokens.
-* The **deterministic rules** layer (`guard_rules.evaluate_command`, offline, no model) is the fast path: ~40-50 µs per call (1000 calls, same machine). The model verdict is an additional heuristic, not the security barrier.
+* The **deterministic rules** layer (`guard_rules.evaluate_command`, offline, no model) is the fast path: ~40-50 µs per call (1000 calls, same machine). The model verdict is an additional heuristic, not the security barrier: in the calibration (84 commands, two labelers) no threshold of `tev1:0.8b` or `nimble` met recall >= 90% with FPR <= 5%, so the defaults were left unchanged and the rules were widened instead (see [`docs/GUARD_CALIBRATION.md`](docs/GUARD_CALIBRATION.md)).
 * Reproducibility: 20 identical calls to `tev1:0.8b` and 20 to `nimble:latest` (guard rubric) returned identical answers, including the probabilities. This was observed on this machine and Ollama version; it is not a vendor-documented guarantee.
 
 ---

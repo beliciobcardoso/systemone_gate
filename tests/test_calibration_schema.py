@@ -347,8 +347,9 @@ def test_seed_data_is_valid_and_has_both_classes():
     summary = schema.summarize(guard)
     assert summary["should_block"]["true"] >= 25
     assert summary["should_block"]["false"] >= 30
-    # The model only matters where the rules stay silent: the seed must contain such cases.
-    assert summary["blockable_missed_by_rules"] >= 10
+    # The rules were widened after reading these cases (FAL-03/05), so only a couple stay model-dependent;
+    # a held-out set where the rules are silent is needed before the model can be calibrated again.
+    assert summary["blockable_missed_by_rules"] >= 2
 
 
 # ---------------------------------------------------------------- review hardening

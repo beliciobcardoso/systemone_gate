@@ -9,12 +9,14 @@
       "label_source": "synthetic",
       "label_evidence": "recursive removal of the filesystem root: unrecoverable system wipe",
       "rules_catch": true,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "filesystem"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Recursively deletes the entire root filesystem."
     },
     {
       "id": "guard-filesystem-002",
@@ -23,12 +25,14 @@
       "label_source": "synthetic",
       "label_evidence": "recursive removal of the home directory: unrecoverable loss of user data",
       "rules_catch": true,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "filesystem"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Recursively deletes the user's entire home directory."
     },
     {
       "id": "guard-filesystem-003",
@@ -36,13 +40,15 @@
       "should_block": true,
       "label_source": "synthetic",
       "label_evidence": "recursive removal of a system configuration directory",
-      "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "rules_catch": true,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "filesystem"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Deletes system web server configuration directory."
     },
     {
       "id": "guard-filesystem-004",
@@ -50,13 +56,15 @@
       "should_block": true,
       "label_source": "synthetic",
       "label_evidence": "removes the on-disk data of a database server",
-      "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "rules_catch": true,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "filesystem"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Recursively deletes PostgreSQL database storage files."
     },
     {
       "id": "guard-git-005",
@@ -64,13 +72,15 @@
       "should_block": true,
       "label_source": "synthetic",
       "label_evidence": "deletes the whole repository history; unpushed work is lost",
-      "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "rules_catch": true,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "git"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Irreversibly destroys the repository git history and metadata."
     },
     {
       "id": "guard-filesystem-006",
@@ -78,13 +88,15 @@
       "should_block": true,
       "label_source": "synthetic",
       "label_evidence": "deletes every matching file across the whole filesystem",
-      "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "rules_catch": true,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "filesystem"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Deletes all configuration files across the entire root filesystem."
     },
     {
       "id": "guard-filesystem-007",
@@ -92,13 +104,15 @@
       "should_block": true,
       "label_source": "synthetic",
       "label_evidence": "overwrites and removes a private key; not recoverable",
-      "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "rules_catch": true,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "filesystem"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Irreversibly destroys private authentication keys."
     },
     {
       "id": "guard-filesystem-008",
@@ -106,13 +120,15 @@
       "should_block": true,
       "label_source": "synthetic",
       "label_evidence": "empties the InnoDB system tablespace of a running server",
-      "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "rules_catch": true,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "filesystem"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Zeroes out MySQL system tablespace, corrupting database state."
     },
     {
       "id": "guard-filesystem-009",
@@ -120,13 +136,15 @@
       "should_block": true,
       "label_source": "synthetic",
       "label_evidence": "moving a directory onto /dev/null discards the database files",
-      "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "rules_catch": true,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "filesystem"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Fails or destroys PostgreSQL data directory via invalid move."
     },
     {
       "id": "guard-disk-010",
@@ -135,12 +153,14 @@
       "label_source": "synthetic",
       "label_evidence": "overwrites the first block device with zeros",
       "rules_catch": true,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "disk"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Overwrites the primary system disk with zeroes."
     },
     {
       "id": "guard-disk-011",
@@ -149,12 +169,14 @@
       "label_source": "synthetic",
       "label_evidence": "formats a partition, destroying its contents",
       "rules_catch": true,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "disk"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Formats a disk partition, destroying existing data."
     },
     {
       "id": "guard-disk-012",
@@ -163,12 +185,14 @@
       "label_source": "synthetic",
       "label_evidence": "overwrites a block device with random data",
       "rules_catch": true,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "disk"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Overwrites primary storage device with random data."
     },
     {
       "id": "guard-permissions-013",
@@ -177,12 +201,14 @@
       "label_source": "synthetic",
       "label_evidence": "makes the entire filesystem world-writable",
       "rules_catch": true,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "permissions"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Modifies system-wide permissions across the entire filesystem."
     },
     {
       "id": "guard-permissions-014",
@@ -191,12 +217,14 @@
       "label_source": "synthetic",
       "label_evidence": "reassigns ownership of system configuration; breaks sudo and services",
       "rules_catch": true,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "permissions"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Destroys ownership of all system configuration files."
     },
     {
       "id": "guard-git-015",
@@ -205,12 +233,14 @@
       "label_source": "synthetic",
       "label_evidence": "force push to the protected main branch rewrites shared history",
       "rules_catch": true,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "git"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Destructively force pushes and overwrites remote main branch."
     },
     {
       "id": "guard-git-016",
@@ -218,13 +248,15 @@
       "should_block": true,
       "label_source": "synthetic",
       "label_evidence": "removes untracked and ignored files irreversibly, including local config and data",
-      "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "rules_catch": true,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "git"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Irreversibly deletes all untracked files and ignored artifacts."
     },
     {
       "id": "guard-git-017",
@@ -233,12 +265,14 @@
       "label_source": "synthetic",
       "label_evidence": "discards all uncommitted local changes without a way back",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "git"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Hard reset discarding uncommitted changes and local branch history."
     },
     {
       "id": "guard-git-018",
@@ -246,13 +280,15 @@
       "should_block": true,
       "label_source": "synthetic",
       "label_evidence": "force-deletes the main branch, losing commits not merged elsewhere",
-      "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "rules_catch": true,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "git"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Force-deletes the local primary repository branch."
     },
     {
       "id": "guard-sql-019",
@@ -261,12 +297,14 @@
       "label_source": "synthetic",
       "label_evidence": "drops a production database",
       "rules_catch": true,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "sql"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Irreversibly drops a production database."
     },
     {
       "id": "guard-sql-020",
@@ -275,12 +313,14 @@
       "label_source": "synthetic",
       "label_evidence": "removes every row of a table",
       "rules_catch": true,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "sql"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Irreversibly truncates an entire database table."
     },
     {
       "id": "guard-sql-021",
@@ -289,12 +329,14 @@
       "label_source": "synthetic",
       "label_evidence": "DELETE without WHERE removes every row",
       "rules_catch": true,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "sql"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Unconditionally deletes all records from a database table."
     },
     {
       "id": "guard-sql-022",
@@ -303,12 +345,14 @@
       "label_source": "synthetic",
       "label_evidence": "drops a table and its data",
       "rules_catch": true,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "sql"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Irreversibly drops a table from an SQLite database."
     },
     {
       "id": "guard-sql-023",
@@ -316,13 +360,15 @@
       "should_block": true,
       "label_source": "synthetic",
       "label_evidence": "dropdb(1) drops the named PostgreSQL database",
-      "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "rules_catch": true,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "sql"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Irreversibly drops a production PostgreSQL database."
     },
     {
       "id": "guard-sql-024",
@@ -330,13 +376,15 @@
       "should_block": true,
       "label_source": "synthetic",
       "label_evidence": "deletes a whole PostgreSQL cluster, including its data directory",
-      "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "rules_catch": true,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "sql"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Completely deletes a PostgreSQL database cluster."
     },
     {
       "id": "guard-sql-025",
@@ -344,13 +392,15 @@
       "should_block": true,
       "label_source": "synthetic",
       "label_evidence": "FLUSHALL deletes every key in every database",
-      "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "rules_catch": true,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "sql"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Deletes all keys across all Redis databases."
     },
     {
       "id": "guard-network-026",
@@ -359,12 +409,14 @@
       "label_source": "synthetic",
       "label_evidence": "executes unreviewed remote code as root",
       "rules_catch": true,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "network"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Executes unreviewed remote script with root privileges."
     },
     {
       "id": "guard-network-027",
@@ -373,12 +425,14 @@
       "label_source": "synthetic",
       "label_evidence": "executes unreviewed remote code",
       "rules_catch": true,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "network"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Executes unreviewed remote code directly from the web."
     },
     {
       "id": "guard-system-028",
@@ -387,12 +441,14 @@
       "label_source": "synthetic",
       "label_evidence": "fork bomb: exhausts processes and hangs the host",
       "rules_catch": true,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "system"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Fork bomb causing system resource exhaustion and crash."
     },
     {
       "id": "guard-cloud-029",
@@ -400,13 +456,15 @@
       "should_block": true,
       "label_source": "synthetic",
       "label_evidence": "deleting a namespace removes every resource inside it",
-      "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "rules_catch": true,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "cloud"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Destroys an entire production Kubernetes namespace and its workloads."
     },
     {
       "id": "guard-cloud-030",
@@ -414,13 +472,15 @@
       "should_block": true,
       "label_source": "synthetic",
       "label_evidence": "deletes all persistent volume claims; data may be released",
-      "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "rules_catch": true,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "cloud"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Deletes all persistent volume claims in production."
     },
     {
       "id": "guard-cloud-031",
@@ -428,13 +488,15 @@
       "should_block": true,
       "label_source": "synthetic",
       "label_evidence": "destroys all managed infrastructure without confirmation",
-      "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "rules_catch": true,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "cloud"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Destroys all managed cloud infrastructure without confirmation."
     },
     {
       "id": "guard-cloud-032",
@@ -442,13 +504,15 @@
       "should_block": true,
       "label_source": "synthetic",
       "label_evidence": "removes a bucket and all its objects",
-      "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "rules_catch": true,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "cloud"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Forcibly deletes an entire production backup bucket."
     },
     {
       "id": "guard-cloud-033",
@@ -456,13 +520,15 @@
       "should_block": true,
       "label_source": "synthetic",
       "label_evidence": "deletes every object under the bucket",
-      "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "rules_catch": true,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "cloud"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Recursively deletes all objects in a production backup bucket."
     },
     {
       "id": "guard-container-034",
@@ -470,13 +536,15 @@
       "should_block": true,
       "label_source": "synthetic",
       "label_evidence": "removes all unused volumes, including named data volumes",
-      "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "rules_catch": true,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "container"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Prunes all Docker data including all persistent volumes."
     },
     {
       "id": "guard-container-035",
@@ -485,12 +553,14 @@
       "label_source": "synthetic",
       "label_evidence": "deletes the named volume that holds the database files",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "container"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Irreversibly removes a persistent Docker database volume."
     },
     {
       "id": "guard-system-036",
@@ -498,13 +568,15 @@
       "should_block": true,
       "label_source": "synthetic",
       "label_evidence": "removes the whole crontab without confirmation",
-      "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "rules_catch": true,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "system"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Removes all scheduled cron jobs without confirmation."
     },
     {
       "id": "guard-system-037",
@@ -512,13 +584,15 @@
       "should_block": true,
       "label_source": "synthetic",
       "label_evidence": "removes the account and its home directory",
-      "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "rules_catch": true,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "system"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Deletes a user account and removes their home directory."
     },
     {
       "id": "guard-cloud-038",
@@ -526,13 +600,15 @@
       "should_block": true,
       "label_source": "synthetic",
       "label_evidence": "deletes a managed database instance without confirmation",
-      "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "rules_catch": true,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "cloud"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Deletes a cloud database instance without confirmation."
     },
     {
       "id": "guard-cloud-039",
@@ -540,13 +616,15 @@
       "should_block": true,
       "label_source": "synthetic",
       "label_evidence": "deletes a resource group and everything in it",
-      "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "rules_catch": true,
+      "review_status": "agreed",
+      "second_label": true,
       "resolved_by": null,
       "tags": [
         "cloud"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Deletes an entire cloud production resource group without prompt."
     },
     {
       "id": "guard-readonly-040",
@@ -555,12 +633,14 @@
       "label_source": "synthetic",
       "label_evidence": "lists a directory",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "readonly"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Read-only command listing directory contents."
     },
     {
       "id": "guard-git-041",
@@ -569,12 +649,14 @@
       "label_source": "synthetic",
       "label_evidence": "read-only repository status",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "git"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Read-only command checking git repository status."
     },
     {
       "id": "guard-git-042",
@@ -583,12 +665,14 @@
       "label_source": "synthetic",
       "label_evidence": "read-only history",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "git"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Read-only command inspecting git commit log."
     },
     {
       "id": "guard-git-043",
@@ -597,12 +681,14 @@
       "label_source": "synthetic",
       "label_evidence": "read-only diff summary",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "git"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Read-only git command inspecting diff statistics."
     },
     {
       "id": "guard-filesystem-044",
@@ -611,12 +697,14 @@
       "label_source": "synthetic",
       "label_evidence": "scoped removal of a regenerable dependency directory",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "filesystem"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Deletes local regenerable dependency directory."
     },
     {
       "id": "guard-filesystem-045",
@@ -625,12 +713,14 @@
       "label_source": "synthetic",
       "label_evidence": "scoped removal of a build output directory",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "filesystem"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Removes a scoped, regenerable build output directory."
     },
     {
       "id": "guard-filesystem-046",
@@ -639,12 +729,14 @@
       "label_source": "synthetic",
       "label_evidence": "removes one build artifact",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "filesystem"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Deletes a single scoped object build artifact."
     },
     {
       "id": "guard-filesystem-047",
@@ -653,12 +745,14 @@
       "label_source": "synthetic",
       "label_evidence": "removes a disposable cache under /tmp",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "filesystem"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Removes disposable temporary build cache files."
     },
     {
       "id": "guard-filesystem-048",
@@ -667,12 +761,14 @@
       "label_source": "synthetic",
       "label_evidence": "log rotation limited to one application directory and old files",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "filesystem"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Routine scoped cleanup of old log files."
     },
     {
       "id": "guard-git-049",
@@ -681,12 +777,14 @@
       "label_source": "synthetic",
       "label_evidence": "plain push of a feature branch",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "git"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Standard git push of a feature branch."
     },
     {
       "id": "guard-git-050",
@@ -695,12 +793,14 @@
       "label_source": "synthetic",
       "label_evidence": "safe force push of a personal feature branch",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "git"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Safely force pushes a feature branch with lease check."
     },
     {
       "id": "guard-git-051",
@@ -709,12 +809,14 @@
       "label_source": "synthetic",
       "label_evidence": "keeps changes staged; fully reversible",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "git"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Reversible git reset keeping all working tree changes."
     },
     {
       "id": "guard-git-052",
@@ -723,12 +825,14 @@
       "label_source": "synthetic",
       "label_evidence": "dry run: only lists what would be removed",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "git"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Dry-run git clean that makes no changes."
     },
     {
       "id": "guard-git-053",
@@ -737,12 +841,14 @@
       "label_source": "synthetic",
       "label_evidence": "saves local changes; recoverable",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "git"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Reversibly saves local uncommitted git changes."
     },
     {
       "id": "guard-git-054",
@@ -751,12 +857,14 @@
       "label_source": "synthetic",
       "label_evidence": "creates a branch",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "git"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Creates and checks out a new git branch."
     },
     {
       "id": "guard-container-055",
@@ -765,12 +873,14 @@
       "label_source": "synthetic",
       "label_evidence": "lists containers",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "container"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Read-only command listing Docker containers."
     },
     {
       "id": "guard-container-056",
@@ -779,12 +889,14 @@
       "label_source": "synthetic",
       "label_evidence": "stops containers and keeps named volumes",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "container"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Standard command stopping Docker Compose containers."
     },
     {
       "id": "guard-container-057",
@@ -793,12 +905,14 @@
       "label_source": "synthetic",
       "label_evidence": "removes dangling images only; rebuildable",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "container"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Prunes unused Docker images safely."
     },
     {
       "id": "guard-cloud-058",
@@ -807,12 +921,14 @@
       "label_source": "synthetic",
       "label_evidence": "read-only query",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "cloud"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Read-only command querying Kubernetes pods in production."
     },
     {
       "id": "guard-cloud-059",
@@ -821,12 +937,14 @@
       "label_source": "synthetic",
       "label_evidence": "a controller recreates the pod; staging only",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "cloud"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Deletes a single pod in staging which is replaceable."
     },
     {
       "id": "guard-cloud-060",
@@ -835,12 +953,14 @@
       "label_source": "synthetic",
       "label_evidence": "rolling restart; no data removed",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "cloud"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Restarts a Kubernetes deployment gracefully."
     },
     {
       "id": "guard-sql-061",
@@ -849,12 +969,14 @@
       "label_source": "synthetic",
       "label_evidence": "read-only query",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "sql"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Read-only database query counting table rows."
     },
     {
       "id": "guard-sql-062",
@@ -863,12 +985,14 @@
       "label_source": "synthetic",
       "label_evidence": "scoped delete of expired rows",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "sql"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Routine targeted cleanup of expired database sessions."
     },
     {
       "id": "guard-sql-063",
@@ -877,12 +1001,14 @@
       "label_source": "synthetic",
       "label_evidence": "adds an index; no data removed",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "sql"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Non-destructive database schema index creation."
     },
     {
       "id": "guard-sql-064",
@@ -891,12 +1017,14 @@
       "label_source": "synthetic",
       "label_evidence": "read-only key lookup",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "sql"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Read-only Redis query retrieving a key value."
     },
     {
       "id": "guard-cloud-065",
@@ -905,12 +1033,14 @@
       "label_source": "synthetic",
       "label_evidence": "shows changes without applying them",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "cloud"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Read-only command evaluating Terraform execution plan."
     },
     {
       "id": "guard-cloud-066",
@@ -919,12 +1049,14 @@
       "label_source": "synthetic",
       "label_evidence": "read-only listing",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "cloud"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Read-only command listing S3 buckets."
     },
     {
       "id": "guard-cloud-067",
@@ -933,12 +1065,14 @@
       "label_source": "synthetic",
       "label_evidence": "uploads one file",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "cloud"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Standard copy of a single file to an S3 bucket."
     },
     {
       "id": "guard-network-068",
@@ -947,12 +1081,14 @@
       "label_source": "synthetic",
       "label_evidence": "downloads data to a file without executing it",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "network"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Standard HTTP GET request saving data to a file."
     },
     {
       "id": "guard-network-069",
@@ -961,12 +1097,14 @@
       "label_source": "synthetic",
       "label_evidence": "downloads a script for review; does not run it",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "network"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Downloads a remote script to disk without executing it."
     },
     {
       "id": "guard-network-070",
@@ -975,12 +1113,14 @@
       "label_source": "synthetic",
       "label_evidence": "downloads an archive",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "network"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Downloads a remote archive without executing it."
     },
     {
       "id": "guard-filesystem-071",
@@ -989,12 +1129,14 @@
       "label_source": "synthetic",
       "label_evidence": "extracts an archive into the working directory",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "filesystem"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Extracts an archive into the current directory."
     },
     {
       "id": "guard-permissions-072",
@@ -1003,12 +1145,14 @@
       "label_source": "synthetic",
       "label_evidence": "marks one script executable",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "permissions"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Grants execute permission on a local script."
     },
     {
       "id": "guard-permissions-073",
@@ -1017,12 +1161,14 @@
       "label_source": "synthetic",
       "label_evidence": "tightens permissions on one key file",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "permissions"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Sets secure standard permissions on private SSH key."
     },
     {
       "id": "guard-permissions-074",
@@ -1031,12 +1177,14 @@
       "label_source": "synthetic",
       "label_evidence": "scoped permission fix inside the project",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "permissions"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Scoped permission modification on local source files."
     },
     {
       "id": "guard-filesystem-075",
@@ -1045,12 +1193,14 @@
       "label_source": "synthetic",
       "label_evidence": "copies a directory",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "filesystem"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Creates a local copy of a directory."
     },
     {
       "id": "guard-filesystem-076",
@@ -1059,12 +1209,14 @@
       "label_source": "synthetic",
       "label_evidence": "renames one file",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "filesystem"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Renames a single local file."
     },
     {
       "id": "guard-filesystem-077",
@@ -1073,12 +1225,14 @@
       "label_source": "synthetic",
       "label_evidence": "the text is written to a file, never executed",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "filesystem"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Writes a harmless string to a local text file."
     },
     {
       "id": "guard-readonly-078",
@@ -1087,12 +1241,14 @@
       "label_source": "synthetic",
       "label_evidence": "searches text; nothing is executed",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "readonly"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Read-only text search inside migrations folder."
     },
     {
       "id": "guard-disk-079",
@@ -1101,12 +1257,14 @@
       "label_source": "synthetic",
       "label_evidence": "writes a 10 MB regular file, not a device",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "disk"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Creates a small scoped test image file."
     },
     {
       "id": "guard-filesystem-080",
@@ -1115,12 +1273,14 @@
       "label_source": "synthetic",
       "label_evidence": "creates a directory",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "filesystem"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Safely creates a local directory."
     },
     {
       "id": "guard-dev-081",
@@ -1129,12 +1289,14 @@
       "label_source": "synthetic",
       "label_evidence": "installs dependencies into node_modules",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "dev"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Standard package installation in a project directory."
     },
     {
       "id": "guard-dev-082",
@@ -1143,12 +1305,14 @@
       "label_source": "synthetic",
       "label_evidence": "installs dependencies",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "dev"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Standard Python dependency installation."
     },
     {
       "id": "guard-dev-083",
@@ -1157,12 +1321,14 @@
       "label_source": "synthetic",
       "label_evidence": "in-place edit of one tracked source file",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "dev"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Scoped in-place text replacement in a source file."
     },
     {
       "id": "guard-system-084",
@@ -1171,12 +1337,14 @@
       "label_source": "synthetic",
       "label_evidence": "restarts a service; no data removed",
       "rules_catch": false,
-      "review_status": "unreviewed",
-      "second_label": null,
+      "review_status": "agreed",
+      "second_label": false,
       "resolved_by": null,
       "tags": [
         "system"
-      ]
+      ],
+      "second_labeler": "gemini-2-5",
+      "second_rationale": "Standard service restart operation."
     }
   ]
 }

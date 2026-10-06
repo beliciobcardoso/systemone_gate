@@ -51,7 +51,7 @@ Medido em 2026-10-05 com `SystemOneClient` (chamadas sequenciais, Ollama local, 
 
 * Estes números foram medidos com as rubricas ainda em português. A troca para inglês (2026-10-06) muda o tamanho do prompt e **não foi remedida**; rode `python benchmarks/latency.py` para atualizar.
 * A latência depende de hardware, de o modelo já estar residente na memória e do tamanho do payload; não extrapole estes números para outra máquina. O diff de teste usa linhas curtas porque o endpoint rejeita entradas acima de ~2050 tokens.
-* A camada de **regras determinísticas** (`guard_rules.evaluate_command`, offline, sem modelo) é o caminho rápido: ~40-50 µs por chamada (1000 chamadas, mesma máquina). O veredito do modelo é uma heurística adicional, não a barreira de segurança.
+* A camada de **regras determinísticas** (`guard_rules.evaluate_command`, offline, sem modelo) é o caminho rápido: ~40-50 µs por chamada (1000 chamadas, mesma máquina). O veredito do modelo é uma heurística adicional, não a barreira de segurança: na calibração (84 comandos, dois rotuladores) nenhum limiar do `tev1:0.8b` nem do `nimble` atingiu recall >= 90% com FPR <= 5%, então os padrões ficaram como estavam e as regras foram ampliadas (veja [`docs/GUARD_CALIBRATION.pt-BR.md`](docs/GUARD_CALIBRATION.pt-BR.md)).
 * Reprodutibilidade: 20 chamadas idênticas ao `tev1:0.8b` e 20 ao `nimble:latest` (rubrica guard) devolveram respostas idênticas, inclusive as probabilidades. Isso foi observado nesta máquina e versão do Ollama; não é uma garantia documentada pelo fabricante.
 
 ---
