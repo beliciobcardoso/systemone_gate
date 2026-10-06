@@ -47,6 +47,7 @@ def _case(index, state, should_block, final=True):
         "rules_catch": evaluate_command(state) is not None,
         "review_status": "agreed" if final else "unreviewed",
         "second_label": should_block if final else None,
+        "second_labeler": "labeler-b" if final else None,
         "resolved_by": None,
     }
 
