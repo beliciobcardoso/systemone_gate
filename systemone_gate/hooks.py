@@ -17,14 +17,14 @@ TIMEOUT_PLACEHOLDER = "@@TIMEOUT@@"
 HOOK_TIMEOUT_SECONDS = 120
 GIT_TIMEOUT_SECONDS = 10
 GIT_NOT_FOUND_MESSAGE = (
-    "❌ Erro: Diretório .git não encontrado. Certifique-se de estar dentro de um repositório Git."
+    "❌ Error: .git directory not found. Make sure you are inside a Git repository."
 )
 
 PRE_COMMIT_TEMPLATE = """#!/bin/sh
 # SystemOne Gate Git Pre-Commit Hook
 # Automatically inspects staged changes with local Ollama System One
 
-# Hook original preservado na instalação: roda primeiro e, se falhar, bloqueia.
+# Original hook preserved at install time: it runs first and blocks if it fails.
 BACKUP="$(dirname "$0")/$(basename "$0").backup"
 if [ -x "$BACKUP" ]; then
     "$BACKUP" "$@"
@@ -34,21 +34,21 @@ if [ -x "$BACKUP" ]; then
     fi
 fi
 
-# Bypass direcionado e auditável: ignora APENAS esta verificação (os demais hooks já rodaram).
+# Targeted, auditable bypass: skips ONLY this check (the other hooks already ran).
 if [ -n "$SYSTEMONE_SKIP" ] && [ "$SYSTEMONE_SKIP" != "0" ]; then
-    echo "[SystemOne Gate] verificação ignorada (SYSTEMONE_SKIP)." >&2
+    echo "[SystemOne Gate] check skipped (SYSTEMONE_SKIP)." >&2
     exit 0
 fi
 
 PY=@@PYTHON@@
 
-# Nunca bloquear o usuário se o pacote não estiver disponível neste interpretador.
+# Never block the user if the package is not available in this interpreter.
 if ! "$PY" -c "import systemone_gate" >/dev/null 2>&1; then
-    echo "[SystemOne Gate] pacote indisponível, pulando verificação." >&2
+    echo "[SystemOne Gate] package unavailable, skipping check." >&2
     exit 0
 fi
 
-# O primeiro commit depois de uma pausa espera o modelo carregar; um valor já definido pelo usuário vence.
+# The first commit after a pause waits for the model to load; a value already set by the user wins.
 : "${SYSTEMONE_TIMEOUT:=@@TIMEOUT@@}"
 export SYSTEMONE_TIMEOUT
 
@@ -57,8 +57,8 @@ STATUS=$?
 
 if [ $STATUS -ne 0 ]; then
     echo ""
-    echo "❌ [SystemOne Gate] Commit abortado por risco detectado."
-    echo "💡 Para ignorar APENAS esta verificação, use: SYSTEMONE_SKIP=1 git commit ..."
+    echo "❌ [SystemOne Gate] Commit aborted: risk detected."
+    echo "💡 To skip ONLY this check, use: SYSTEMONE_SKIP=1 git commit ..."
     exit $STATUS
 fi
 
@@ -124,8 +124,8 @@ def install_git_hook(repo_path: Optional[str] = None, hook_name: str = "pre-comm
     if os.path.exists(target_hook) and not _is_ours(target_hook):
         if os.path.exists(backup_path):
             print(
-                f"❌ Erro: hook existente não é do SystemOne Gate e já há um backup em {backup_path}. "
-                "Nada foi alterado; resolva manualmente para não perder dados.",
+                f"❌ Error: the existing hook is not from SystemOne Gate and a backup already exists at {backup_path}. "
+                "Nothing was changed; resolve it manually to avoid losing data.",
                 file=sys.stderr,
             )
             return False
@@ -136,7 +136,7 @@ def install_git_hook(repo_path: Optional[str] = None, hook_name: str = "pre-comm
         f.write(render_hook_script(sys.executable))
 
     os.chmod(target_hook, 0o755)
-    print(f"✅ Hook '{hook_name}' instalado com sucesso em: {target_hook}")
+    print(f"✅ Hook '{hook_name}' installed successfully at: {target_hook}")
     return True
 
 def uninstall_git_hook(repo_path: Optional[str] = None, hook_name: str = "pre-commit") -> bool:
@@ -145,10 +145,10 @@ def uninstall_git_hook(repo_path: Optional[str] = None, hook_name: str = "pre-co
         return False
     target_hook = os.path.join(hooks_dir, hook_name)
     if not os.path.exists(target_hook):
-        print(f"Aviso: Hook '{hook_name}' não encontrado em {target_hook}")
+        print(f"Warning: hook '{hook_name}' not found at {target_hook}")
         return False
     if not _is_ours(target_hook):
-        print(f"❌ Erro: o hook em {target_hook} não é do SystemOne Gate; nada foi removido.", file=sys.stderr)
+        print(f"❌ Error: the hook at {target_hook} is not from SystemOne Gate; nothing was removed.", file=sys.stderr)
         return False
 
     backup_path = f"{target_hook}.backup"

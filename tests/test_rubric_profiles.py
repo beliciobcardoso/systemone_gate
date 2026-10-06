@@ -259,7 +259,7 @@ def test_cli_invalid_profile_choice_exits_2(capsys):
 def test_cli_bad_env_profile_exits_2(fake, sub_env, repo_root, args):
     out = _run(args, fake.url, sub_env, repo_root, {"SYSTEMONE_PROFILE": "bogus"})
     assert out.returncode == 2
-    assert "Configuração inválida" in out.stderr
+    assert "Invalid configuration" in out.stderr
     assert fake.requests == []
 
 
@@ -282,11 +282,11 @@ def test_cli_diff_profile_flag_and_bad_env(fake, sub_env, repo_root, tmp_path):
     bad = _run(["diff"], fake.url, sub_env, repo_root, cwd=tmp_path,
                extra_env={"PYTHONPATH": repo_root, "SYSTEMONE_PROFILE": "bogus"})
     assert bad.returncode == 2
-    assert "Configuração inválida" in bad.stderr
+    assert "Invalid configuration" in bad.stderr
     assert len(fake.requests) == 1
 
 
-# --- combinação de --model/--nimble com --profile (resolução do merge dos PRs #17 e #21) ---
+# --- combining --model/--nimble with --profile (merge resolution of PRs #17 and #21) ---
 
 @pytest.mark.parametrize(
     "argv, expected_model",

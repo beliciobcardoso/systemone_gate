@@ -1,5 +1,14 @@
 # Benchmark: rubricas em português vs inglês (RSK-02 / S3)
 
+> 🌐 **English summary** (the full report below is in Portuguese and is kept as the frozen benchmark record).
+> On 2026-10-06 the maintainer decided that every production rubric is written in English, because the project is
+> public, open source and international. The decision rests on audience, not on accuracy: this benchmark found no
+> detectable difference between Portuguese and English for the `default` profile (smallest p = 0.19). Choice keys
+> (the labels the policy reads) did not change; the Portuguese originals are frozen in `benchmarks/data/rubrics_pt.py`
+> so the benchmark stays reproducible. A later paired comparison on the guard rubric found no change for
+> `nimble:latest` and a worse score separation for `tev1:0.8b` (paired AUC difference -0.104, 95% CI [-0.182, -0.030],
+> 69 cases, labels not yet reviewed). See `CHANGELOG.md` (0.4.0) for the full list of consequences.
+
 > **Atualização (2026-10-06): decisão do mantenedor, as rubricas de produção passam a ser em inglês.**
 > O projeto é público, open source e de uso internacional; rubricas em português seriam uma barreira para
 > contribuidores e para quem lê o que é enviado ao modelo. A decisão **não** se apoia em ganho de acurácia:

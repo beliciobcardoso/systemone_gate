@@ -97,7 +97,7 @@ def test_decision_blocks_when_risk_exceeds_threshold(repo, start, fake):
 def test_nothing_staged_is_a_note_not_an_error(repo, start, fake):
     result, payload = _call(start(repo))
     assert "isError" not in result
-    assert payload["note"] == "nenhuma alteração staged"
+    assert payload["note"] == "no staged changes"
     assert payload["coverage"] == {"reviewed": [], "skipped": [], "truncated": []}
     assert fake.requests == []
 
@@ -180,11 +180,11 @@ def test_staged_diff_uses_arg_list_no_shell_and_timeout(monkeypatch):
 
 
 @pytest.mark.parametrize("exc,fragment", [
-    (subprocess.TimeoutExpired(["git"], 30), "tempo"),
-    (FileNotFoundError("git"), "não encontrado"),
+    (subprocess.TimeoutExpired(["git"], 30), "timed out"),
+    (FileNotFoundError("git"), "not found"),
     (OSError("boom"), "git"),
 ])
-def test_staged_diff_maps_failures_to_portuguese_errors(monkeypatch, exc, fragment):
+def test_staged_diff_maps_failures_to_errors(monkeypatch, exc, fragment):
     monkeypatch.setattr(mcp_server.subprocess, "run", _fake_run(exc=exc))
     out = mcp_server._staged_diff()
     assert fragment in out["error"]
@@ -195,14 +195,14 @@ def test_staged_diff_nonzero_exit_is_error(monkeypatch):
     monkeypatch.setattr(mcp_server.subprocess, "run",
                         _fake_run(returncode=128, stderr="fatal: not a git repository\n"))
     out = mcp_server._staged_diff()
-    assert "repositório git" in out["error"]
+    assert "git repository" in out["error"]
 
 
 def test_dispatch_review_staged_with_stub_client(monkeypatch):
     monkeypatch.setattr(mcp_server.subprocess, "run", _fake_run(stdout=""))
     result = mcp_server._dispatch_tool(object(), TOOL, {})
     assert "isError" not in result
-    assert json.loads(result["content"][0]["text"])["note"] == "nenhuma alteração staged"
+    assert json.loads(result["content"][0]["text"])["note"] == "no staged changes"
 
 
 class _VerdictClient:
@@ -245,4 +245,4 @@ def test_in_process_git_error_is_propagated(monkeypatch):
 
 def test_in_process_nothing_staged(monkeypatch):
     _staged_stub(monkeypatch, diff="  \n")
-    assert mcp_server._review_staged_tool(_VerdictClient(), {})["note"] == "nenhuma alteração staged"
+    assert mcp_server._review_staged_tool(_VerdictClient(), {})["note"] == "no staged changes"

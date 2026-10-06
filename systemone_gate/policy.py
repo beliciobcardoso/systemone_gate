@@ -40,7 +40,7 @@ ENV_MIN_CONFIDENCE = "SYSTEMONE_MIN_CONFIDENCE"
 # calibration data and observed confidences are low across the board.
 DEFAULT_MIN_CONFIDENCE = 0.0
 
-INVALID_RESPONSE_PREFIX = "resposta inválida: "
+INVALID_RESPONSE_PREFIX = "invalid response: "
 
 
 class InvalidResponse(ValueError):
@@ -49,7 +49,7 @@ class InvalidResponse(ValueError):
 
 def _validate_on_error(name: str, value: str) -> None:
     if value not in VALID_ON_ERROR:
-        raise ValueError(f"{name} deve ser 'allow' ou 'block', recebido: {value!r}")
+        raise ValueError(f"{name} must be 'allow' or 'block', got: {value!r}")
 
 
 def _env_float(environ: Mapping[str, str], name: str, default: float) -> float:
@@ -59,16 +59,16 @@ def _env_float(environ: Mapping[str, str], name: str, default: float) -> float:
     try:
         value = float(raw)
     except ValueError:
-        raise ValueError(f"{name} deve ser um número, recebido: {raw!r}") from None
+        raise ValueError(f"{name} must be a number, got: {raw!r}") from None
     if not math.isfinite(value):
-        raise ValueError(f"{name} deve ser um número finito, recebido: {raw!r}")
+        raise ValueError(f"{name} must be a finite number, got: {raw!r}")
     return value
 
 
 def _env_confidence(environ: Mapping[str, str]) -> float:
     value = _env_float(environ, ENV_MIN_CONFIDENCE, DEFAULT_MIN_CONFIDENCE)
     if not 0.0 <= value <= 1.0:
-        raise ValueError(f"{ENV_MIN_CONFIDENCE} deve estar entre 0 e 1, recebido: {environ[ENV_MIN_CONFIDENCE]!r}")
+        raise ValueError(f"{ENV_MIN_CONFIDENCE} must be between 0 and 1, got: {environ[ENV_MIN_CONFIDENCE]!r}")
     return value
 
 
@@ -84,7 +84,7 @@ class PolicyConfig:
     def __post_init__(self) -> None:
         if not _is_finite_real(self.min_confidence) or not 0.0 <= self.min_confidence <= 1.0:
             raise ValueError(
-                f"min_confidence deve ser um número finito entre 0 e 1, recebido: {self.min_confidence!r}"
+                f"min_confidence must be a finite number between 0 and 1, got: {self.min_confidence!r}"
             )
         _validate_on_error("diff_on_error", self.diff_on_error)
         _validate_on_error("guard_on_error", self.guard_on_error)
@@ -139,37 +139,37 @@ def _is_finite_real(value: Any) -> bool:
 
 def _section(res: Any, key: str) -> Dict[str, Any]:
     if not isinstance(res, dict):
-        raise InvalidResponse("resposta não é um objeto")
+        raise InvalidResponse("response is not an object")
     answers = res.get("answers")
     if not isinstance(answers, dict):
-        raise InvalidResponse("campo 'answers' ausente ou inválido")
+        raise InvalidResponse("field 'answers' missing or invalid")
     section = answers.get(key)
     if not isinstance(section, dict):
-        raise InvalidResponse(f"campo 'answers.{key}' ausente ou inválido")
+        raise InvalidResponse(f"field 'answers.{key}' missing or invalid")
     return section
 
 
 def _score(section: Dict[str, Any], key: str) -> float:
     value: Any = section.get("score")  # raw JSON value; _is_finite_real validates it below
     if not _is_finite_real(value):
-        raise InvalidResponse(f"campo 'answers.{key}.score' deve ser número finito")
+        raise InvalidResponse(f"field 'answers.{key}.score' must be a finite number")
     return float(value)
 
 
 def _choice(section: Dict[str, Any], key: str) -> str:
     value = section.get("choice")
     if not isinstance(value, str) or not value:
-        raise InvalidResponse(f"campo 'answers.{key}.choice' deve ser string não vazia")
+        raise InvalidResponse(f"field 'answers.{key}.choice' must be a non-empty string")
     return value
 
 
 def _probabilities(section: Dict[str, Any], key: str) -> Dict[str, float]:
     probs = section.get("probabilities")
     if not isinstance(probs, dict):
-        raise InvalidResponse(f"campo 'answers.{key}.probabilities' deve ser objeto")
+        raise InvalidResponse(f"field 'answers.{key}.probabilities' must be an object")
     for name, prob in probs.items():
         if not _is_finite_real(prob):
-            raise InvalidResponse(f"probabilidade 'answers.{key}.probabilities.{name}' inválida")
+            raise InvalidResponse(f"invalid probability 'answers.{key}.probabilities.{name}'")
     return {str(name): float(prob) for name, prob in probs.items()}
 
 
@@ -211,8 +211,8 @@ def is_low_confidence(confidence: Optional[float], cfg: PolicyConfig) -> bool:
 
 def _low_confidence_message(confidence: float, cfg: PolicyConfig) -> str:
     return (
-        f"confiança {confidence:.2f} abaixo do mínimo {cfg.min_confidence:.2f}; "
-        "veredito do modelo ignorado"
+        f"confidence {confidence:.2f} below the minimum {cfg.min_confidence:.2f}; "
+        "model verdict ignored"
     )
 
 
@@ -231,11 +231,11 @@ def decide_diff(review: DiffReview, cfg: PolicyConfig) -> Decision:
 
 def decide_command(check: CommandCheck, cfg: PolicyConfig) -> Decision:
     if check.source == SOURCE_RULES:
-        return Decision(ACTION_BLOCK, ("comando casou com regra determinística",))
+        return Decision(ACTION_BLOCK, ("command matched a deterministic rule",))
     if check.confidence is not None and is_low_confidence(check.confidence, cfg):
         return decide_on_error(SURFACE_GUARD, _low_confidence_message(check.confidence, cfg), cfg)
     if check.choice == CHOICE_DESTRUCTIVE and check.danger_score > cfg.guard_danger_threshold:
-        reason = f"destrutivo com perigo {check.danger_score:.2f} > {cfg.guard_danger_threshold}"
+        reason = f"destructive with danger {check.danger_score:.2f} > {cfg.guard_danger_threshold}"
         return Decision(ACTION_BLOCK, (reason,))
     return Decision(ACTION_ALLOW, ())
 

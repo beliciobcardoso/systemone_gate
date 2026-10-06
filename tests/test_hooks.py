@@ -8,8 +8,8 @@ import pytest
 from systemone_gate import hooks
 
 WORKTREE_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CHECK_RAN_MARKER = "Nenhuma alteração staged"
-WARNING = "[SystemOne Gate] pacote indisponível, pulando verificação."
+CHECK_RAN_MARKER = "No staged changes"
+WARNING = "[SystemOne Gate] package unavailable, skipping check."
 
 
 def _git_env():
@@ -190,7 +190,7 @@ def test_uninstall_refuses_foreign_hook(repo, capsys):
 
 def test_uninstall_missing_hook_warns_and_returns_false(repo, capsys):
     assert hooks.uninstall_git_hook(str(repo)) is False
-    assert "não encontrado" in capsys.readouterr().out
+    assert "not found" in capsys.readouterr().out
 
 
 def test_uninstall_outside_git_repo_returns_false(tmp_path):
@@ -305,13 +305,13 @@ def test_core_hooks_path_absolute_outside_repo(repo, tmp_path):
 
 def test_install_outside_repo_prints_portuguese_error(tmp_path, capsys):
     assert hooks.install_git_hook(str(tmp_path)) is False
-    assert "Diretório .git não encontrado" in capsys.readouterr().err
+    assert ".git directory not found" in capsys.readouterr().err
 
 
 def test_git_not_installed_returns_false_without_raising(repo, monkeypatch, capsys):
     monkeypatch.setenv("PATH", str(repo))
     assert hooks.install_git_hook(str(repo)) is False
-    assert "Diretório .git não encontrado" in capsys.readouterr().err
+    assert ".git directory not found" in capsys.readouterr().err
     assert hooks.uninstall_git_hook(str(repo)) is False
 
 
@@ -322,7 +322,7 @@ def test_subprocess_failures_return_false(repo, monkeypatch, capsys, exc):
 
     monkeypatch.setattr(hooks.subprocess, "run", boom)
     assert hooks.install_git_hook(str(repo)) is False
-    assert "Diretório .git não encontrado" in capsys.readouterr().err
+    assert ".git directory not found" in capsys.readouterr().err
 
 
 def test_find_git_root_accepts_dot_git_file(tmp_path):
@@ -348,7 +348,7 @@ def test_install_defaults_to_cwd(repo, monkeypatch):
     assert hook_path(repo).exists()
 
 
-SKIP_WARNING = "[SystemOne Gate] verificação ignorada (SYSTEMONE_SKIP)."
+SKIP_WARNING = "[SystemOne Gate] check skipped (SYSTEMONE_SKIP)."
 
 
 def test_skip_env_bypasses_only_our_check_with_warning(repo):
@@ -388,7 +388,7 @@ def test_hint_targets_this_hook_only_and_never_mentions_no_verify():
     script = hooks.render_hook_script(sys.executable)
     assert "--no-verify" not in script
     assert "SYSTEMONE_SKIP=1 git commit" in script
-    assert "APENAS esta verificação" in script
+    assert "ONLY this check" in script
 
 
 # --- default timeout of the generated hook (nimble can take up to ~72 s to load after an idle period) ---

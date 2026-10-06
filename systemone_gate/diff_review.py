@@ -19,9 +19,9 @@ DEFAULT_MAX_LINES_PER_FILE = 250
 DEFAULT_MAX_FILES = 20
 
 REASON_LOCKFILE = "lockfile"
-REASON_BINARY = "binário"
-REASON_GENERATED = "minificado/gerado"
-REASON_FILE_LIMIT = "limite de arquivos"
+REASON_BINARY = "binary"
+REASON_GENERATED = "minified/generated"
+REASON_FILE_LIMIT = "file limit"
 
 LOCKFILE_NAMES = frozenset({
     "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "poetry.lock",
@@ -230,10 +230,10 @@ def review_staged(client: Any, diff_text: str, model: Optional[str],
             return res
         answers = res.get("answers") if isinstance(res, dict) else None
         if not isinstance(answers, dict):
-            return {"error": f"resposta inválida do modelo para {fd.path}"}
+            return {"error": f"invalid model response for {fd.path}"}
         problem = _answers_problem(answers)
         if problem:
-            return {"error": f"resposta inválida do modelo para {fd.path}: campo '{problem}' malformado"}
+            return {"error": f"invalid model response for {fd.path}: field '{problem}' malformed"}
         answers_list.append(answers)
 
     coverage = {
@@ -251,11 +251,11 @@ def format_coverage(coverage: Dict[str, Any]) -> Tuple[str, ...]:
     skipped = coverage.get("skipped", [])
     truncated = coverage.get("truncated", [])
     reasons = list(dict.fromkeys(s["reason"] for s in skipped))
-    ignored_part = f"{len(skipped)} ({', '.join(reasons)})" if skipped else "0"
+    skipped_part = f"{len(skipped)} ({', '.join(reasons)})" if skipped else "0"
     lines = [
-        f"📁 Arquivos avaliados: {len(coverage.get('reviewed', []))}"
-        f" · ignorados: {ignored_part} · truncados: {len(truncated)}"
+        f"📁 Files reviewed: {len(coverage.get('reviewed', []))}"
+        f" · skipped: {skipped_part} · truncated: {len(truncated)}"
     ]
-    lines.extend(f"   - ignorado: {s['path']} ({s['reason']})" for s in skipped)
-    lines.extend(f"   - truncado: {path}" for path in truncated)
+    lines.extend(f"   - skipped: {s['path']} ({s['reason']})" for s in skipped)
+    lines.extend(f"   - truncated: {path}" for path in truncated)
     return tuple(lines)

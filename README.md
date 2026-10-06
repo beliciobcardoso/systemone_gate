@@ -1,7 +1,9 @@
 # 🛡️ SystemOne Gate
 
-> **Motor de Decisão Local, sem Custo de Tokens na Nuvem, para Agentes de IA e Desenvolvedores de Software.**  
-> Baseado na arquitetura **System One** (estilo JEV da TypeSafe AI), executado 100% offline via **Ollama 0.35+**.
+🌐 **English** · [Português (Brasil)](README.pt-BR.md)
+
+> **A local decision engine with no cloud token cost, for AI agents and software developers.**  
+> Based on the **System One** architecture (TypeSafe AI's JEV style), run 100% offline through **Ollama 0.35+**.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python: 3.9+](https://img.shields.io/badge/Python-3.9+-brightgreen.svg)](pyproject.toml)
@@ -10,148 +12,148 @@
 
 ---
 
-## ⚡ O que é o SystemOne Gate?
+## ⚡ What is SystemOne Gate?
 
-Enquanto agentes generativos como Claude, Gemini e GPT-4 geram textos extensos token a token (*System Two thinking*), o **SystemOne Gate** atua como o sistema reflexo (*System One thinking*) do ecossistema de inteligência artificial.
+Generative agents such as Claude, Gemini and GPT-4 produce long text token by token (*System Two thinking*). **SystemOne Gate** acts as the reflex system (*System One thinking*) of the AI ecosystem.
 
-Ele avalia dados estruturados em paralelo gerando apenas **1 a 3 tokens de saída** com probabilidades do modelo (não calibradas; veja o campo `confidence`) para decisões críticas:
+It evaluates structured input in parallel while generating only **1 to 3 output tokens**, together with the model's probabilities (not calibrated; see the `confidence` field), for critical decisions:
 
-* 🩺 **Triagem de Erros:** Classifica se uma falha é de compilação, sintaxe, linkedição, memory leak ou timeout.
-* 🔍 **Code Review de Diffs:** Mede a probabilidade de breaking change e risco arquitetural antes de cada commit.
-* 🛡️ **Guardrail de Comandos Shell:** Avalia se um comando de terminal pode apagar dados ou quebrar o ambiente, com baixa latência local (veja [Desempenho medido](#-desempenho-medido)).
-* 🔀 **Roteamento de Subagentes:** Decide para qual subagente encaminhar uma tarefa de desenvolvimento.
+* 🩺 **Error triage:** classifies whether a failure is a compile error, syntax error, linker error, memory leak or timeout.
+* 🔍 **Diff code review:** estimates the probability of a breaking change and of architectural risk before each commit.
+* 🛡️ **Shell command guardrail:** evaluates whether a terminal command could delete data or break the environment, with low local latency (see [Measured performance](#-measured-performance)).
+* 🔀 **Subagent routing:** decides which subagent a development task should be sent to.
 
 ---
 
-## 📊 Modelos Suportados (via Ollama)
+## 📊 Supported Models (via Ollama)
 
-| Modelo | Tamanho | Provedor | Latência | Caso de Uso Ideal |
+| Model | Size | Provider | Latency | Ideal use |
 | :--- | :--- | :--- | :--- | :--- |
-| **`nimble`** | 9.5 GB (9B) | Bespoke Labs | ~390-410 ms (medido, veja abaixo) | Padrão da revisão de diff (pre-commit), code review profundo, detecção de breaking changes e triagem de erros complexos. |
-| **`tev1:0.8b`** | 811 MB (0.8B) | Together AI | ~145-165 ms (medido, veja abaixo) | Guardrail de comandos shell com baixa latência local. **Não discrimina o risco de um diff** (veja o parágrafo do pre-commit hook). |
-| **`tev1:4b`** | ~2.5 GB (4B) | Together AI | não medido | Equilíbrio intermediário entre velocidade e precisão. |
+| **`nimble`** | 9.5 GB (9B) | Bespoke Labs | ~390-410 ms (measured, see below) | Default for diff review (pre-commit), deep code review, breaking-change detection and complex error triage. |
+| **`tev1:0.8b`** | 811 MB (0.8B) | Together AI | ~145-165 ms (measured, see below) | Shell command guardrail with low local latency. **It does not discriminate the risk of a diff** (see the pre-commit hook paragraph). |
+| **`tev1:4b`** | ~2.5 GB (4B) | Together AI | not measured | Middle ground between speed and accuracy. |
 
 
 ---
 
-## 🧪 Desempenho medido
+## 🧪 Measured performance
 
-Medido em 2026-10-05 com `SystemOneClient` (chamadas sequenciais, Ollama local, GPU RTX 3060 12 GB, 100% GPU, CPU de 28 threads, máquina ociosa). Procedimento: 2 chamadas de aquecimento descartadas + 30 chamadas cronometradas (latência de ponta a ponta, incluindo HTTP e JSON). Reproduza com `python benchmarks/latency.py --cold`.
+Measured on 2026-10-05 with `SystemOneClient` (sequential calls, local Ollama, RTX 3060 12 GB GPU, 100% GPU, 28-thread CPU, idle machine). Procedure: 2 discarded warm-up calls + 30 timed calls (end-to-end latency, including HTTP and JSON). Reproduce with `python benchmarks/latency.py --cold`.
 
-| Modelo | Payload | p50 | p95 | min / max | Partida a frio* |
+| Model | Payload | p50 | p95 | min / max | Cold start* |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `tev1:0.8b` | rubrica guard, comando curto | 162,6 ms | 170,1 ms | 150,2 / 170,8 ms | ~3-4 s |
-| `tev1:0.8b` | rubrica diff-risk, diff de ~100 linhas | 143,2 ms | 160,5 ms | 133,3 / 166,2 ms | - |
-| `nimble:latest` | rubrica guard, comando curto | 391,6 ms | 401,2 ms | 366,3 / 409,0 ms | ~12-72 s |
-| `nimble:latest` | rubrica diff-risk, diff de ~100 linhas | 405,1 ms | 423,7 ms | 377,1 / 428,7 ms | - |
+| `tev1:0.8b` | guard rubric, short command | 162.6 ms | 170.1 ms | 150.2 / 170.8 ms | ~3-4 s |
+| `tev1:0.8b` | diff-risk rubric, ~100-line diff | 143.2 ms | 160.5 ms | 133.3 / 166.2 ms | - |
+| `nimble:latest` | guard rubric, short command | 391.6 ms | 401.2 ms | 366.3 / 409.0 ms | ~12-72 s |
+| `nimble:latest` | diff-risk rubric, ~100-line diff | 405.1 ms | 423.7 ms | 377.1 / 428.7 ms | - |
 
-\* Primeira chamada após `ollama stop <modelo>` (modelo descarregado da memória). A faixa do `nimble` vem de duas medições independentes que divergiram (≈11,8 s com a máquina ociosa, ≈46,5 s numa execução com carga concorrente no Ollama e ≈72 s na primeira chamada do benchmark de rubricas); o valor real varia com o cache de disco do sistema e com a carga da máquina. Em parte desses casos o `SYSTEMONE_TIMEOUT` padrão de 30 s não basta para a primeira chamada do `nimble`.
+\* First call after `ollama stop <model>` (model unloaded from memory). The `nimble` range comes from two independent measurements that diverged (≈11.8 s with the machine idle, ≈46.5 s in a run with concurrent load on Ollama and ≈72 s on the first call of the rubric benchmark); the real value varies with the system disk cache and with machine load. In some of those cases the default `SYSTEMONE_TIMEOUT` of 30 s is not enough for the first `nimble` call.
 
-* Estes números foram medidos com as rubricas ainda em português. A troca para inglês (2026-10-06) muda o tamanho do prompt e **não foi remedida**; rode `python benchmarks/latency.py` para atualizar.
-* A latência depende de hardware, de o modelo já estar residente na memória e do tamanho do payload; não extrapole estes números para outra máquina. O diff de teste usa linhas curtas porque o endpoint rejeita entradas acima de ~2050 tokens.
-* A camada de **regras determinísticas** (`guard_rules.evaluate_command`, offline, sem modelo) é o caminho rápido: ~40-50 µs por chamada (1000 chamadas, mesma máquina). O veredito do modelo é uma heurística adicional, não a barreira de segurança.
-* Reprodutibilidade: 20 chamadas idênticas ao `tev1:0.8b` e 20 ao `nimble:latest` (rubrica guard) devolveram respostas idênticas, inclusive as probabilidades. Isso foi observado nesta máquina e versão do Ollama; não é uma garantia documentada pelo fabricante.
+* These numbers were measured with the rubrics still in Portuguese. The switch to English (2026-10-06) changes the prompt size and **has not been re-measured**; run `python benchmarks/latency.py` to update.
+* Latency depends on hardware, on whether the model is already resident in memory, and on payload size; do not extrapolate these numbers to another machine. The test diff uses short lines because the endpoint rejects inputs above ~2050 tokens.
+* The **deterministic rules** layer (`guard_rules.evaluate_command`, offline, no model) is the fast path: ~40-50 µs per call (1000 calls, same machine). The model verdict is an additional heuristic, not the security barrier.
+* Reproducibility: 20 identical calls to `tev1:0.8b` and 20 to `nimble:latest` (guard rubric) returned identical answers, including the probabilities. This was observed on this machine and Ollama version; it is not a vendor-documented guarantee.
 
 ---
 
-### Manter o modelo carregado (`OLLAMA_KEEP_ALIVE`)
+### Keep the model loaded (`OLLAMA_KEEP_ALIVE`)
 
-O Ollama descarrega um modelo depois de um tempo sem uso; **o padrão é 5 minutos**. A primeira chamada depois disso paga o carregamento (medido: ≈12 a ≈72 s para o `nimble`, ≈3-4 s para o `tev1:0.8b`), e é por isso que o pre-commit hook, que usa o `nimble`, tem timeout de 120 s. Manter o modelo carregado evita esse custo.
+Ollama unloads a model after a period of inactivity; **the default is 5 minutes**. The first call after that pays the load cost (measured: ≈12 to ≈72 s for `nimble`, ≈3-4 s for `tev1:0.8b`), which is why the pre-commit hook, which uses `nimble`, has a 120 s timeout. Keeping the model loaded avoids that cost.
 
-**Como ver o que está carregado:** `ollama ps` mostra o modelo, o tamanho, o processador e, na coluna `UNTIL`, quando ele será descarregado.
+**See what is loaded:** `ollama ps` shows the model, its size, the processor and, in the `UNTIL` column, when it will be unloaded.
 
-**Como configurar:** é uma configuração do **servidor** Ollama (vale para todos os clientes). A variável `OLLAMA_KEEP_ALIVE` aceita:
+**How to configure it:** this is a setting of the Ollama **server** (it applies to all clients). The `OLLAMA_KEEP_ALIVE` variable accepts:
 
-| Valor | Efeito |
+| Value | Effect |
 | :--- | :--- |
-| `30m`, `24h` | mantém carregado por esse tempo após o último uso |
-| `3600` | número de segundos |
-| `-1` | mantém carregado **indefinidamente** |
-| `0` | descarrega logo após a resposta |
+| `30m`, `24h` | keeps the model loaded for that long after last use |
+| `3600` | a number of seconds |
+| `-1` | keeps it loaded **indefinitely** |
+| `0` | unloads right after the response |
 
-No Linux, com o serviço systemd instalado pelo instalador oficial:
+On Linux, with the systemd service installed by the official installer:
 
 ```bash
 sudo systemctl edit ollama.service
-# no editor, acrescente:
+# in the editor, add:
 #   [Service]
 #   Environment="OLLAMA_KEEP_ALIVE=30m"
 sudo systemctl daemon-reload
 sudo systemctl restart ollama
 ```
 
-Sem systemd, defina a variável ao iniciar o servidor: `OLLAMA_KEEP_ALIVE=30m ollama serve`. Para macOS e Windows, siga o [FAQ oficial do Ollama](https://docs.ollama.com/faq). Reiniciar o serviço descarrega o que estava na memória.
+Without systemd, set the variable when starting the server: `OLLAMA_KEEP_ALIVE=30m ollama serve`. For macOS and Windows, follow the [official Ollama FAQ](https://docs.ollama.com/faq). Restarting the service unloads whatever was in memory.
 
-**Custo:** o modelo fica ocupando memória enquanto estiver carregado. Na máquina de teste (RTX 3060 de 12 GB) o `nimble` ocupou 8,9 GB, segundo o `ollama ps`. Prefira um valor finito que cubra uma sessão de trabalho (por exemplo `30m` a `1h`); use `-1` só em uma máquina dedicada, porque nesse caso a memória só é liberada ao reiniciar o serviço ou com `ollama stop <modelo>`.
+**Cost:** the model occupies memory while it is loaded. On the test machine (12 GB RTX 3060) `nimble` used 8.9 GB, according to `ollama ps`. Prefer a finite value that covers a work session (for example `30m` to `1h`); use `-1` only on a dedicated machine, because then memory is only released by restarting the service or with `ollama stop <model>`.
 
-**O que o SystemOne Gate não faz:** ele **não** define `keep_alive` por requisição. A documentação do Ollama lista esse parâmetro para `/api/generate` e `/api/chat`, não para o `/v1/systemone`, e não foi verificado que este endpoint o aceite.
+**What SystemOne Gate does not do:** it does **not** set `keep_alive` per request. Ollama's documentation lists that parameter for `/api/generate` and `/api/chat`, not for `/v1/systemone`, and it has not been verified that this endpoint accepts it.
 
-## 🚀 Guia de Início Rápido (Do Zero ao Funcionamento)
+## 🚀 Quick Start (From Zero to Working)
 
-Se você está chegando agora ao projeto, siga este passo a passo para configurar o Ollama e o SystemOne Gate na sua máquina.
+If you are new to the project, follow these steps to set up Ollama and SystemOne Gate on your machine.
 
-### Passo 1: Instalar ou Atualizar o Ollama (Versão 0.35+)
+### Step 1: Install or update Ollama (version 0.35+)
 
-O endpoint `/v1/systemone` é uma funcionalidade recente introduzida no **Ollama v0.35.0**. Certifique-se de estar com a versão 0.35 ou superior.
+The `/v1/systemone` endpoint is a recent feature introduced in **Ollama v0.35.0**. Make sure you are on version 0.35 or later.
 
 * **Linux:**
   ```bash
   curl -fsSL https://ollama.com/install.sh | sh
   ```
 * **macOS / Windows:**
-  Baixe o instalador mais recente em [ollama.com/download](https://ollama.com/download).
+  Download the latest installer from [ollama.com/download](https://ollama.com/download).
 
-**Verifique a versão instalada:**
+**Check the installed version:**
 ```bash
 ollama -v
-# Deve exibir: ollama version is 0.35.0 (ou superior)
+# Should print: ollama version is 0.35.0 (or higher)
 ```
 
 ---
 
-### Passo 2: Baixar os Modelos de Decisão (System One)
+### Step 2: Pull the decision models (System One)
 
-O SystemOne Gate utiliza modelos treinados especificamente para classificação, scores e decisões paralelas (não são chatbots de texto livre):
+SystemOne Gate uses models trained specifically for classification, scores and parallel decisions (they are not free-text chatbots):
 
 ```bash
-# 1. Tev1 (0.8B) - Leve e rápido (811 MB de download)
-# Ideal para qualquer máquina, baixa latência (veja Desempenho medido). Útil para checagem de comandos shell.
+# 1. Tev1 (0.8B) - light and fast (811 MB download)
+# Fits any machine, low latency (see Measured performance). Useful for shell command checks.
 ollama pull tev1:0.8b
 
-# 2. Nimble (9B) - Alta precisão para código (9.5 GB de download)
-# Recomendado para GPUs com 8GB+ VRAM ou Apple Silicon. Usado em triagem de bugs e code review.
+# 2. Nimble (9B) - high accuracy for code (9.5 GB download)
+# Recommended for GPUs with 8GB+ VRAM or Apple Silicon. Used for bug triage and code review.
 ollama pull nimble
 ```
 
-> 💡 **Nota de Hardware:** Se você estiver em uma máquina mais modesta (sem GPU dedicada ou com pouca VRAM), você pode usar apenas o `tev1:0.8b` para todas as tarefas sem problemas!
+> 💡 **Hardware note:** on a more modest machine (no dedicated GPU or little VRAM) you can use only `tev1:0.8b` for every task without problems!
 
 ---
 
-### Passo 3: Teste de Sanidade (Verificar se a API está ativa)
+### Step 3: Sanity check (is the API up?)
 
-Com o Ollama rodando em background, faça uma chamada de teste rápida no terminal:
+With Ollama running in the background, make a quick test call from the terminal:
 
 ```bash
 curl http://localhost:11434/v1/systemone -d '{
   "model": "tev1:0.8b",
-  "state": "Erro ao compilar: undefined reference to main",
+  "state": "Build error: undefined reference to main",
   "questions": {
     "is_linker_error": {
       "type": "choice",
-      "instructions": "Este é um erro de linkedição?",
+      "instructions": "Is this a linker error?",
       "criteria": {"yes": null, "no": null}
     }
   }
 }'
 ```
 
-Se retornar um JSON com `"choice": "yes"` e `"probabilities"`, o backend está 100% pronto!
+If it returns JSON with `"choice": "yes"` and `"probabilities"`, the backend is ready!
 
 ---
 
-### Passo 4: Instalar o SystemOne Gate
+### Step 4: Install SystemOne Gate
 
-Clone este repositório e instale a CLI:
+Clone this repository and install the CLI:
 
 ```bash
 git clone https://github.com/beliciobcardoso/systemone_gate.git
@@ -159,81 +161,81 @@ cd systemone_gate
 pip install -e .
 ```
 
-Pronto! Agora o comando `systemone-gate` e o servidor `systemone-mcp` estão disponíveis no seu terminal.
+Done! The `systemone-gate` command and the `systemone-mcp` server are now available in your terminal.
 
 ---
 
-## 🛠️ Modos de Uso
+## 🛠️ Usage
 
-### 1. Linha de Comando (CLI)
+### 1. Command line (CLI)
 
 ```bash
-# Inspecionar alterações staged antes do commit
+# Inspect staged changes before committing
 systemone-gate diff
 
-# Inspecionar diff com o modelo Nimble (análise mais profunda)
+# Inspect the diff with the Nimble model (deeper analysis)
 systemone-gate diff --nimble
 
-# Qualquer modelo Ollama (ordem: --model/--nimble > SYSTEMONE_DIFF_MODEL > nimble)
-systemone-gate diff --model NOME
+# Any Ollama model (order: --model/--nimble > SYSTEMONE_DIFF_MODEL > nimble)
+systemone-gate diff --model NAME
 
-# Triagem de erro de build ou teste
-systemone-gate triage "undefined reference to mqtt3_db_open no mosquitto.c"
+# Triage a build or test error
+systemone-gate triage "undefined reference to mqtt3_db_open in mosquitto.c"
 
-# Testar se um comando de terminal é seguro
+# Check whether a terminal command is safe
 systemone-gate guard "rm -rf /tmp/data/*"
 
-# Mostrar a versão instalada
+# Show the installed version
 systemone-gate --version
 
-# Instalar Git Pre-Commit Hook no repositório atual
+# Install the Git pre-commit hook in the current repository
 systemone-gate install-hook
 
-# Remover o hook (restaura o hook original, se houver backup)
+# Remove the hook (restores the original hook, if there is a backup)
 systemone-gate uninstall-hook
 
-# Diagnosticar o backend Ollama (versão, modelos e contrato do endpoint)
+# Diagnose the Ollama backend (version, models and endpoint contract)
 systemone-gate doctor
 ```
 
-**Diagnóstico (`doctor`):** o SystemOne Gate depende de um endpoint de terceiros sem contrato versionado, então este é o caminho rápido para investigar erros como "Failed to connect" ou HTTP 404. O comando verifica, em ordem: (1) se o Ollama responde em `/api/version`; (2) se a versão é **>= 0.35.0** (mínimo exigido; antes disso `/v1/systemone` não existe); (3) se os modelos `tev1:0.8b` e `nimble` estão instalados e com a capability `decision` (use `--model NOME`, repetível, para trocar a lista); (4) um teste de contrato com uma chamada mínima a `/v1/systemone` (pule com `--no-smoke`). Imprime um checklist (✅/⚠️/❌) e sai com 0 se tudo obrigatório passou, 1 se houve falha e 2 para configuração inválida (ex.: `SYSTEMONE_TIMEOUT`).
+**Diagnostics (`doctor`):** SystemOne Gate depends on a third-party endpoint with no versioned contract, so this is the quick way to investigate errors such as "Failed to connect" or HTTP 404. The command checks, in order: (1) whether Ollama answers on `/api/version`; (2) whether the version is **>= 0.35.0** (the required minimum; before that `/v1/systemone` does not exist); (3) whether the `tev1:0.8b` and `nimble` models are installed and have the `decision` capability (use `--model NAME`, repeatable, to change the list); (4) a contract test with one minimal call to `/v1/systemone` (skip it with `--no-smoke`). It prints a checklist (✅/⚠️/❌) and exits 0 if everything required passed, 1 if something failed and 2 for invalid configuration (e.g. `SYSTEMONE_TIMEOUT`).
 
-**Modelo do pre-commit hook:** o hook revisa o diff com o `nimble` por padrão. No benchmark de rubricas ([`docs/BENCHMARK_RUBRIC_LANGUAGE.md`](docs/BENCHMARK_RUBRIC_LANGUAGE.md); 36 diffs rotulados por um LLM, uma máquina; isso não é calibração) o `tev1:0.8b` **não discriminou o risco do diff** (acertou 36-39% do nível de risco, contra 33% do acaso, e 33-53% de `breaking_change`, contra 56% de quem responde sempre `safe`), enquanto o `nimble` acertou 72-75% do risco e 69% do `breaking_change`. **Custo:** o Ollama descarrega o modelo depois de um tempo parado (padrão do Ollama: 5 minutos; veja [Manter o modelo carregado](#manter-o-modelo-carregado-ollama_keep_alive)), e a primeira chamada depois disso leva de ≈12 a ≈72 s para carregar o `nimble`. Por isso o hook usa **timeout de 120 s** por padrão (a CLI e a biblioteca seguem com 30 s); defina `SYSTEMONE_TIMEOUT` para mudar. Para voltar ao modelo rápido: `SYSTEMONE_DIFF_MODEL=tev1:0.8b git commit ...`. **Hooks já instalados** só ganham o timeout de 120 s se forem reinstalados (`systemone-gate install-hook`); sem isso, o primeiro commit depois de uma pausa pode estourar 30 s e a revisão é pulada com um aviso.
+**Pre-commit hook model:** the hook reviews the diff with `nimble` by default. In the rubric benchmark ([`docs/BENCHMARK_RUBRIC_LANGUAGE.md`](docs/BENCHMARK_RUBRIC_LANGUAGE.md); 36 diffs labeled by an LLM, one machine; this is not calibration) `tev1:0.8b` **did not discriminate diff risk** (it got 36-39% of the risk level right, against 33% by chance, and 33-53% of `breaking_change`, against 56% for always answering `safe`), while `nimble` got 72-75% of the risk and 69% of `breaking_change`. **Cost:** Ollama unloads the model after it sits idle (Ollama default: 5 minutes; see [Keep the model loaded](#keep-the-model-loaded-ollama_keep_alive)), and the first call after that takes ≈12 to ≈72 s to load `nimble`. That is why the hook uses a **120 s timeout** by default (the CLI and the library stay at 30 s); set `SYSTEMONE_TIMEOUT` to change it. To go back to the fast model: `SYSTEMONE_DIFF_MODEL=tev1:0.8b git commit ...`. **Hooks already installed** only get the 120 s timeout if reinstalled (`systemone-gate install-hook`); without that, the first commit after a pause can exceed 30 s and the review is skipped with a warning.
 
-**Ignorar o hook:** `SYSTEMONE_SKIP=1 git commit ...` pula apenas a verificação do SystemOne Gate (os demais hooks continuam valendo). Evite `git commit --no-verify`, que desativa todos os hooks.
+**Skipping the hook:** `SYSTEMONE_SKIP=1 git commit ...` skips only the SystemOne Gate check (the other hooks still run). Avoid `git commit --no-verify`, which disables all hooks.
 
-**Saída sem emoji:** se o terminal ou o pipe não suporta UTF-8 (ex.: `PYTHONIOENCODING=ascii`), a CLI troca os emoji por tokens ASCII (`[OK]`, `[ERRO]`, `[AVISO]`) automaticamente. Para forçar esse modo, use `systemone-gate --plain diff` ou `SYSTEMONE_PLAIN=1`. O servidor MCP não é afetado.
+**Emoji-free output:** if the terminal or pipe does not support UTF-8 (e.g. `PYTHONIOENCODING=ascii`), the CLI automatically swaps emoji for ASCII tokens (`[OK]`, `[ERROR]`, `[WARN]`). To force this mode, use `systemone-gate --plain diff` or `SYSTEMONE_PLAIN=1`. The MCP server is not affected.
 
-**Timeout:** o padrão é 30 s por chamada. No primeiro uso após inicialização a Ollama carrega o modelo em memória (o Nimble tem 9,5 GB) e pode demorar mais; aumente com `SYSTEMONE_TIMEOUT` (segundos, número positivo), por exemplo `SYSTEMONE_TIMEOUT=120 systemone-gate triage "..."`. Um valor inválido encerra a CLI com código 2. O endpoint pode ser trocado com `OLLAMA_SYSTEMONE_URL`.
+**Timeout:** the default is 30 s per call. On first use after startup Ollama loads the model into memory (Nimble is 9.5 GB) and may take longer; raise it with `SYSTEMONE_TIMEOUT` (seconds, positive number), for example `SYSTEMONE_TIMEOUT=120 systemone-gate triage "..."`. An invalid value makes the CLI exit with code 2. The endpoint can be changed with `OLLAMA_SYSTEMONE_URL`.
 
-**Confiança mínima (opt-in):** `SYSTEMONE_MIN_CONFIDENCE` (0 a 1) trata como indeterminado, e aplica a política `*_ON_ERROR`, o veredito cuja `confidence` seja menor que o mínimo; vem desligada (`0`) e sem valor sugerido porque não há calibração e as confianças observadas são baixas em todas as respostas (0,03 a 0,27), então qualquer mínimo alto bloquearia ou avisaria sempre.
+**Minimum confidence (opt-in):** `SYSTEMONE_MIN_CONFIDENCE` (0 to 1) treats a verdict whose `confidence` is below the minimum as indeterminate and applies the `*_ON_ERROR` policy; it is off (`0`) and has no suggested value because there is no calibration and the observed confidences are low across all answers (0.03 to 0.27), so any high minimum would always block or warn.
 
 ---
 
-### Perfis de rubrica (`diff` e `triage`)
+### Rubric profiles (`diff` and `triage`)
 
-As rubricas de risco de diff e de triagem de erro têm perfis, pois o texto original é voltado a código C/sistemas (sockets, locks, parsing de protocolo). O texto de todas as rubricas enviado ao modelo é em **inglês** (projeto público e internacional; ver [`docs/BENCHMARK_RUBRIC_LANGUAGE.md`](docs/BENCHMARK_RUBRIC_LANGUAGE.md)); as chaves de escolha, que a política lê, não mudam:
+The diff-risk and error-triage rubrics have profiles because the original text is aimed at C/systems code (sockets, locks, protocol parsing). The text of every rubric sent to the model is in **English** (public, international project; see [`docs/BENCHMARK_RUBRIC_LANGUAGE.md`](docs/BENCHMARK_RUBRIC_LANGUAGE.md)); the choice keys, which the policy reads, do not change:
 
-| Perfil | Para quê |
+| Profile | Purpose |
 |---|---|
-| `default` | Texto original (C/sistemas), mantido por compatibilidade. |
-| `generic` | Redação neutra, sem jargão de C/rede. |
-| `web-backend` | Serviços NestJS/Prisma/PostgreSQL/Java Spring: migrations destrutivas, autenticação/autorização, queries sem filtro de tenant, contratos REST/GraphQL, transações, segredos. |
+| `default` | Original text (C/systems), kept for compatibility. |
+| `generic` | Neutral wording, without C/network jargon. |
+| `web-backend` | NestJS/Prisma/PostgreSQL/Java Spring services: destructive migrations, authentication/authorization, queries without a tenant filter, REST/GraphQL contracts, transactions, secrets. |
 
-Seleção: `systemone-gate diff --profile web-backend`, `systemone-gate triage --profile web-backend "erro"` ou a variável `SYSTEMONE_PROFILE` (o argumento tem precedência). Perfil inválido encerra com código 2. No MCP e na biblioteca vale a variável de ambiente, ou `profile=` em `review_diff`/`triage_error`. As rubricas `guard` e de roteamento não mudam.
+Selection: `systemone-gate diff --profile web-backend`, `systemone-gate triage --profile web-backend "error"` or the `SYSTEMONE_PROFILE` variable (the argument takes precedence). An invalid profile exits with code 2. In MCP and the library the environment variable applies, or `profile=` in `review_diff`/`triage_error`. The `guard` and routing rubrics do not change.
 
-> **Atenção:** os perfis `generic` e `web-backend` ainda **não foram validados** contra dados rotulados; a qualidade da nova redação não foi medida. O `default` continua sendo o texto original, voltado a C/sistemas.
+> **Warning:** the `generic` and `web-backend` profiles have **not yet been validated** against labeled data; the quality of the new wording has not been measured. `default` remains the original C/systems text.
 
-### 2. Como Servidor MCP (Model Context Protocol)
+### 2. As an MCP server (Model Context Protocol)
 
-O SystemOne Gate possui um servidor MCP nativo sem dependências externas (Zero-Dependency) compatível com:
+SystemOne Gate ships a native, zero-dependency MCP server compatible with:
 * **Antigravity (Google DeepMind)**
 * **Claude Desktop & Claude Code**
 * **Cursor IDE**
 * **Windsurf (Cascade)**
 * **Cline & Roo Code (VS Code)**
 
-#### Exemplo de Configuração MCP (`mcp.json` / `claude_desktop_config.json`):
+#### MCP configuration example (`mcp.json` / `claude_desktop_config.json`):
 ```json
 {
   "mcpServers": {
@@ -244,66 +246,66 @@ O SystemOne Gate possui um servidor MCP nativo sem dependências externas (Zero-
 }
 ```
 
-#### Ferramentas MCP Expostas:
-1. `systemone_triage_error`: Triagem e causa-raiz de falhas de compilação ou testes.
-2. `systemone_review_diff`: Avaliação de risco técnico e quebras de contrato em patches de código.
-3. `systemone_command_guard`: Verificação de segurança de comandos bash (modelo leve Tev1 0.8B; veja Desempenho medido).
-4. `systemone_query`: Consultas arbitrárias tipadas (`choice` ou `score`) para qualquer contexto.
-5. `systemone_review_staged`: Revisa o que está staged (`git diff --cached` lido pelo próprio servidor, por arquivo, ignorando lockfiles/binários) e devolve risco, cobertura e a decisão allow/block. Preferível ao `systemone_review_diff` quando a mudança já está staged: o diff não passa pelo agente (menos tokens de saída e sem risco de resumo/alteração).
+#### Exposed MCP tools:
+1. `systemone_triage_error`: triage and root cause of build or test failures.
+2. `systemone_review_diff`: technical risk and contract-break assessment for code patches.
+3. `systemone_command_guard`: safety check for bash commands (light Tev1 0.8B model; see Measured performance).
+4. `systemone_query`: arbitrary typed queries (`choice` or `score`) for any context.
+5. `systemone_review_staged`: reviews what is staged (`git diff --cached` read by the server itself, per file, ignoring lockfiles/binaries) and returns risk, coverage and the allow/block decision. Preferable to `systemone_review_diff` when the change is already staged: the diff does not pass through the agent (fewer output tokens and no risk of summarizing or altering it).
 
 ---
 
-### 3. Como Biblioteca Python (Para Agentes Customizados)
+### 3. As a Python library (for custom agents)
 
 ```python
 from systemone_gate import SystemOneClient
 
 client = SystemOneClient()
 
-# Triagem de erro
+# Error triage
 triage = client.triage_error("mosquitto.c:120: segmentation fault (core dumped)")
-print("Causa-raiz:", triage["answers"]["root_cause"]["choice"])
+print("Root cause:", triage["answers"]["root_cause"]["choice"])
 
-# Avaliação de risco em patch
+# Risk assessment of a patch
 diff = "--- a/net.c\n+++ b/net.c\n@@ -10 +10 @@\n- socket_read();\n+ async_epoll_wait();"
 review = client.review_diff(diff)
-print("Risco (0 a 2):", review["answers"]["risk_level"]["score"])
+print("Risk (0 to 2):", review["answers"]["risk_level"]["score"])
 ```
 
 ---
 
-## 📖 Manuais e Guias de Integração
+## 📖 Manuals and Integration Guides
 
-Para guias passo a passo de como plugar o SystemOne Gate em cada agente específico, consulte:
-* 📘 [**Manual Completo para Agentes de IA**](docs/MANUAL_AGENTES_IA.md) (Claude, Cursor, Windsurf, Cline, Aider, Antigravity, LangChain)
-* 💡 [Exemplo de Script em Python para Agentes](examples/python_agent_integration.py)
-* 📋 [Configuração para Cursor IDE](examples/cursor_rules.md)
-
----
-
-## 🔒 Privacidade e Segurança
-
-* **100% Local:** Todo o processamento acontece dentro da máquina do desenvolvedor (`localhost:11434`). O endpoint deve usar `http`/`https` e apontar para um host de loopback (`localhost`, `127.0.0.0/8`, `::1`, `*.localhost`); hosts remotos só são aceitos com `SYSTEMONE_ALLOW_REMOTE=1` (um aviso é emitido no stderr, pois diffs, comandos e logs passarão a sair da máquina). Nenhum nome de host é resolvido via DNS: qualquer um diferente de `localhost`/`*.localhost` conta como remoto.
-* **Redação de segredos (ativa por padrão):** antes de enviar ao modelo, o texto (`state`: diffs, comandos, logs) passa por `redact_secrets`, que troca chaves AWS, tokens GitHub/Slack/Stripe, chaves Google, blocos PEM de chave privada, JWTs, `Authorization: Bearer ...`, senhas em URLs e atribuições `password|secret|api_key|token=...` por `[REDACTED:<regra>]`. Quando algo é mascarado, o resultado traz `"redacted": <n>`. Desative com `SYSTEMONE_REDACT=0` ou `SystemOneClient(redact=False)`. É uma redução de risco baseada em padrões, **não uma garantia**: formatos não reconhecidos passam. As regras determinísticas do `guard_command` enxergam o comando original, sem redação.
-* **Sem Telemetria:** O SystemOne Gate não coleta e não envia dados para a nuvem.
-* **Resiliente a Falhas de Rede:** Se o serviço local do Ollama estiver inativo, o pre-commit hook permite o fluxo normal de desenvolvimento para nunca bloquear o usuário.
+For step-by-step guides on plugging SystemOne Gate into each specific agent, see:
+* 📘 [**Complete Manual for AI Agents**](docs/AGENT_MANUAL.md) (Claude, Cursor, Windsurf, Cline, Aider, Antigravity, LangChain)
+* 💡 [Python agent script example](examples/python_agent_integration.py)
+* 📋 [Configuration for Cursor IDE](examples/cursor_rules.md)
 
 ---
 
-## 🛠️ Desenvolvimento
+## 🔒 Privacy and Security
+
+* **100% local:** all processing happens inside the developer's machine (`localhost:11434`). The endpoint must use `http`/`https` and point to a loopback host (`localhost`, `127.0.0.0/8`, `::1`, `*.localhost`); remote hosts are only accepted with `SYSTEMONE_ALLOW_REMOTE=1` (a warning is printed to stderr, since diffs, commands and logs will leave the machine). No hostname is resolved through DNS: anything other than `localhost`/`*.localhost` counts as remote.
+* **Secret redaction (on by default):** before sending to the model, the text (`state`: diffs, commands, logs) goes through `redact_secrets`, which replaces AWS keys, GitHub/Slack/Stripe tokens, Google keys, PEM private-key blocks, JWTs, `Authorization: Bearer ...`, passwords in URLs and `password|secret|api_key|token=...` assignments with `[REDACTED:<rule>]`. When something is masked, the result carries `"redacted": <n>`. Disable it with `SYSTEMONE_REDACT=0` or `SystemOneClient(redact=False)`. This is pattern-based risk reduction, **not a guarantee**: unrecognized formats pass through. The deterministic `guard_command` rules see the original command, without redaction.
+* **No telemetry:** SystemOne Gate does not collect or send data to the cloud.
+* **Resilient to network failures:** if the local Ollama service is down, the pre-commit hook lets the normal development flow proceed so it never blocks the user.
+
+---
+
+## 🛠️ Development
 
 ```bash
-pip install -e ".[dev]"   # pytest, ruff e mypy
+pip install -e ".[dev]"   # pytest, ruff and mypy
 scripts/check.sh          # ruff check → ruff format --check → mypy → pytest
 ```
 
-- **ruff** (`E,F,W,I,B`): estilo, imports não usados/ordenados e armadilhas comuns (bugbear); também formata. O `format --check` só cobre arquivos Python **novos** (os existentes não foram reformatados em massa); `FORMAT_ALL=1 scripts/check.sh` verifica tudo.
-- **mypy**: checagem de tipos de `systemone_gate/` (os testes não são tipados).
-- **pytest**: suíte hermética (não chama o Ollama real; o teste `contract` é opt-in).
-- Não há CI de propósito: as verificações são locais.
+- **ruff** (`E,F,W,I,B`): style, unused/unsorted imports and common pitfalls (bugbear); it also formats. `format --check` only covers **new** Python files (existing ones were not mass-reformatted); `FORMAT_ALL=1 scripts/check.sh` checks everything.
+- **mypy**: type checking of `systemone_gate/` (tests are not typed).
+- **pytest**: hermetic suite (it does not call the real Ollama; the `contract` test is opt-in).
+- There is no CI on purpose: the checks are local.
 
 ---
 
-## 📄 Licença
+## 📄 License
 
-Distribuído sob a licença [MIT](LICENSE).
+Distributed under the [MIT](LICENSE) license.

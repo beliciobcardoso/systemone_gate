@@ -64,7 +64,7 @@ def test_version_too_old_fails_with_upgrade_hint(fake):
     check = _by_name(report, "version")
     assert check.status == FAIL
     assert MIN_OLLAMA_VERSION in check.message
-    assert "Atualize" in check.hint
+    assert "Update" in check.hint
     assert not report.ok
 
 
@@ -165,7 +165,7 @@ def test_connection_refused(closed_port_url):
     assert [c.name for c in report.checks] == ["reachability"]
     check = report.checks[0]
     assert check.status == FAIL
-    assert "conectar" in check.message.lower()
+    assert "connect" in check.message.lower()
     assert "ollama serve" in check.hint
 
 

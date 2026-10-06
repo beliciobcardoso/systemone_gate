@@ -1,18 +1,20 @@
-# Regras para Cursor IDE (.cursorrules)
+# Rules for Cursor IDE (.cursorrules)
 
-Copie o conteúdo abaixo para um arquivo chamado `.cursorrules` na raiz do seu projeto.
+🌐 **English** · [Português (Brasil)](cursor_rules.pt-BR.md)
+
+Copy the content below into a file named `.cursorrules` at the root of your project.
 
 ```markdown
-# Diretrizes do Agente Cursor: SystemOne Gatekeeper
+# Cursor Agent Guidelines: SystemOne Gatekeeper
 
-1. **Triagem de Erros**:
-   - Sempre que um comando de terminal (`make`, `cargo`, `npm test`, etc.) falhar, acione a ferramenta MCP `systemone_triage_error` passando o log de erro.
-   - Use a causa raiz identificada pelo modelo local para orientar a correção antes de reescrever arquivos.
+1. **Error triage**:
+   - Whenever a terminal command (`make`, `cargo`, `npm test`, etc.) fails, call the MCP tool `systemone_triage_error` with the error log.
+   - Use the root cause identified by the local model to guide the fix before rewriting files.
 
-2. **Segurança de Execução no Terminal**:
-   - Antes de propor comandos destrutivos (remoção de arquivos, resets de banco, limpeza de containers), peça confirmação explícita ao usuário.
-   - `systemone_command_guard` é apenas um aviso heurístico: o veredito "safe" do modelo NÃO autoriza a execução e não substitui enforcement externo (veja "Enforcement real no Claude Code" no manual).
+2. **Terminal execution safety**:
+   - Before proposing destructive commands (deleting files, database resets, container cleanup), ask the user for explicit confirmation.
+   - `systemone_command_guard` is only a heuristic warning: the model's "safe" verdict does NOT authorize execution and does not replace external enforcement (see "Real enforcement in Claude Code" in the manual).
 
-3. **Revisão de Diffs**:
-   - Ao concluir uma alteração grande em código C/C++, execute a verificação de risco de diff via MCP `systemone_review_diff`.
+3. **Diff review**:
+   - After finishing a large change in C/C++ code, run the diff risk check through the MCP tool `systemone_review_diff`.
 ```

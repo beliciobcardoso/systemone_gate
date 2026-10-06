@@ -1,5 +1,7 @@
 # 📘 Manual de Integração do SystemOne Gate para Agentes de IA
 
+🌐 [English](AGENT_MANUAL.md) · **Português (Brasil)**
+
 Este guia orienta como conectar o **SystemOne Gate** a **qualquer agente de Inteligência Artificial** (Claude Code, Antigravity, Cursor, Windsurf, Cline, Roo Code, Aider, LangChain, CrewAI, AutoGen).
 
 ---

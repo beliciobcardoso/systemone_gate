@@ -133,3 +133,4 @@ Configurar no GitHub (Settings → Rules → Rulesets, ou Branch protection):
 - [ ] Nenhum segredo, `console.log`/`print` de debug ou código morto.
 - [ ] Entradas externas validadas; erros tratados sem vazar detalhe interno.
 - [ ] Documentação (README/docs) atualizada se o comportamento mudou.
+- [ ] Docs bilíngues em sincronia: inglês é a língua principal (`README.md`, `docs/AGENT_MANUAL.md`, `examples/cursor_rules.md`) e português do Brasil a secundária (`*.pt-BR.md`). Mudou um, atualize o outro no mesmo PR.
