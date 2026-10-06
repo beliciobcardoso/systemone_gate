@@ -138,7 +138,7 @@ def _truncate(text: str, max_lines: int) -> Tuple[str, bool]:
     lines = text.splitlines()
     if len(lines) <= max_lines:
         return text, False
-    marker = f"... [truncado {len(lines) - max_lines} linhas]"
+    marker = f"... [truncated {len(lines) - max_lines} lines]"
     return "\n".join(lines[:max_lines] + [marker]), True
 
 

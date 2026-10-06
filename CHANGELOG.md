@@ -7,6 +7,19 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-06
+
+### Changed
+
+- **Behavior change:** every rubric sent to the model is now in English (`default`, `generic` and `web-backend` profiles, `RUBRIC_COMMAND_SAFETY`, `RUBRIC_AGENT_ROUTING`, the `doctor` smoke rubric), and so is the truncation marker appended to long diffs (`... [truncated N lines]`). The project is public and international. The benchmark in `docs/BENCHMARK_RUBRIC_LANGUAGE.md` found no detectable accuracy difference between Portuguese and English for the default profile (smallest p = 0.19); the other rubrics were not part of that benchmark. A later comparison on the guard rubric found no change for `nimble:latest` but a worse score separation for `tev1:0.8b`, the guard's production model (paired AUC difference -0.104, 95% CI [-0.182, -0.030], 69 cases, labels not yet reviewed); in practice the model blocks nothing on its own at the default threshold in either language, so current behavior is unchanged, but it lowers what that model can reach if it is ever calibrated as a gate (see `docs/BENCHMARK_RUBRIC_LANGUAGE.md`). Choice keys (the labels the policy reads) are unchanged. Model scores depend on the prompt, so any threshold or calibration measured with the Portuguese rubrics no longer applies; the rubric hash recorded by `calibrate_collect.py` flags stale collections. A test now rejects Portuguese text in any rubric. The Portuguese original of the default profile is frozen in `benchmarks/data/rubrics_pt.py` so the benchmark stays reproducible.
+
+### Added
+
+- `benchmarks/calibrate_label.py` runs the second-labeling workflow for the calibration datasets: a blind export (commands and definition only), import of the second labeler's verdicts (`agreed` / `disputed`), a disputes sheet for the human reviewer, and `resolve`. The dataset schema now requires `second_labeler` whenever `second_label` is set. Step 4 of the threshold calibration.
+- `benchmarks/calibrate_analyze.py` evaluates the production guard decision (`policy.decide_command`) over a grid of `guard_danger_threshold`, `min_confidence` and `guard_on_error` against the collected outputs and reviewed labels, and reports recall/FPR with Wilson intervals from a stratified k-fold cross-validation. It refuses incomplete or stale data, and a recommendation is only emitted when the held-out result meets the criterion on fully reviewed labels (`--preliminary` previews without one). Step 3 of the threshold calibration.
+- `benchmarks/calibrate_collect.py` collects raw model outputs (score, probabilities, confidence) for the calibration datasets with the production rubric, pinning the model digest and a per-case hash; `--resume` retries only failed or changed cases. Step 2 of the threshold calibration.
+- Calibration dataset schema and loader (`benchmarks/calibration_schema.py`) with a validator that rejects secrets, non-permissive licenses and labels contradicting the deterministic guard rules, plus a seed set of 84 synthetic guard commands (`benchmarks/data/calibration/`). First step toward calibrating the block thresholds (FAL-03, FAL-05).
+
 ## [0.3.1] - 2026-10-05
 
 ### Changed

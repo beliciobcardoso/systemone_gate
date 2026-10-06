@@ -47,6 +47,7 @@ Medido em 2026-10-05 com `SystemOneClient` (chamadas sequenciais, Ollama local, 
 
 \* Primeira chamada após `ollama stop <modelo>` (modelo descarregado da memória). A faixa do `nimble` vem de duas medições independentes que divergiram (≈11,8 s com a máquina ociosa, ≈46,5 s numa execução com carga concorrente no Ollama e ≈72 s na primeira chamada do benchmark de rubricas); o valor real varia com o cache de disco do sistema e com a carga da máquina. Em parte desses casos o `SYSTEMONE_TIMEOUT` padrão de 30 s não basta para a primeira chamada do `nimble`.
 
+* Estes números foram medidos com as rubricas ainda em português. A troca para inglês (2026-10-06) muda o tamanho do prompt e **não foi remedida**; rode `python benchmarks/latency.py` para atualizar.
 * A latência depende de hardware, de o modelo já estar residente na memória e do tamanho do payload; não extrapole estes números para outra máquina. O diff de teste usa linhas curtas porque o endpoint rejeita entradas acima de ~2050 tokens.
 * A camada de **regras determinísticas** (`guard_rules.evaluate_command`, offline, sem modelo) é o caminho rápido: ~40-50 µs por chamada (1000 chamadas, mesma máquina). O veredito do modelo é uma heurística adicional, não a barreira de segurança.
 * Reprodutibilidade: 20 chamadas idênticas ao `tev1:0.8b` e 20 ao `nimble:latest` (rubrica guard) devolveram respostas idênticas, inclusive as probabilidades. Isso foi observado nesta máquina e versão do Ollama; não é uma garantia documentada pelo fabricante.
@@ -211,7 +212,7 @@ systemone-gate doctor
 
 ### Perfis de rubrica (`diff` e `triage`)
 
-As rubricas de risco de diff e de triagem de erro têm perfis, pois o texto original é voltado a código C/sistemas (sockets, locks, parsing de protocolo):
+As rubricas de risco de diff e de triagem de erro têm perfis, pois o texto original é voltado a código C/sistemas (sockets, locks, parsing de protocolo). O texto de todas as rubricas enviado ao modelo é em **inglês** (projeto público e internacional; ver [`docs/BENCHMARK_RUBRIC_LANGUAGE.md`](docs/BENCHMARK_RUBRIC_LANGUAGE.md)); as chaves de escolha, que a política lê, não mudam:
 
 | Perfil | Para quê |
 |---|---|
