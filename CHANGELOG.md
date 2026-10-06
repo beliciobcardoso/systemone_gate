@@ -7,6 +7,10 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Added
+
+- Calibration dataset schema and loader (`benchmarks/calibration_schema.py`) with a validator that rejects secrets, non-permissive licenses and labels contradicting the deterministic guard rules, plus a seed set of 84 synthetic guard commands (`benchmarks/data/calibration/`). First step toward calibrating the block thresholds (FAL-03, FAL-05).
+
 ## [0.3.1] - 2026-10-05
 
 ### Changed
