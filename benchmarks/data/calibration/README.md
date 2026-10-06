@@ -45,3 +45,17 @@ the model, so the analysis reports them separately.
   before it is merged. Only projects with a permissive license may be used.
 - Every history-derived diff needs `provenance`; never invent a commit.
 - Do not change a label after seeing model output.
+
+## Pipeline
+
+```bash
+python benchmarks/calibration_schema.py                      # validate and summarize the datasets
+python benchmarks/calibrate_collect.py                       # collect raw model outputs (Ollama running)
+python benchmarks/calibrate_collect.py --resume              # retry only failures / new cases
+python benchmarks/calibrate_analyze.py --preliminary         # preview; works with unreviewed labels
+python benchmarks/calibrate_analyze.py                       # real analysis; needs every label reviewed
+```
+
+The analysis refuses incomplete data (a case without a result, a failed row, a command that changed
+after collection) and emits a recommendation only when the held-out cross-validation result meets
+the criterion (recall >= 90% with FPR <= 5%, for the whole gate) on fully reviewed labels.
