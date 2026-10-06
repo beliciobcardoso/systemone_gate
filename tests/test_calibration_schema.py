@@ -57,6 +57,10 @@ DIFF_CASE = {
 def _case(base, **overrides):
     out = copy.deepcopy(base)
     out.update(overrides)
+    if out.get("second_label") is not None:
+        out.setdefault("second_labeler", "labeler-b")
+    if out.get("review_status") == "resolved":
+        out.setdefault("primary_label", out["should_block"])
     return out
 
 
@@ -499,3 +503,35 @@ def test_main_require_final_fails_on_unreviewed(tmp_path):
 
 def test_main_returns_one_for_a_missing_directory(tmp_path):
     assert schema.main([str(tmp_path / "nope")]) == 1
+
+
+def test_second_label_requires_a_second_labeler_handle():
+    missing = _case(GUARD_CASE, review_status="agreed", second_label=False)
+    del missing["second_labeler"]
+    assert any("second_labeler" in e for e in _errors(missing, "guard"))
+    assert _errors(_case(GUARD_CASE, review_status="agreed", second_label=False, second_labeler="Jane Doe"), "guard")
+    email = "jane" + "@example.com"
+    assert _errors(_case(GUARD_CASE, review_status="agreed", second_label=False, second_labeler=email), "guard")
+
+
+def test_second_labeler_without_a_second_label_is_rejected():
+    assert any("second_labeler" in e for e in _errors(_case(GUARD_CASE, second_labeler="labeler-b"), "guard"))
+
+
+def test_resolved_requires_the_original_primary_label_and_only_resolved_may_carry_it():
+    resolved = _case(GUARD_CASE, review_status="resolved", second_label=True, resolved_by="maintainer")
+    assert _errors(resolved, "guard") == []
+    missing = {k: v for k, v in resolved.items() if k != "primary_label"}
+    assert any("primary_label" in e for e in _errors(missing, "guard"))
+    assert _errors(_case(resolved, primary_label="yes"), "guard")
+    assert any("primary_label" in e for e in _errors(_case(GUARD_CASE, primary_label=True), "guard"))
+
+
+def test_second_rationale_needs_a_second_label_and_is_bounded_and_scanned():
+    ok = _case(GUARD_CASE, review_status="agreed", second_label=False, second_rationale="scoped to one directory")
+    assert _errors(ok, "guard") == []
+    assert _errors(_case(GUARD_CASE, second_rationale="why"), "guard")
+    assert _errors(_case(ok, second_rationale="x" * (schema.MAX_RATIONALE_CHARS + 1)), "guard")
+    assert _errors(_case(ok, second_rationale="   "), "guard")
+    leaked = "uses " + "AKIA" + "ABCDEFGHIJKLMNOP"
+    assert any("segredo" in e for e in _errors(_case(ok, second_rationale=leaked), "guard"))
