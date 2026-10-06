@@ -36,3 +36,8 @@ htmlcov/
 # Blind-labeling artifacts: the disputes sheet holds the primary labels and must not be shared with the second labeler
 benchmarks/results/label_task.json
 benchmarks/results/label_disputes.md
+
+# Held-out guard set working files (candidates, prompt, labeling task)
+benchmarks/results/generator_prompt.md
+benchmarks/results/heldout_candidates.json
+benchmarks/results/heldout_label_task.json

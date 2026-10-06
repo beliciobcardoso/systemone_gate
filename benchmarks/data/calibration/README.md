@@ -20,9 +20,10 @@ One binary decision per case: `should_block`.
 |---|---|
 | `id`, `state` | Stable id; the command or unified diff sent to the model |
 | `should_block` | Ground-truth decision |
-| `label_source` | guard: `synthetic`, `man_page`. diff: `synthetic`, `revert`, `hotfix`, `changelog_breaking`, `negative_baseline` |
+| `label_source` | guard: `synthetic`, `man_page`, `blind_labeler` (held-out set). diff: `synthetic`, `revert`, `hotfix`, `changelog_breaking`, `negative_baseline` |
 | `label_evidence` | Why the label holds |
 | `rules_catch` | guard only; derived from `guard_rules` and checked by the validator, so it cannot drift |
+| `command_source`, `generated_by` | Where the command came from: `synthetic`, `generated` (by the model in `generated_by`) or `agent_log` (a real agent command). Held-out set |
 | `provenance` | diff only; required for history-derived labels: repo, full commit SHA, permissive license, https URL |
 | `review_status`, `second_label`, `second_labeler`, `second_rationale`, `primary_label`, `resolved_by` | Second-labeler workflow below. `second_labeler` (a handle) is required whenever `second_label` is set; `second_rationale` is the second labeler's justification (max 500 chars); `primary_label` is required on `resolved` cases and keeps the primary's original verdict |
 
@@ -79,3 +80,25 @@ python benchmarks/calibrate_analyze.py                       # real analysis; ne
 The analysis refuses incomplete data (a case without a result, a failed row, a command that changed
 after collection) and emits a recommendation only when the held-out cross-validation result meets
 the criterion (recall >= 90% with FPR <= 5%, for the whole gate) on fully reviewed labels.
+
+## Held-out set
+
+The 84 cases in this directory are the **dev set**: the deterministic rules were written after reading them
+(see `docs/GUARD_CALIBRATION.md`), so they can no longer measure the guard out of sample. A second set,
+`benchmarks/data/calibration_heldout/`, is built with `benchmarks/calibrate_generate.py` from commands the
+rules were not tuned on:
+
+```bash
+python benchmarks/calibrate_generate.py prompt                    # prompt for the generator model (no mention of the rules)
+python benchmarks/calibrate_generate.py ingest GENERATED.json     # validate, dedupe, drop secrets/personal data
+python benchmarks/calibrate_generate.py agentlog                  # add real agent commands (REVIEW the printed list)
+python benchmarks/calibrate_generate.py task                      # blind task for the FIRST labeler
+python benchmarks/calibrate_generate.py build LABELS1.json        # primary labels + frozen rules fingerprint
+# then the usual second labeling and human review, pointing at the held-out directory:
+python benchmarks/calibrate_label.py export --data-dir benchmarks/data/calibration_heldout
+```
+
+The set records a fingerprint of the rules code (`freeze.rules_sha256_16`). If the rules change afterwards, the
+analysis prints a warning and refuses to recommend parameters: the result is no longer out of sample, and the set
+must be rebuilt (or the rules restored) before it can be used as held-out again. In a held-out set a command that a
+rule blocks but the labelers call safe is a measured false positive of the rules, not a data error.

@@ -12,6 +12,7 @@ Usage: python benchmarks/calibration_schema.py [DIR] [--require-final]
 Exit code is 1 when any file is invalid.
 """
 
+import hashlib
 import json
 import os
 import re
@@ -28,6 +29,15 @@ from systemone_gate.redact import redact_secrets  # noqa: E402
 SCHEMA_VERSION = 1
 DEFAULT_DATA_DIR = os.path.join(HERE, "data", "calibration")
 
+SPLIT_HELDOUT = "heldout"
+# Files whose content decides what the deterministic rules block: a change to any of them after a held-out
+# set was frozen means the set no longer measures the rules out of sample.
+RULES_FILES = ("guard_common.py", "guard_ops.py", "guard_rules.py", "shell_parse.py")
+COMMAND_SOURCES = frozenset({"synthetic", "generated", "agent_log"})
+FREEZE_KEYS = ("rules_sha256_16", "frozen_on")
+_FREEZE_DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
+_FREEZE_HASH_RE = re.compile(r"[0-9a-f]{16}")
+
 SURFACE_GUARD = "guard"
 SURFACE_DIFF = "diff"
 SURFACES = (SURFACE_GUARD, SURFACE_DIFF)
@@ -37,7 +47,7 @@ SURFACES = (SURFACE_GUARD, SURFACE_DIFF)
 MAX_STATE_CHARS = 6000
 
 LABEL_SOURCES = {
-    SURFACE_GUARD: frozenset({"synthetic", "man_page"}),
+    SURFACE_GUARD: frozenset({"synthetic", "man_page", "blind_labeler"}),
     SURFACE_DIFF: frozenset({"synthetic", "revert", "hotfix", "changelog_breaking", "negative_baseline"}),
 }
 # Sources whose label comes from the history of a real project and therefore need attribution.
@@ -91,6 +101,8 @@ _OPTIONAL = (
     "provenance",
     "language",
     "rules_catch",
+    "command_source",
+    "generated_by",
 )
 _PROVENANCE_KEYS = ("repo", "commit", "license", "url")
 MAX_RATIONALE_CHARS = 500
@@ -98,6 +110,22 @@ MAX_RATIONALE_CHARS = 500
 
 class CalibrationDataError(ValueError):
     """A dataset file is unreadable or has invalid content; the message lists every problem."""
+
+
+def rules_fingerprint() -> str:
+    """Short hash of the code that decides what the deterministic rules block (see RULES_FILES)."""
+    digest = hashlib.sha256()
+    package = os.path.join(os.path.dirname(HERE), "systemone_gate")
+    for name in RULES_FILES:
+        with open(os.path.join(package, name), "rb") as handle:
+            digest.update(name.encode("utf-8") + b"\0" + handle.read() + b"\0")
+    return digest.hexdigest()[:16]
+
+
+def sensitive_rules(text: str) -> List[str]:
+    """Names of the secret/personal-data patterns found in ``text`` (empty when clean)."""
+    found = list(redact_secrets(text).findings) + [rule for rule, rx in _EXTRA_SENSITIVE if rx.search(text)]
+    return sorted(set(found))
 
 
 def _is_text(value: Any) -> bool:
@@ -173,17 +201,36 @@ def _check_review(case: Mapping[str, Any]) -> List[str]:
     return errors
 
 
-def _check_guard(case: Mapping[str, Any]) -> List[str]:
+def _check_guard(case: Mapping[str, Any], heldout: bool = False, rules_unchanged: bool = True) -> List[str]:
+    """``heldout``: a safe-labeled command that a rule blocks is a measured false positive of the rules, not a
+    data error. ``rules_unchanged``: false once the rules differ from the freeze, so the stored ``rules_catch``
+    (computed at freeze time) can no longer be compared with the current rules."""
     if "provenance" in case:
         return ["provenance só existe na superfície diff"]
     if not isinstance(case.get("rules_catch"), bool):
         return ["rules_catch ausente ou não bool (é derivado de guard_rules)"]
-    matched = evaluate_command(str(case["state"])) is not None
     errors: List[str] = []
-    if case["rules_catch"] != matched:
-        errors.append(f"rules_catch={case['rules_catch']} diverge de guard_rules (calculado: {matched})")
-    if matched and case.get("should_block") is False:
+    if rules_unchanged:
+        matched = evaluate_command(str(case["state"])) is not None
+        if case["rules_catch"] != matched:
+            errors.append(f"rules_catch={case['rules_catch']} diverge de guard_rules (calculado: {matched})")
+    if not heldout and case["rules_catch"] and case.get("should_block") is False:
         errors.append("uma regra determinística bloqueia este comando, mas o rótulo diz que é seguro")
+    return errors
+
+
+def _check_command_source(case: Mapping[str, Any]) -> List[str]:
+    source = case.get("command_source")
+    generator = case.get("generated_by")
+    errors: List[str] = []
+    if source is not None and source not in COMMAND_SOURCES:
+        errors.append(f"command_source deve ser um de {sorted(COMMAND_SOURCES)}")
+    if generator is not None and not (isinstance(generator, str) and _HANDLE_RE.fullmatch(generator)):
+        errors.append("generated_by deve ser um handle ^[a-z0-9][a-z0-9_-]{1,38}$")
+    if source == "generated" and generator is None:
+        errors.append("command_source 'generated' exige generated_by")
+    if source != "generated" and generator is not None:
+        errors.append("generated_by só é permitido com command_source 'generated'")
     return errors
 
 
@@ -204,7 +251,9 @@ def _check_diff(case: Mapping[str, Any]) -> List[str]:
     return errors
 
 
-def validate_case(case: Mapping[str, Any], surface: str) -> List[str]:
+def validate_case(
+    case: Mapping[str, Any], surface: str, heldout: bool = False, rules_unchanged: bool = True
+) -> List[str]:
     """Returns every problem found in one case (empty list when valid). Does not raise on bad data."""
     if surface not in SURFACES:
         raise ValueError(f"surface desconhecida: {surface!r}")
@@ -230,10 +279,13 @@ def validate_case(case: Mapping[str, Any], surface: str) -> List[str]:
     if tags is not None and not (isinstance(tags, list) and all(_is_text(t) for t in tags)):
         errors.append("tags deve ser uma lista de textos não vazios")
     errors.extend(_check_review(case))
+    errors.extend(_check_command_source(case))
     errors.extend(_sensitive_errors(case))
     if errors:
         return errors
-    return errors + (_check_guard(case) if surface == SURFACE_GUARD else _check_diff(case))
+    if surface == SURFACE_GUARD:
+        return errors + _check_guard(case, heldout=heldout, rules_unchanged=rules_unchanged)
+    return errors + _check_diff(case)
 
 
 def _string_fields(case: Mapping[str, Any]) -> Iterator[Tuple[str, str]]:
@@ -254,9 +306,8 @@ def _string_fields(case: Mapping[str, Any]) -> Iterator[Tuple[str, str]]:
 def _sensitive_errors(case: Mapping[str, Any]) -> List[str]:
     errors: List[str] = []
     for field, text in _string_fields(case):
-        rules = list(redact_secrets(text).findings) + [rule for rule, rx in _EXTRA_SENSITIVE if rx.search(text)]
-        if rules:
-            found = sorted(set(rules))
+        found = sensitive_rules(text)
+        if found:
             errors.append(f"{field} contém padrão de segredo ou dado pessoal {found} (repositório público)")
     return errors
 
@@ -289,7 +340,35 @@ def _read_document(path: str) -> Dict[str, Any]:
         raise CalibrationDataError(f"{path}: surface deve ser um de {list(SURFACES)}")
     if not isinstance(doc.get("cases"), list):
         raise CalibrationDataError(f"{path}: 'cases' deve ser uma lista")
+    problems = _freeze_problems(doc)
+    if problems:
+        raise CalibrationDataError(f"{path}: " + "; ".join(problems))
     return doc
+
+
+def _freeze_problems(doc: Mapping[str, Any]) -> List[str]:
+    split = doc.get("split")
+    freeze = doc.get("freeze")
+    if split not in (None, SPLIT_HELDOUT):
+        return [f"split deve ser ausente ou '{SPLIT_HELDOUT}'"]
+    if split is None:
+        return ["freeze só existe em um conjunto 'heldout'"] if freeze is not None else []
+    if doc.get("surface") != SURFACE_GUARD:
+        return ["um conjunto 'heldout' só existe na superfície guard"]
+    if not isinstance(freeze, dict) or set(freeze) != set(FREEZE_KEYS):
+        return [f"um conjunto 'heldout' exige freeze com {list(FREEZE_KEYS)}"]
+    problems: List[str] = []
+    if not (isinstance(freeze["rules_sha256_16"], str) and _FREEZE_HASH_RE.fullmatch(freeze["rules_sha256_16"])):
+        problems.append("freeze.rules_sha256_16 deve ter 16 hex minúsculos")
+    if not (isinstance(freeze["frozen_on"], str) and _FREEZE_DATE_RE.fullmatch(freeze["frozen_on"])):
+        problems.append("freeze.frozen_on deve ser AAAA-MM-DD")
+    return problems
+
+
+def rules_changed_since_freeze(doc: Mapping[str, Any]) -> bool:
+    """True when ``doc`` is a frozen held-out set and the rules code differs from the one it was frozen with."""
+    freeze = doc.get("freeze")
+    return isinstance(freeze, dict) and freeze.get("rules_sha256_16") != rules_fingerprint()
 
 
 def _normalize_state(text: str) -> str:
@@ -318,10 +397,13 @@ def load_cases(path: str, require_final: bool = False) -> List[Dict[str, Any]]:
     doc = _read_document(path)
     surface = doc["surface"]
     cases = doc["cases"]
+    heldout = doc.get("split") == SPLIT_HELDOUT
+    unchanged = not rules_changed_since_freeze(doc)
     problems: List[str] = []
     for index, case in enumerate(cases):
         label = case.get("id", f"#{index}") if isinstance(case, dict) else f"#{index}"
-        problems.extend(f"{label}: {err}" for err in validate_case(case, surface))
+        errors = validate_case(case, surface, heldout=heldout, rules_unchanged=unchanged)
+        problems.extend(f"{label}: {err}" for err in errors)
         if require_final and isinstance(case, dict) and not is_final(case):
             problems.append(f"{label}: rótulo ainda não revisado (review_status={case.get('review_status')!r})")
     problems.extend(_duplicate_errors(cases))
@@ -354,6 +436,19 @@ def load_dir(directory: str = DEFAULT_DATA_DIR, require_final: bool = False) -> 
     if problems:
         raise CalibrationDataError(f"{directory}:\n  " + "\n  ".join(problems))
     return grouped
+
+
+def read_freeze(directory: str = DEFAULT_DATA_DIR) -> Optional[Dict[str, Any]]:
+    """Freeze info of the held-out file in ``directory``: ``{file, rules_sha256_16, frozen_on, rules_changed}``,
+    or None when the directory has no held-out set."""
+    for name in sorted(os.listdir(directory)):
+        path = os.path.join(directory, name)
+        if not (name.endswith(".json") and os.path.isfile(path)):
+            continue
+        doc = _read_document(path)
+        if doc.get("split") == SPLIT_HELDOUT:
+            return {**doc["freeze"], "file": name, "rules_changed": rules_changed_since_freeze(doc)}
+    return None
 
 
 def _bool_counts(values: Sequence[bool]) -> Dict[str, int]:

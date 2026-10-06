@@ -536,3 +536,99 @@ def test_second_rationale_needs_a_second_label_and_is_bounded_and_scanned():
     assert _errors(_case(ok, second_rationale="   "), "guard")
     leaked = "uses " + "AKIA" + "ABCDEFGHIJKLMNOP"
     assert any("segredo" in e for e in _errors(_case(ok, second_rationale=leaked), "guard"))
+
+
+# ---------------------------------------------------------------- held-out split and rules freeze
+
+
+def _heldout_doc(cases, fingerprint=None):
+    return {
+        "schema_version": 1,
+        "surface": "guard",
+        "split": "heldout",
+        "freeze": {"rules_sha256_16": fingerprint or schema.rules_fingerprint(), "frozen_on": "2026-10-07"},
+        "cases": cases,
+    }
+
+
+def _write_dir(tmp_path, doc, name="guard_heldout.json"):
+    (tmp_path / name).write_text(json.dumps(doc), encoding="utf-8")
+    return str(tmp_path / name)
+
+
+def test_rules_fingerprint_is_stable_and_short():
+    assert schema.rules_fingerprint() == schema.rules_fingerprint()
+    assert len(schema.rules_fingerprint()) == 16
+
+
+def test_heldout_requires_a_well_formed_freeze(tmp_path):
+    doc = _heldout_doc([GUARD_CASE])
+    for bad in (None, {}, {"rules_sha256_16": "xyz", "frozen_on": "2026-10-07"}, {"rules_sha256_16": "0" * 16}):
+        doc["freeze"] = bad
+        with pytest.raises(schema.CalibrationDataError, match="freeze"):
+            schema.load_cases(_write_dir(tmp_path, doc))
+
+
+def test_freeze_without_a_heldout_split_is_rejected(tmp_path):
+    doc = _heldout_doc([GUARD_CASE])
+    del doc["split"]
+    with pytest.raises(schema.CalibrationDataError, match="freeze só existe"):
+        schema.load_cases(_write_dir(tmp_path, doc))
+
+
+def test_heldout_only_exists_on_the_guard_surface(tmp_path):
+    doc = _heldout_doc([GUARD_CASE])
+    doc["surface"] = "diff"
+    with pytest.raises(schema.CalibrationDataError, match="só existe na superfície guard"):
+        schema.load_cases(_write_dir(tmp_path, doc))
+
+
+def test_heldout_allows_a_rule_blocked_command_labeled_safe(tmp_path):
+    case = {**GUARD_CASE, "id": "h-0000000001", "state": "rm -rf /", "rules_catch": True}
+    assert schema.load_cases(_write_dir(tmp_path, _heldout_doc([case])))
+    dev = {"schema_version": 1, "surface": "guard", "cases": [case]}
+    with pytest.raises(schema.CalibrationDataError, match="rótulo diz que é seguro"):
+        schema.load_cases(_write_dir(tmp_path, dev, name="dev.json"))
+
+
+def test_rules_catch_is_checked_while_the_rules_match_the_freeze(tmp_path):
+    wrong = {**GUARD_CASE, "rules_catch": True}  # `rm -rf node_modules` is not caught
+    with pytest.raises(schema.CalibrationDataError, match="diverge de guard_rules"):
+        schema.load_cases(_write_dir(tmp_path, _heldout_doc([wrong])))
+
+
+def test_stale_rules_catch_is_tolerated_after_a_rule_change_but_reported(tmp_path):
+    wrong = {**GUARD_CASE, "rules_catch": True}
+    doc = _heldout_doc([wrong], fingerprint="f" * 16)
+    path = _write_dir(tmp_path, doc)
+    assert schema.load_cases(path)  # the stored value is the frozen one; the analysis blocks recommendations
+    freeze = schema.read_freeze(str(tmp_path))
+    assert freeze["rules_changed"] is True and freeze["rules_sha256_16"] == "f" * 16
+    assert freeze["file"] == "guard_heldout.json" and freeze["frozen_on"] == "2026-10-07"
+
+
+def test_read_freeze_reports_unchanged_rules_and_none_without_a_heldout_set(tmp_path):
+    assert schema.read_freeze(str(tmp_path)) is None
+    _write_dir(tmp_path, _heldout_doc([GUARD_CASE]))
+    assert schema.read_freeze(str(tmp_path))["rules_changed"] is False
+    assert schema.read_freeze(DATA_DIR) is None
+
+
+@pytest.mark.parametrize(
+    ("fields", "message"),
+    [
+        ({"command_source": "scraped"}, "command_source deve ser um de"),
+        ({"command_source": "generated"}, "exige generated_by"),
+        ({"command_source": "agent_log", "generated_by": "gen-1"}, "só é permitido com command_source 'generated'"),
+        ({"command_source": "generated", "generated_by": "Alice Smith"}, "generated_by deve ser um handle"),
+    ],
+)
+def test_command_source_fields_are_validated(fields, message):
+    errors = schema.validate_case({**GUARD_CASE, **fields}, "guard")
+    assert any(message in e for e in errors), errors
+
+
+def test_command_source_accepts_the_documented_combinations():
+    for fields in ({"command_source": "generated", "generated_by": "gen-1"}, {"command_source": "agent_log"}):
+        assert schema.validate_case({**GUARD_CASE, **fields}, "guard") == []
+    assert schema.validate_case({**GUARD_CASE, "label_source": "blind_labeler"}, "guard") == []

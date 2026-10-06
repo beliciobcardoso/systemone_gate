@@ -419,10 +419,20 @@ def analyze_guard(
 
 
 def _external_blockers(
-    raw_meta: Dict[str, Any], model: str, variant: str, production_model: str, preliminary: bool
+    raw_meta: Dict[str, Any],
+    model: str,
+    variant: str,
+    production_model: str,
+    preliminary: bool,
+    freeze: Optional[Dict[str, Any]] = None,
 ) -> List[str]:
     """Reasons unrelated to the numbers that forbid recommending parameters for this (model, variant)."""
     blockers: List[str] = []
+    if freeze and freeze.get("rules_changed"):
+        blockers.append(
+            "as regras determinísticas mudaram depois que o conjunto separado foi congelado: "
+            "o resultado deixou de ser fora da amostra"
+        )
     if preliminary:
         blockers.append("execução preliminar (rótulos sem revisão completa)")
     if variant != VARIANT_PRODUCTION:
@@ -469,6 +479,12 @@ def run_analysis(
         if extra:
             warnings.append(f"{model}: {len(extra)} resultados sem caso correspondente foram ignorados")
     unreviewed = sum(1 for case in guard_cases if not schema.is_final(case))
+    freeze = schema.read_freeze(data_dir)
+    if freeze and freeze["rules_changed"]:
+        warnings.append(
+            f"as regras mudaram desde o congelamento do conjunto separado ({freeze['frozen_on']}, "
+            f"regras {freeze['rules_sha256_16']}): sem recomendação"
+        )
     production_model = SystemOneClient().fast_model
     guard: Dict[str, Dict[str, Any]] = {}
     for model in models:
@@ -480,7 +496,7 @@ def run_analysis(
                 k=k,
                 recall_target=recall_target,
                 fpr_cap=fpr_cap,
-                blockers=_external_blockers(raw_meta, model, variant, production_model, preliminary),
+                blockers=_external_blockers(raw_meta, model, variant, production_model, preliminary, freeze),
             )
             for variant in VARIANTS
         }
@@ -493,6 +509,7 @@ def run_analysis(
             "fpr_cap": fpr_cap,
             "k": k,
             "production_model": production_model,
+            "heldout": freeze,
             "collection": {
                 key: raw_meta.get(key)
                 for key in (
@@ -620,6 +637,13 @@ def render_markdown(result: Dict[str, Any]) -> str:
         f"pacote com alterações não commitadas: {collection.get('git_dirty_package')}.",
         "",
     ]
+    if meta.get("heldout"):
+        held = meta["heldout"]
+        lines += [
+            f"Conjunto separado: `{held['file']}`, congelado em {held['frozen_on']} com as regras "
+            f"`{held['rules_sha256_16']}` (regras alteradas desde então: {held['rules_changed']}).",
+            "",
+        ]
     for text in result["warnings"]:
         lines.append(f"- Aviso: {text}")
     if result["warnings"]:
