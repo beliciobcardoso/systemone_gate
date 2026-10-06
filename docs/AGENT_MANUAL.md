@@ -185,7 +185,8 @@ The rules cover only catastrophic, unambiguous patterns (quoted text passed as a
 * `chmod`/`chown -R` on `/` or a system directory;
 * `git push --force`/`-f` (or `+main`) to `main`/`master` (`--force-with-lease` does not block);
 * `DROP TABLE|DATABASE|SCHEMA`, `TRUNCATE` and `DELETE FROM` without `WHERE`;
-* `curl`/`wget` piped to `sh`/`bash`.
+* `curl`/`wget` piped to `sh`/`bash`;
+* infrastructure, cloud, database and git commands that destroy shared state without an interactive confirmation (for example `terraform destroy -auto-approve`, `kubectl delete namespace production`, `aws s3 rb --force`, `redis-cli FLUSHALL`, `dropdb`, `crontab -r`, `git branch -D main`, `git clean -fx`). The full list, and what is deliberately not blocked, is in [`GUARD_CALIBRATION.md`](GUARD_CALIBRATION.md).
 
 Beyond that, the decision remains human. It is not a sandbox: variables expanded at runtime, scripts and Makefiles are not analyzed.
 

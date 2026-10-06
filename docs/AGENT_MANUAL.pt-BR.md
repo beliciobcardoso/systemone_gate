@@ -185,7 +185,8 @@ As regras cobrem apenas padrões catastróficos e inequívocos (texto entre aspa
 * `chmod`/`chown -R` em `/` ou diretório de sistema;
 * `git push --force`/`-f` (ou `+main`) em `main`/`master` (`--force-with-lease` não bloqueia);
 * `DROP TABLE|DATABASE|SCHEMA`, `TRUNCATE` e `DELETE FROM` sem `WHERE`;
-* `curl`/`wget` com pipe para `sh`/`bash`.
+* `curl`/`wget` com pipe para `sh`/`bash`;
+* comandos de infraestrutura, nuvem, banco e git que destroem estado compartilhado sem confirmação interativa (por exemplo `terraform destroy -auto-approve`, `kubectl delete namespace production`, `aws s3 rb --force`, `redis-cli FLUSHALL`, `dropdb`, `crontab -r`, `git branch -D main`, `git clean -fx`). A lista completa, e o que de propósito não é bloqueado, está em [`GUARD_CALIBRATION.pt-BR.md`](GUARD_CALIBRATION.pt-BR.md).
 
 Fora disso, a decisão continua sendo humana. Não é um sandbox: variáveis expandidas em runtime, scripts e Makefiles não são analisados.
 

@@ -140,6 +140,7 @@
 
 ### FAL-03 · Limiares de bloqueio do diff praticamente inalcançáveis
 - **Status:** 🟡 **Parcial** em [#7](https://github.com/beliciobcardoso/systemone_gate/pull/7) — limiares configuráveis por variável de ambiente; **continuam não calibrados** (falta dataset).
+- **Atualização (2026-10-06, guard):** a calibração do guard (84 comandos, dois rotuladores) mostrou que nenhum limiar do `tev1:0.8b` nem do `nimble` atinge recall ≥ 90% com FPR ≤ 5% fora da amostra; os limiares do guard **não foram alterados** e as regras determinísticas foram ampliadas. Detalhes em `docs/GUARD_CALIBRATION.md`. Os limiares do **diff** seguem sem dataset.
 - **Local:** `cli.py:62` (`risk_score > 1.85 and breaking_risk_prob > 0.65`)
 - **Evidência:** Estático (a rubrica de diff **não foi medida**)
 - **Classificação:** Falha · Adequação funcional · S2 · Should
@@ -157,6 +158,7 @@
 
 ### FAL-05 · Confiança do modelo baixa; calibração não demonstrada
 - **Status:** 🟡 **Parcial** em [#22](https://github.com/beliciobcardoso/systemone_gate/pull/22) — `SYSTEMONE_MIN_CONFIDENCE` ignora vereditos de baixa confiança conforme a política de erro, mas é **opt-in** (padrão 0): sem calibração não há limiar defensável. Observado: a confiança real de um comando simples foi 0,59.
+- **Atualização (2026-10-06, guard):** na calibração do guard a confiança média do `tev1:0.8b` foi 0,20 nos casos a bloquear contra 0,29 nos seguros, ou seja, não discrimina; nenhum `SYSTEMONE_MIN_CONFIDENCE` foi recomendado (`docs/GUARD_CALIBRATION.md`).
 - **Evidência:** **Medido** — campo `confidence` entre 0,03 e 0,27 em todas as respostas.
 - **Classificação:** Falha · Adequação funcional · S3 · Should
 - **Problema:** o código ignora `confidence`. Decisões com confiança de 3% são tratadas como firmes.
