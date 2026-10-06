@@ -9,6 +9,7 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ### Added
 
+- `benchmarks/calibrate_collect.py` collects raw model outputs (score, probabilities, confidence) for the calibration datasets with the production rubric, pinning the model digest and a per-case hash; `--resume` retries only failed or changed cases. Step 2 of the threshold calibration.
 - Calibration dataset schema and loader (`benchmarks/calibration_schema.py`) with a validator that rejects secrets, non-permissive licenses and labels contradicting the deterministic guard rules, plus a seed set of 84 synthetic guard commands (`benchmarks/data/calibration/`). First step toward calibrating the block thresholds (FAL-03, FAL-05).
 
 ## [0.3.1] - 2026-10-05
