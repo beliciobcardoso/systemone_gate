@@ -7,6 +7,10 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Added
+
+- `benchmarks/calibrate_generate.py` builds the held-out guard set (`prompt`, `ingest`, `agentlog`, `approve`, `task`, `build`): a generator prompt that never mentions the rules, validation and dedupe of generated commands, real agent commands kept only when every word is generic vocabulary (an allow list) and only after explicit approval, a blind task for the first labeler, and a frozen dataset file whose rules fingerprint dates from the first candidate. The dataset schema gained `split: heldout` with a `freeze` fingerprint of the rules code, `command_source`/`generated_by`, and the `blind_labeler` label source; `calibrate_analyze.py` refuses to recommend parameters when the rules changed after the set was frozen. First step of the held-out set (see `docs/GUARD_CALIBRATION.md`, "Next step").
+
 ## [0.6.0] - 2026-10-06
 
 ### Added

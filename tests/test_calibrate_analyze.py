@@ -639,3 +639,15 @@ def test_select_params_handles_a_subset_without_negatives():
 
 def test_agreement_is_the_share_of_equal_decisions():
     assert analyze._agreement([True, False, True, True], [True, True, True, False]) == 0.5
+
+
+# ---------------------------------------------------------------- held-out freeze
+
+
+def test_rules_changed_since_freeze_blocks_any_recommendation():
+    meta = {"model_digests": {MODEL: "sha256:abc"}, "rubric_sha256_16": {"guard": analyze.collect.rubric_hash("guard")}}
+    clean = analyze._external_blockers(meta, MODEL, "production", MODEL, False, None)
+    unchanged = analyze._external_blockers(meta, MODEL, "production", MODEL, False, {"rules_changed": False})
+    drifted = analyze._external_blockers(meta, MODEL, "production", MODEL, False, {"rules_changed": True})
+    assert clean == unchanged == []
+    assert len(drifted) == 1 and "mudaram depois que o conjunto separado foi congelado" in drifted[0]
