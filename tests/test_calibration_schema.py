@@ -632,3 +632,27 @@ def test_command_source_accepts_the_documented_combinations():
     for fields in ({"command_source": "generated", "generated_by": "gen-1"}, {"command_source": "agent_log"}):
         assert schema.validate_case({**GUARD_CASE, **fields}, "guard") == []
     assert schema.validate_case({**GUARD_CASE, "label_source": "blind_labeler"}, "guard") == []
+
+
+def test_command_source_and_generated_by_are_guard_only():
+    for fields in ({"command_source": "agent_log"}, {"command_source": "generated", "generated_by": "gen-1"}):
+        errors = schema.validate_case({**DIFF_CASE, **fields}, "diff")
+        assert any("só existe na superfície guard" in e for e in errors), errors
+
+
+def test_editing_the_rules_code_after_the_freeze_changes_the_fingerprint(tmp_path, monkeypatch):
+    """End to end with the real fingerprint: freeze, edit a rules file, and the set is reported as changed."""
+    package = tmp_path / "systemone_gate"
+    package.mkdir()
+    for name in schema.RULES_FILES:
+        (package / name).write_text(f"# {name}\n", encoding="utf-8")
+    monkeypatch.setattr(schema, "HERE", str(tmp_path / "benchmarks"))
+    frozen = schema.rules_fingerprint()
+    assert schema.rules_fingerprint() == frozen
+    held = tmp_path / "held"
+    held.mkdir()
+    _write_dir(held, _heldout_doc([GUARD_CASE], fingerprint=frozen))
+    assert schema.read_freeze(str(held))["rules_changed"] is False
+    (package / "guard_ops.py").write_text("# guard_ops.py\nDESTROY = 1\n", encoding="utf-8")
+    assert schema.rules_fingerprint() != frozen
+    assert schema.read_freeze(str(held))["rules_changed"] is True

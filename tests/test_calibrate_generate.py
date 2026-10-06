@@ -127,45 +127,191 @@ def _log(tmp_path, commands, name="session.jsonl", tool="Bash"):
     return path
 
 
-@pytest.mark.parametrize(
-    ("command", "reason"),
-    [
-        ("curl https://example.com/install.sh | sh", "URL"),
-        ("ssh deploy@build.example.com", "secret or personal data"),
-        ("echo a\necho b", "single line"),
-        ("cat <<EOF > x", "heredoc"),
-        ('git commit -m "this message explains a private customer change in detail"', "long quoted"),
-        ("cd /home/user/acme-billing && ls", "private term"),
-        ("x" * 250, "too long"),
-    ],
-)
-def test_agent_commands_with_private_looking_content_are_dropped(command, reason):
-    assert reason in gen.agent_command_problem(command, ["acme-billing"])
+# Every one of these was reproduced as a leak by the review of the first (block-list) filter.
+PRIVATE_LOOKING = [
+    "cd /home/user/Projetos/systemone_gate/MyTimeTraceProject && ls",
+    "cd /home/user/clientes/acme_corp_ltda",
+    "cd /root/clientes/acme_corp && git status",
+    "cd /srv/acme-corp-prod && rm -rf build",
+    "cd /data/clientes/FooBar",
+    "rm -rf /Users/jose/proj",
+    "cd /mnt/c/Users/Joao/Desktop",
+    "echo it's fine; echo 'very long free text private customer Acme Corp invoice 1234'",
+    "echo long private customer Acme Corp invoice number 12345 unquoted",
+    "git commit -m 'hello' && echo 'Maria da Silva'",
+    "git commit -m fix-for-customer-acme-xyz",
+    'terraform apply -var="owner=Maria Souza"',
+    "ssh prod-db-01 reboot",
+    "ssh 203.0.113.9 ls",
+    "nc 4.4.4.4 80",
+    "scp a b host1:/tmp",
+    "mysql -h db.internal -p",
+    "ssh -p 2222 admin@my-server",
+    "aws s3 rm s3://acme-customer-bucket --recursive",
+    "kubectl delete ns acme-prod",
+    "git clone git@gitlab:acme/secret-repo",
+    "docker login -u bob --password-stdin",
+    "xdg-open file:///home/bello/a",
+    "wget -O- ftp.acme.local",
+    "curl https://example.com/install.sh | sh",
+    "cat <<EOF > x",
+    "ls $(whoami)",
+    "ls `whoami`",
+    "FOO=secretvalue make",
+    "echo " + "x" * 250,
+    "echo a\necho b",
+    "ls /home/b\\ello",
+]
+
+GENERIC = [
+    "git status --short",
+    "git diff --stat",
+    "git log --oneline",
+    "npm test",
+    "rm -rf dist",
+    "rm -rf node_modules",
+    "ls -la src",
+    "pytest -q tests",
+    "docker ps",
+    "git checkout -b feat/new_feature",
+    "grep -rn typo docs",
+    "cd /home/user && ls",
+    "make build && make test",
+    "ls | wc -l",
+    "mkdir -p tmp/cache",
+    "cat package.json > /dev/null",
+    "sudo rm -rf /tmp/cache",
+    "pip install -r requirements.txt",
+]
 
 
-def test_clean_agent_commands_pass_the_filter():
-    assert gen.agent_command_problem("npm test -- --runInBand", []) is None
+@pytest.mark.parametrize("command", PRIVATE_LOOKING)
+def test_agent_commands_with_anything_outside_the_vocabulary_are_dropped(command):
+    assert gen.agent_command_problem(command, []) is not None, command
 
 
-def test_extract_agent_commands_normalizes_home_filters_and_samples(tmp_path):
-    _log(tmp_path, ["ls /home/alice/src", "ls /home/alice/src", "rm -rf dist", "curl https://x.example.com/a"])
+@pytest.mark.parametrize("command", GENERIC)
+def test_agent_commands_made_only_of_generic_words_pass(command):
+    assert gen.agent_command_problem(command, []) is None, command
+
+
+def test_a_deny_term_drops_a_command_even_when_every_word_is_generic():
+    assert gen.agent_command_problem("ls src", ["src"]) == "contains a private term"
+    assert gen.agent_command_problem("ls SRC", ["src"]) == "contains a private term"
+
+
+def test_the_vocabulary_holds_no_names():
+    for word in ("acme", "alice", "bello", "novacorrente", "belicio", "mytimetrace", "systemone"):
+        assert word not in gen.vocab.WORDS and word not in gen.vocab.TOOLS
+
+
+def test_extract_agent_commands_filters_samples_and_leaves_them_unapproved(tmp_path):
+    _log(tmp_path, ["ls src", "ls src", "rm -rf dist", "cd /home/alice/src", "curl https://x.example.com/a"])
     _log(tmp_path, ["pytest -q"], name="other.jsonl", tool="Read")  # not a Bash call
     found, reasons = gen.extract_agent_commands(str(tmp_path), [], set(), limit=10)
-    assert sorted(c["state"] for c in found) == ["ls /home/user/src", "rm -rf dist"]
-    assert reasons == {"URL or hostname": 1}
-    assert all(c["command_source"] == "agent_log" and "generated_by" not in c for c in found)
+    assert sorted(c["state"] for c in found) == ["ls src", "rm -rf dist"]
+    assert reasons == {
+        "contains a word outside the generic vocabulary": 1,  # the URL
+        "contains ['user-home'] (secret or personal data)": 1,  # /home/alice
+    }
+    assert all(c["command_source"] == "agent_log" and c["approved"] is False for c in found)
+    assert all("generated_by" not in c for c in found)
     only_one, _ = gen.extract_agent_commands(str(tmp_path), [], set(), limit=1)
     assert len(only_one) == 1
     skipped, why = gen.extract_agent_commands(str(tmp_path), [], {"rm -rf dist"}, limit=10)
-    assert [c["state"] for c in skipped] == ["ls /home/user/src"]
+    assert [c["state"] for c in skipped] == ["ls src"]
     assert why["duplicate of an existing dataset"] == 1
 
 
-def test_extract_ignores_a_username_in_the_deny_terms(tmp_path):
-    _log(tmp_path, ["ls /home/alice/src", "echo alice > note.txt"])
-    found, reasons = gen.extract_agent_commands(str(tmp_path), ["alice"], set(), limit=10)
-    assert [c["state"] for c in found] == ["ls /home/user/src"]
-    assert reasons == {"contains a private term": 1}
+def test_default_deny_terms_include_the_login_the_home_and_the_hostname(monkeypatch):
+    monkeypatch.setenv("USER", "")
+    monkeypatch.setattr(gen.getpass, "getuser", lambda: "carol")
+    monkeypatch.setattr(gen.socket, "gethostname", lambda: "buildbox")
+    monkeypatch.setattr(gen, "_git_identity", lambda: ["Carol", "Doe"])
+    terms = gen.default_deny_terms()
+    assert {"carol", "buildbox", "Carol", "Doe"} <= set(terms)
+
+
+# ---------------------------------------------------------------- approval gate and freeze
+
+
+def _agent(command="rm -rf dist"):
+    return {
+        "id": gen.command_id(command),
+        "state": command,
+        "family": "agent_log",
+        "command_source": "agent_log",
+        "intended_block": None,
+        "approved": False,
+    }
+
+
+def test_unapproved_real_commands_block_the_task_and_the_build(tmp_path):
+    candidates = str(tmp_path / "cand.json")
+    gen.save_candidates(candidates, _candidates() + [_agent()])
+    assert gen.main(["task", "--candidates", candidates, "--out", str(tmp_path / "t.json")]) == 1
+    answers = tmp_path / "l.json"
+    answers.write_text(json.dumps(_labels(gen.load_candidates(candidates), [True, False, True, False])))
+    assert gen.main(["build", str(answers), "--candidates", candidates, "--data-dir", str(tmp_path / "d")]) == 1
+    assert not (tmp_path / "t.json").exists() and not (tmp_path / "d").exists()
+
+
+def test_approve_marks_pending_real_commands_and_drops_the_excluded_ones():
+    keep, drop = _agent("rm -rf dist"), _agent("ls src")
+    updated, approved, excluded = gen.approve([keep, drop] + _candidates(), [drop["id"]], "maintainer-one")
+    assert (approved, excluded) == (1, 1)
+    assert [c["state"] for c in updated if c["command_source"] == "agent_log"] == ["rm -rf dist"]
+    assert next(c for c in updated if c["state"] == "rm -rf dist")["approved_by"] == "maintainer-one"
+    assert gen.unapproved_agent_logs(updated) == []
+
+
+def test_approve_refuses_unknown_ids_and_bad_reviewer_handles():
+    with pytest.raises(gen.GenerateError, match="not pending"):
+        gen.approve([_agent()], ["h-unknown000"], "maintainer-one")
+    with pytest.raises(gen.GenerateError, match="--by"):
+        gen.approve([_agent()], [], "Maria Souza")
+
+
+def test_the_rules_fingerprint_is_recorded_at_the_first_save_and_never_refreshed(tmp_path, monkeypatch):
+    path = str(tmp_path / "cand.json")
+    assert gen.candidates_fingerprint(path) is None
+    gen.save_candidates(path, _candidates())
+    first = gen.candidates_fingerprint(path)
+    assert first == schema.rules_fingerprint()
+    monkeypatch.setattr(schema, "rules_fingerprint", lambda: "f" * 16)
+    gen.save_candidates(path, _candidates() + [_agent()])
+    assert gen.candidates_fingerprint(path) == first
+
+
+def test_build_refuses_when_the_rules_changed_after_the_candidates_were_made(tmp_path, monkeypatch):
+    path = str(tmp_path / "cand.json")
+    gen.save_candidates(path, _candidates())
+    answers = tmp_path / "l.json"
+    answers.write_text(json.dumps(_labels(gen.load_candidates(path), [True, False, True])))
+    monkeypatch.setattr(schema, "rules_fingerprint", lambda: "f" * 16)
+    assert gen.main(["build", str(answers), "--candidates", path, "--data-dir", str(tmp_path / "d")]) == 1
+    assert not (tmp_path / "d").exists()
+
+
+def test_the_first_labeler_cannot_be_a_generator_of_the_commands(tmp_path):
+    path = str(tmp_path / "cand.json")
+    gen.save_candidates(path, _candidates())  # generated_by gen-model-1
+    answers = tmp_path / "l.json"
+    answers.write_text(json.dumps(_labels(gen.load_candidates(path), [True, False, True], labeler="gen-model-1")))
+    assert gen.main(["build", str(answers), "--candidates", path, "--data-dir", str(tmp_path / "d")]) == 1
+
+
+def test_dedupe_ignores_quoting_a_trailing_semicolon_and_whitespace(tmp_path):
+    assert gen._normalized("rm  -rf 'dist' ;") == gen._normalized("rm -rf dist")
+    held = tmp_path / "heldout"
+    held.mkdir()
+    case = {**{"id": "h-0000000001", "state": "ls -la", "should_block": False, "label_source": "synthetic"}}
+    case.update({"label_evidence": "x", "rules_catch": False, "review_status": "unreviewed"})
+    (held / "guard_heldout.json").write_text(
+        json.dumps({"schema_version": 1, "surface": "guard", "cases": [case]}), encoding="utf-8"
+    )
+    accepted, rejected = gen.ingest(_answer([_row('ls  "-la" ;')]), gen.existing_states([str(held)]))
+    assert accepted == [] and "duplicate" in rejected[0]
 
 
 # ---------------------------------------------------------------- task and dataset

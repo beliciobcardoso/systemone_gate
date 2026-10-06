@@ -8,6 +8,7 @@ Usage:
   python benchmarks/calibrate_generate.py prompt   [--block N] [--allow N] [--out PATH]
   python benchmarks/calibrate_generate.py ingest   GENERATED.json [--candidates PATH] [--against DIR ...]
   python benchmarks/calibrate_generate.py agentlog [--projects-dir DIR] [--max N] [--deny TERM ...] [--candidates PATH]
+  python benchmarks/calibrate_generate.py approve  --by HANDLE [--exclude ID ...] [--candidates PATH]
   python benchmarks/calibrate_generate.py task     [--candidates PATH] [--out PATH]
   python benchmarks/calibrate_generate.py build    LABELS.json [--candidates PATH] [--data-dir DIR]
 
@@ -17,9 +18,10 @@ Flow:
 2. `ingest` validates the generator's answer (single line, no secrets or personal data, no duplicate of an
    existing dataset) and adds it to the candidates file. The generator's intended label is kept in the
    candidates file only; labelers never see it.
-3. `agentlog` adds real commands an agent ran (from Claude Code session logs), after strict filtering. The list
-   it prints MUST be reviewed by a person before `build`: filtering lowers the risk of publishing something
-   private, it does not remove it.
+3. `agentlog` adds real commands an agent ran (from Claude Code session logs). A command is kept only if every
+   word of it is generic developer vocabulary (an allow list), and it is NOT used until a person has read the
+   printed list and run `approve` (with `--exclude ID` for any command to drop): `task` and `build` refuse
+   unapproved real commands, because the labeler is an external model and the result is published.
 4. `task` writes the blind labeling task (same format and instructions as the second-labeling task) for the
    FIRST labeler.
 5. `build` turns the first labeler's answer into the held-out dataset file (primary label), computes
@@ -32,12 +34,14 @@ recommendation until the set is rebuilt or the rules are restored.
 
 import argparse
 import datetime
+import getpass
 import glob
 import hashlib
 import json
 import os
-import re
+import shlex
 import socket
+import subprocess
 import sys
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
@@ -45,10 +49,12 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 
+import agent_command_vocab as vocab  # noqa: E402
 import calibrate_label as label  # noqa: E402
 import calibration_schema as schema  # noqa: E402
 
 from systemone_gate.guard_rules import evaluate_command  # noqa: E402
+from systemone_gate.shell_parse import scan as shell_scan  # noqa: E402
 
 RESULTS = os.path.join(HERE, "results")
 DEFAULT_PROMPT = os.path.join(RESULTS, "generator_prompt.md")
@@ -60,7 +66,7 @@ DEFAULT_PROJECTS_DIR = os.path.join(os.path.expanduser("~"), ".claude", "project
 
 MAX_COMMAND_CHARS = 300
 MAX_AGENT_COMMAND_CHARS = 200
-MAX_QUOTED_CHARS = 24  # longer quoted text is free text (commit messages, prose) that may be private
+WRAPPERS = frozenset({"sudo", "time", "nohup"})
 EVIDENCE_RATIONALE_CHARS = 300
 
 # family -> (intended label, what to write). The intent steers the generator; labelers decide the real label.
@@ -123,12 +129,18 @@ def build_prompt(block: int, allow: int) -> str:
 # ---------------------------------------------------------------- candidates
 
 
-def command_id(command: str) -> str:
-    return "h-" + hashlib.sha256(" ".join(command.split()).encode("utf-8")).hexdigest()[:10]
-
-
 def _normalized(command: str) -> str:
-    return " ".join(command.split())
+    """Form used to detect duplicates: quoting, extra whitespace and a trailing `;` do not make a new command."""
+    text = command.strip().rstrip(";").strip()
+    try:
+        tokens = shlex.split(text)
+    except ValueError:
+        tokens = text.split()
+    return " ".join(tokens)
+
+
+def command_id(command: str) -> str:
+    return "h-" + hashlib.sha256(_normalized(command).encode("utf-8")).hexdigest()[:10]
 
 
 def existing_states(directories: Iterable[str]) -> Set[str]:
@@ -198,46 +210,122 @@ def ingest(
     return accepted, rejected
 
 
-def load_candidates(path: str) -> List[Dict[str, Any]]:
+def _load_candidates_doc(path: str) -> Dict[str, Any]:
     if not os.path.exists(path):
-        return []
+        return {"rules_sha256_16": None, "candidates": []}
     with open(path, encoding="utf-8") as handle:
-        doc = json.load(handle)
-    return list(doc["candidates"])
+        return dict(json.load(handle))
+
+
+def load_candidates(path: str) -> List[Dict[str, Any]]:
+    return list(_load_candidates_doc(path)["candidates"])
+
+
+def candidates_fingerprint(path: str) -> Optional[str]:
+    """Fingerprint of the rules code when the first candidate was saved (None for a missing file)."""
+    return _load_candidates_doc(path).get("rules_sha256_16")
 
 
 def save_candidates(path: str, candidates: Sequence[Dict[str, Any]]) -> None:
+    """Writes the candidates. The rules fingerprint is recorded once, at the first save, and never refreshed:
+    the freeze must date from the moment the commands were produced, not from the labeling."""
+    fingerprint = candidates_fingerprint(path) or schema.rules_fingerprint()
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
     with open(path, "w", encoding="utf-8") as handle:
-        json.dump({"candidates": list(candidates)}, handle, ensure_ascii=False, indent=2)
+        json.dump(
+            {"rules_sha256_16": fingerprint, "candidates": list(candidates)}, handle, ensure_ascii=False, indent=2
+        )
         handle.write("\n")
+
+
+def unapproved_agent_logs(candidates: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    return [c for c in candidates if c.get("command_source") == "agent_log" and not c.get("approved")]
+
+
+def require_reviewed(candidates: Sequence[Dict[str, Any]]) -> None:
+    """Real agent commands go to a labeler and a public repository only after a person approved them."""
+    pending = unapproved_agent_logs(candidates)
+    if pending:
+        raise GenerateError(
+            f"{len(pending)} real agent commands have not been approved; read the list printed by `agentlog` "
+            "and run `approve` (optionally excluding ids)"
+        )
+
+
+def approve(
+    candidates: Sequence[Dict[str, Any]], exclude: Sequence[str], reviewer: str
+) -> Tuple[List[Dict[str, Any]], int, int]:
+    """Marks every pending real agent command as approved by ``reviewer``, except the excluded ids, which are
+    removed. Returns the new candidates, the number approved and the number excluded."""
+    if not schema._HANDLE_RE.fullmatch(reviewer):
+        raise GenerateError("--by must be a handle ^[a-z0-9][a-z0-9_-]{1,38}$ (no name or e-mail)")
+    pending_ids = {c["id"] for c in unapproved_agent_logs(candidates)}
+    unknown = sorted(set(exclude) - pending_ids)
+    if unknown:
+        raise GenerateError(f"not pending real agent commands: {unknown}")
+    updated: List[Dict[str, Any]] = []
+    approved = 0
+    for cand in candidates:
+        if cand["id"] in exclude:
+            continue
+        if cand["id"] in pending_ids:
+            cand = {**cand, "approved": True, "approved_by": reviewer}
+            approved += 1
+        updated.append(cand)
+    return updated, approved, len(exclude)
 
 
 # ---------------------------------------------------------------- real agent commands
 
-_HOME_PATH = re.compile(r"/home/[A-Za-z0-9._-]+")
-_URL_OR_HOST = re.compile(
-    r"https?://|\b[\w-]+(?:\.[\w-]+)*\.(?:com|net|org|io|dev|app|br|co|ai|cloud|me|ind|gov|edu)\b", re.I
-)
-_QUOTED = re.compile(r"""(["'])(.*?)\1""")
+
+def _flag_is_generic(token: str) -> bool:
+    name, _, value = token.partition("=")
+    short = not name.startswith("--") and len(name) <= 5 and name[1:].isalnum()
+    return (short or vocab.token_is_generic(name, first=False)) and (
+        not value or vocab.token_is_generic(value, first=False)
+    )
+
+
+def _words_problem(tokens: Sequence[str]) -> Optional[str]:
+    """First word of a command that is not generic vocabulary, as a rejection reason."""
+    start = 0
+    while start < len(tokens) - 1 and tokens[start] in WRAPPERS:
+        start += 1
+    for index, token in enumerate(tokens):
+        if token.startswith("-") and len(token) > 1:
+            generic = _flag_is_generic(token)
+        else:
+            generic = vocab.token_is_generic(token, first=index == start) or token in WRAPPERS and index < start
+        if not generic:
+            return "contains a word outside the generic vocabulary"
+    return None
 
 
 def agent_command_problem(command: str, deny_terms: Sequence[str]) -> Optional[str]:
-    """Why a real agent command must not be published, or None. Strict on purpose: when in doubt, drop it."""
+    """Why a real agent command must not be published, or None.
+
+    An allow list, not a block list: every word must be generic developer vocabulary (see
+    ``agent_command_vocab``), so a customer, host, project or person name cannot pass by being unlisted.
+    """
     problem = command_problem(command)
     if problem:
         return problem
     if len(command) > MAX_AGENT_COMMAND_CHARS:
         return "too long"
-    if "<<" in command:
-        return "heredoc"
-    if _URL_OR_HOST.search(command):
-        return "URL or hostname"
-    if any(len(match.group(2)) > MAX_QUOTED_CHARS for match in _QUOTED.finditer(command)):
-        return "long quoted text"
+    segments, substitutions = shell_scan(command)
+    if substitutions:
+        return "command substitution"
     lowered = command.lower()
     if any(term and term.lower() in lowered for term in deny_terms):
         return "contains a private term"
+    for segment in segments:
+        try:
+            tokens = shlex.split(segment.text)
+        except ValueError:
+            return "unparseable quoting"
+        reason = _words_problem(tokens)
+        if reason:
+            return reason
     return None
 
 
@@ -257,8 +345,28 @@ def _bash_commands(path: str) -> Iterable[str]:
                         yield command.strip()
 
 
+def _git_identity() -> List[str]:
+    """Name parts and e-mail local part from the git config, which a log line may repeat."""
+    terms: List[str] = []
+    for key in ("user.name", "user.email"):
+        try:
+            value = subprocess.run(
+                ["git", "config", "--get", key], capture_output=True, text=True, timeout=5, check=False
+            ).stdout.strip()
+        except (OSError, subprocess.SubprocessError):
+            continue
+        terms.extend(part for part in value.replace("@", " ").replace(".", " ").split())
+    return terms
+
+
 def default_deny_terms() -> List[str]:
-    return [term for term in (os.environ.get("USER", ""), socket.gethostname()) if len(term) >= 3]
+    names = [
+        os.environ.get("USER", ""),
+        getpass.getuser(),
+        os.path.basename(os.path.expanduser("~")),
+        socket.gethostname(),
+    ]
+    return sorted({t for t in names + _git_identity() if len(t) >= 3})
 
 
 def extract_agent_commands(
@@ -269,7 +377,7 @@ def extract_agent_commands(
     kept: Dict[str, str] = {}
     for path in sorted(glob.glob(os.path.join(projects_dir, "**", "*.jsonl"), recursive=True)):
         for raw in _bash_commands(path):
-            command = _HOME_PATH.sub("/home/user", raw)
+            command = raw
             problem = agent_command_problem(command, deny_terms)
             if problem:
                 reasons[problem] = reasons.get(problem, 0) + 1
@@ -285,6 +393,7 @@ def extract_agent_commands(
             "family": "agent_log",
             "command_source": "agent_log",
             "intended_block": None,
+            "approved": False,
         }
         for c in ordered
     ]
@@ -389,14 +498,23 @@ def _cmd_agentlog(args: argparse.Namespace) -> int:
     )
     save_candidates(args.candidates, list(existing) + found)
     print(f"kept {len(found)} real commands; dropped by reason: {json.dumps(reasons, sort_keys=True)}")
-    print("REVIEW THIS LIST before `build`: it will be published in the repository.")
+    print("READ THIS LIST. These commands go to a labeler and then to a public repository once you run")
+    print("`approve` (use --exclude ID for any you do not want). Nothing is sent before that.")
     for cand in found:
-        print(f"  {cand['state']}")
+        print(f"  {cand['id']}  {cand['state']}")
+    return 0
+
+
+def _cmd_approve(args: argparse.Namespace) -> int:
+    candidates, approved, excluded = approve(load_candidates(args.candidates), args.exclude or [], args.by)
+    save_candidates(args.candidates, candidates)
+    print(f"approved {approved} real agent commands, excluded {excluded}")
     return 0
 
 
 def _cmd_task(args: argparse.Namespace) -> int:
     candidates = load_candidates(args.candidates)
+    require_reviewed(candidates)
     label._write_text(args.out, json.dumps(build_label_task(candidates), ensure_ascii=False, indent=2) + "\n")
     print(f"first-labeler task: {args.out} ({len(candidates)} commands)")
     return 0
@@ -407,7 +525,17 @@ def _cmd_build(args: argparse.Namespace) -> int:
     if os.path.exists(target):
         raise GenerateError(f"{target} already exists; the set is frozen and is not overwritten")
     candidates = load_candidates(args.candidates)
+    require_reviewed(candidates)
+    recorded = candidates_fingerprint(args.candidates)
+    if recorded != schema.rules_fingerprint():
+        raise GenerateError(
+            f"the rules changed after the candidates were generated (then {recorded}, now "
+            f"{schema.rules_fingerprint()}): the set would not be held-out; generate new candidates"
+        )
     labeler, labels = label.parse_labels(_read_json(args.labels))
+    generators = {c["generated_by"] for c in candidates if c.get("generated_by")}
+    if labeler in generators:
+        raise GenerateError(f"the first labeler ({labeler}) generated some of these commands; use another model")
     document = build_dataset(candidates, labeler, labels, datetime.date.today().isoformat())
     os.makedirs(args.data_dir, exist_ok=True)
     label._write_text(target, json.dumps(document, ensure_ascii=False, indent=2) + "\n")
@@ -440,6 +568,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     p.add_argument("--candidates", default=DEFAULT_CANDIDATES)
     p.add_argument("--against", action="append")
     p.set_defaults(func=_cmd_agentlog)
+    p = sub.add_parser("approve")
+    p.add_argument("--by", required=True)
+    p.add_argument("--exclude", action="append")
+    p.add_argument("--candidates", default=DEFAULT_CANDIDATES)
+    p.set_defaults(func=_cmd_approve)
     p = sub.add_parser("task")
     p.add_argument("--candidates", default=DEFAULT_CANDIDATES)
     p.add_argument("--out", default=DEFAULT_TASK)

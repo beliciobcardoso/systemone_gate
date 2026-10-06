@@ -239,6 +239,7 @@ def _check_diff(case: Mapping[str, Any]) -> List[str]:
     state = str(case["state"])
     if "rules_catch" in case:
         errors.append("rules_catch só existe na superfície guard")
+    errors.extend(f"{key} só existe na superfície guard" for key in ("command_source", "generated_by") if key in case)
     if not (_DIFF_HUNK_RE.search(state) and _DIFF_NEW_FILE_RE.search(state)):
         errors.append("state não parece um diff unificado (faltam '+++' e um cabeçalho '@@ -a,b +c,d @@')")
     if case.get("label_source") in OUTCOME_SOURCES:

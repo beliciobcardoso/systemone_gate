@@ -91,12 +91,18 @@ rules were not tuned on:
 ```bash
 python benchmarks/calibrate_generate.py prompt                    # prompt for the generator model (no mention of the rules)
 python benchmarks/calibrate_generate.py ingest GENERATED.json     # validate, dedupe, drop secrets/personal data
-python benchmarks/calibrate_generate.py agentlog                  # add real agent commands (REVIEW the printed list)
+python benchmarks/calibrate_generate.py agentlog                  # real agent commands, allow-list filtered; READ the printed list
+python benchmarks/calibrate_generate.py approve --by your-handle  # explicit approval (--exclude ID to drop some); task/build refuse without it
 python benchmarks/calibrate_generate.py task                      # blind task for the FIRST labeler
 python benchmarks/calibrate_generate.py build LABELS1.json        # primary labels + frozen rules fingerprint
 # then the usual second labeling and human review, pointing at the held-out directory:
 python benchmarks/calibrate_label.py export --data-dir benchmarks/data/calibration_heldout
 ```
+
+Real agent commands are kept only if every word is generic developer vocabulary (`benchmarks/agent_command_vocab.py`, an
+allow list: a customer, host, project or person name cannot pass by being unlisted), and they reach a labeler or the
+repository only after `approve`. The first labeler must not be one of the generators. The rules fingerprint is
+recorded when the first candidate is saved, so changing the rules before `build` also invalidates the set.
 
 The set records a fingerprint of the rules code (`freeze.rules_sha256_16`). If the rules change afterwards, the
 analysis prints a warning and refuses to recommend parameters: the result is no longer out of sample, and the set
