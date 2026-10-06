@@ -7,6 +7,8 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-06
+
 ### Changed
 
 - **Behavior change:** every rubric sent to the model is now in English (`default`, `generic` and `web-backend` profiles, `RUBRIC_COMMAND_SAFETY`, `RUBRIC_AGENT_ROUTING`, the `doctor` smoke rubric), and so is the truncation marker appended to long diffs (`... [truncated N lines]`). The project is public and international. The benchmark in `docs/BENCHMARK_RUBRIC_LANGUAGE.md` found no detectable accuracy difference between Portuguese and English for the default profile (smallest p = 0.19); the other rubrics were not part of that benchmark. A later comparison on the guard rubric found no change for `nimble:latest` but a worse score separation for `tev1:0.8b`, the guard's production model (paired AUC difference -0.104, 95% CI [-0.182, -0.030], 69 cases, labels not yet reviewed); in practice the model blocks nothing on its own at the default threshold in either language, so current behavior is unchanged, but it lowers what that model can reach if it is ever calibrated as a gate (see `docs/BENCHMARK_RUBRIC_LANGUAGE.md`). Choice keys (the labels the policy reads) are unchanged. Model scores depend on the prompt, so any threshold or calibration measured with the Portuguese rubrics no longer applies; the rubric hash recorded by `calibrate_collect.py` flags stale collections. A test now rejects Portuguese text in any rubric. The Portuguese original of the default profile is frozen in `benchmarks/data/rubrics_pt.py` so the benchmark stays reproducible.

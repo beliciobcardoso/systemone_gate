@@ -4,7 +4,7 @@ Local, cloud-token-free decision gating & triage engine for AI coding agents.
 Powered by Ollama System One (Jev-compatible models: Nimble 9B & Tev1).
 """
 
-__version__ = "0.3.1"
+__version__ = "0.4.0"
 
 from .client import SystemOneClient
 from .policy import Decision, PolicyConfig, evaluate_command, evaluate_diff
