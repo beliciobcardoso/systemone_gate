@@ -7,6 +7,10 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Added
+
+- Second labels for the 84-case synthetic guard dataset (`benchmarks/data/calibration/guard_synthetic.json`), produced blind by `gemini-2-5` through `benchmarks/calibrate_label.py`: 84 agreed, 0 disputed, so every case is now final. The set is synthetic and mostly unambiguous, so full agreement does not cover real-world borderline commands.
+
 ## [0.5.0] - 2026-10-06
 
 ### Changed
