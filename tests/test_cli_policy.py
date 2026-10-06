@@ -53,18 +53,18 @@ def diff_res(risk, breaking):
 def test_guard_allows_safe(capsys):
     assert cli.handle_guard(StubClient(guard_res("safe", 0.2)), "ls", "m") == 0
     out = capsys.readouterr()
-    assert "Destrutivo: safe" in out.out and "0.20" in out.out
+    assert "Destructive: safe" in out.out and "0.20" in out.out
     assert out.err == ""
 
 
 def test_guard_blocks_destructive(capsys):
     assert cli.handle_guard(StubClient(guard_res("destructive_or_risky", 1.9)), "rm -rf /", "m") == 1
-    assert "COMANDO BLOQUEADO" in capsys.readouterr().err
+    assert "COMMAND BLOCKED" in capsys.readouterr().err
 
 
 def test_guard_blocks_rules_source(capsys):
     assert cli.handle_guard(StubClient(guard_res("safe", 0.0, source="rules")), "x", "m") == 1
-    assert "COMANDO BLOQUEADO" in capsys.readouterr().err
+    assert "COMMAND BLOCKED" in capsys.readouterr().err
 
 
 def test_guard_error_fails_open_with_warning(capsys):
@@ -81,14 +81,14 @@ def test_guard_error_blocks_when_configured(monkeypatch, capsys):
 def test_guard_malformed_is_not_silently_safe(capsys):
     assert cli.handle_guard(StubClient({"answers": {}}), "rm -rf /", "m") == 0
     err = capsys.readouterr()
-    assert "resposta inválida" in err.err
+    assert "invalid response" in err.err
     assert "Destrutivo" not in err.out
 
 
 def test_guard_malformed_blocks_when_configured(monkeypatch, capsys):
     monkeypatch.setenv("SYSTEMONE_GUARD_ON_ERROR", "block")
     assert cli.handle_guard(StubClient({"answers": {}}), "x", "m") == 1
-    assert "resposta inválida" in capsys.readouterr().err
+    assert "invalid response" in capsys.readouterr().err
 
 
 def test_guard_threshold_override_changes_verdict(monkeypatch):
@@ -109,12 +109,12 @@ def test_guard_invalid_env_exits_2(monkeypatch, capsys):
 def test_diff_allows(capsys):
     assert cli.handle_diff(StubClient(diff_res(1.0, 0.9)), "m") == 0
     out = capsys.readouterr()
-    assert "APROVADO" in out.out and "1.00" in out.out
+    assert "APPROVED" in out.out and "1.00" in out.out
 
 
 def test_diff_blocks(capsys):
     assert cli.handle_diff(StubClient(diff_res(1.95, 0.9)), "m") == 1
-    assert "BLOQUEIO ATIVADO" in capsys.readouterr().err
+    assert "[BLOCKED]" in capsys.readouterr().err
 
 
 def test_diff_error_fails_open_with_warning(capsys):
@@ -130,8 +130,8 @@ def test_diff_error_blocks_when_configured(monkeypatch):
 def test_diff_malformed_warns_not_approved(capsys):
     assert cli.handle_diff(StubClient({"answers": {"risk_level": {}}}), "m") == 0
     out = capsys.readouterr()
-    assert "resposta inválida" in out.err
-    assert "APROVADO" not in out.out
+    assert "invalid response" in out.err
+    assert "APPROVED" not in out.out
 
 
 def test_diff_threshold_override_changes_verdict(monkeypatch):
@@ -171,20 +171,20 @@ def _diff_conf(conf, risk=1.95, breaking=0.9):
 
 def test_guard_shows_confidence_when_known(capsys):
     assert cli.handle_guard(StubClient(_guard_conf(0.27, "safe", 0.1)), "ls", "m") == 0
-    assert "Destrutivo: safe (confiança 0.27)" in capsys.readouterr().out
+    assert "Destructive: safe (confidence 0.27)" in capsys.readouterr().out
 
 
 def test_guard_hides_confidence_when_unknown(capsys):
     cli.handle_guard(StubClient(guard_res("safe", 0.1)), "ls", "m")
     out = capsys.readouterr().out
-    assert "confiança" not in out and "• Destrutivo: safe\n" in out
+    assert "confidence" not in out and "• Destructive: safe\n" in out
 
 
 def test_guard_low_confidence_allows_with_warning(monkeypatch, capsys):
     monkeypatch.setenv("SYSTEMONE_MIN_CONFIDENCE", "0.5")
     assert cli.handle_guard(StubClient(_guard_conf(0.27)), "rm x", "m") == 0
     err = capsys.readouterr().err
-    assert "confiança 0.27 abaixo do mínimo 0.50" in err and "BLOQUEADO" not in err
+    assert "confidence 0.27 below the minimum 0.50" in err and "BLOCKED" not in err
 
 
 def test_guard_low_confidence_blocks_in_block_mode(monkeypatch, capsys):
@@ -192,7 +192,7 @@ def test_guard_low_confidence_blocks_in_block_mode(monkeypatch, capsys):
     monkeypatch.setenv("SYSTEMONE_GUARD_ON_ERROR", "block")
     assert cli.handle_guard(StubClient(_guard_conf(0.27, "safe", 0.0)), "ls", "m") == 1
     err = capsys.readouterr().err
-    assert "COMANDO BLOQUEADO" in err and "abaixo do mínimo" in err
+    assert "COMMAND BLOCKED" in err and "below the minimum" in err
     assert "Risco destrutivo elevado" not in err
 
 
@@ -210,7 +210,7 @@ def test_guard_rules_blocks_despite_min_confidence(monkeypatch, capsys):
     res = guard_res("destructive_or_risky", 2.0, source="rules")
     res["answers"]["is_destructive"]["confidence"] = 1.0
     assert cli.handle_guard(StubClient(res), "rm -rf /", "m") == 1
-    assert "COMANDO BLOQUEADO" in capsys.readouterr().err
+    assert "COMMAND BLOCKED" in capsys.readouterr().err
 
 
 def test_guard_invalid_min_confidence_exits_2(monkeypatch, capsys):
@@ -221,21 +221,21 @@ def test_guard_invalid_min_confidence_exits_2(monkeypatch, capsys):
 
 def test_diff_shows_confidence_when_known(capsys):
     assert cli.handle_diff(StubClient(_diff_conf(0.27, 1.0, 0.1)), "m") == 0
-    assert "Risco Técnico: 1.00 / 2.0 (confiança 0.27)" in capsys.readouterr().out
+    assert "Risk Level: 1.00 / 2.0 (confidence 0.27)" in capsys.readouterr().out
 
 
 def test_diff_hides_confidence_when_unknown(capsys):
     cli.handle_diff(StubClient(diff_res(1.0, 0.1)), "m")
     out = capsys.readouterr().out
-    assert "confiança" not in out and "1.00 / 2.0\n" in out
+    assert "confidence" not in out and "1.00 / 2.0\n" in out
 
 
 def test_diff_low_confidence_allows_with_warning(monkeypatch, capsys):
     monkeypatch.setenv("SYSTEMONE_MIN_CONFIDENCE", "0.5")
     assert cli.handle_diff(StubClient(_diff_conf(0.27)), "m") == 0
     out = capsys.readouterr()
-    assert "confiança 0.27 abaixo do mínimo 0.50" in out.err
-    assert "APROVADO" not in out.out and "BLOQUEIO" not in out.err
+    assert "confidence 0.27 below the minimum 0.50" in out.err
+    assert "APPROVED" not in out.out and "BLOCKED" not in out.err
 
 
 def test_diff_low_confidence_blocks_in_block_mode(monkeypatch, capsys):
@@ -243,8 +243,8 @@ def test_diff_low_confidence_blocks_in_block_mode(monkeypatch, capsys):
     monkeypatch.setenv("SYSTEMONE_DIFF_ON_ERROR", "block")
     assert cli.handle_diff(StubClient(_diff_conf(0.27, 0.1, 0.0)), "m") == 1
     err = capsys.readouterr().err
-    assert "BLOQUEIO ATIVADO" in err and "abaixo do mínimo" in err
-    assert "Risco crítico e quebra" not in err
+    assert "[BLOCKED]" in err and "below the minimum" in err
+    assert "Critical risk and contract break" not in err
 
 
 def test_diff_default_ignores_low_confidence():

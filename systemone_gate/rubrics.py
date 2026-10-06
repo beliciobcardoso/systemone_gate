@@ -182,7 +182,7 @@ _TRIAGE_PROFILES: Dict[str, Callable[[], Dict[str, Any]]] = {
 def _resolve(registry: Dict[str, Callable[[], Dict[str, Any]]], profile: str) -> Dict[str, Any]:
     factory = registry.get(profile) if isinstance(profile, str) else None
     if factory is None:
-        raise ValueError(f"Perfil de rubrica inválido: {profile!r} (válidos: {', '.join(PROFILES)})")
+        raise ValueError(f"Invalid rubric profile: {profile!r} (valid: {', '.join(PROFILES)})")
     return factory()
 
 

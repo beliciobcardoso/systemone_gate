@@ -16,10 +16,10 @@ from .diff_review import review_staged
 from .policy import PolicyConfig, evaluate_diff
 
 GIT_DIFF_TIMEOUT_SECONDS = 30
-NOTHING_STAGED_NOTE = "nenhuma alteração staged"
+NOTHING_STAGED_NOTE = "no staged changes"
 PREFER_STAGED_HINT = (
-    " Se a alteração já está staged no git, prefira systemone_review_staged: "
-    "ele lê o diff no servidor e evita passá-lo pelo agente."
+    " If the change is already staged in git, prefer systemone_review_staged: "
+    "it reads the diff on the server and avoids passing it through the agent."
 )
 
 MCP_TOOLS = [
@@ -155,14 +155,14 @@ def _staged_diff() -> Dict[str, Any]:
         proc = subprocess.run(["git", "diff", "--cached"], capture_output=True, text=True,
                               errors="replace", timeout=GIT_DIFF_TIMEOUT_SECONDS)
     except subprocess.TimeoutExpired:
-        return {"error": f"git diff --cached excedeu o tempo limite de {GIT_DIFF_TIMEOUT_SECONDS}s"}
+        return {"error": f"git diff --cached timed out after {GIT_DIFF_TIMEOUT_SECONDS}s"}
     except FileNotFoundError:
-        return {"error": "git não encontrado no PATH do servidor MCP"}
+        return {"error": "git not found on the MCP server PATH"}
     except OSError:
-        return {"error": "falha ao executar git no servidor MCP"}
+        return {"error": "failed to run git on the MCP server"}
     if proc.returncode != 0:
-        return {"error": "o diretório de trabalho do servidor MCP não é um repositório git "
-                         "ou 'git diff --cached' falhou"}
+        return {"error": "the MCP server working directory is not a git repository "
+                         "or 'git diff --cached' failed"}
     return {"diff": proc.stdout}
 
 
@@ -177,7 +177,7 @@ def _review_staged_tool(client: Any, tool_args: Dict[str, Any]) -> Dict[str, Any
     try:
         cfg = PolicyConfig.from_env()
     except ValueError as exc:
-        return {"error": f"configuração de política inválida: {exc}"}
+        return {"error": f"Invalid policy configuration: {exc}"}
     res = review_staged(client, staged["diff"], tool_args.get("model"))
     if "error" in res:
         return res
@@ -205,7 +205,7 @@ def _dispatch_tool(client: Any, tool_name: Any, tool_args: Dict[str, Any]) -> Di
                 model=tool_args.get("model")
             )
         else:
-            res = {"error": f"Tool '{tool_name}' não encontrada"}
+            res = {"error": f"Tool '{tool_name}' not found"}
         return _text_result(res)
     except Exception:
         # stdout is the protocol channel: log details to stderr only.

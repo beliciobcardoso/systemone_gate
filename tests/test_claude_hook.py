@@ -9,7 +9,7 @@ import pytest
 from systemone_gate.claude_hook import run_pretooluse
 
 ROOT = Path(__file__).resolve().parent.parent
-WARNING = "[SystemOne Gate] aviso: payload inválido, comando não verificado."
+WARNING = "[SystemOne Gate] Warning: invalid payload, command not checked."
 
 
 def payload(tool="Bash", **tool_input):
@@ -19,8 +19,8 @@ def payload(tool="Bash", **tool_input):
 def test_blocks_catastrophic_bash_command():
     code, msg = run_pretooluse(payload(command="rm -rf /"))
     assert code == 2
-    assert msg.startswith("[SystemOne Gate] Comando bloqueado: ")
-    assert "(regra rm-recursive-root)" in msg
+    assert msg.startswith("[SystemOne Gate] Command blocked: ")
+    assert "(rule rm-recursive-root)" in msg
 
 
 @pytest.mark.parametrize(
@@ -55,7 +55,7 @@ def _run_cli(stdin_text, env_extra=None):
 def test_cli_hook_guard_blocks_with_exit_2():
     proc = _run_cli(payload(command="ls && rm -rf /"))
     assert proc.returncode == 2
-    assert "Comando bloqueado" in proc.stderr
+    assert "Command blocked" in proc.stderr
 
 
 def test_cli_hook_guard_allows_with_exit_0():
@@ -67,7 +67,7 @@ def test_cli_hook_guard_allows_with_exit_0():
 def test_cli_hook_guard_invalid_json_warns_and_exits_0():
     proc = _run_cli("garbage")
     assert proc.returncode == 0
-    assert "payload inválido" in proc.stderr
+    assert "invalid payload" in proc.stderr
 
 
 @pytest.mark.parametrize("env", [
@@ -82,4 +82,4 @@ def test_cli_hook_guard_ignores_invalid_ollama_config(env):
     assert (allowed.returncode, allowed.stderr) == (0, "")
     blocked = _run_cli(payload(command="rm -rf /"), env)
     assert blocked.returncode == 2
-    assert "Comando bloqueado" in blocked.stderr
+    assert "Command blocked" in blocked.stderr
