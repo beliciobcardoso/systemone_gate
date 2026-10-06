@@ -7,6 +7,8 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-06
+
 ### Added
 
 - **Behavior change:** the deterministic guard rules (`systemone-gate hook-guard`, `guard_command`) now also block infrastructure, cloud, database and git commands that destroy shared state without an interactive confirmation: `terraform destroy -auto-approve`, `kubectl delete namespace <production-looking name>` and `kubectl delete pvc --all`, `aws s3 rb --force` and recursive `aws s3 rm` on a bucket root, `gcloud`/`az` deletes with `--quiet`/`--yes`, `docker system prune --volumes` and `docker volume prune -f`, `dropdb`, `pg_dropcluster`, `mysqladmin -f drop`, `redis-cli FLUSHALL/FLUSHDB`, `userdel -r`, `crontab -r`, `git branch -D main/master`, `git clean -fx`, `find / ... -delete`, `shred` of keys or devices, `mv x /dev/null`, `rm -rf .git` (the repository's own), and `rm -rf` of `/etc/<x>`, `/boot/<x>`, `/usr/{bin,lib}`, `/var/lib` and its children or a database data directory. Scoped or prompting variants keep working (`kubectl delete pod`, `terraform plan`, `aws s3 rm s3://b/tmp/ --recursive`, `rm -rf /var/lib/apt/lists/*`). Commands that were previously only a model warning can now be blocked, so a pipeline that relied on running one of them must change.
