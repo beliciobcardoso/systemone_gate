@@ -9,6 +9,8 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ### Added
 
+- `SYSTEMONE_PROTECTED_PATHS`: a `:`-separated list of absolute paths (`~`/`$HOME` expanded) that the deterministic guard (`hook-guard`, `guard`, MCP `guard_command`) never lets `rm`, `mv` (source), `shred` or recursive `chmod`/`chown` remove or alter: the path itself, its contents and, for recursive operations and `mv`, its ancestors; deeper paths stay free. Blocks with rule id `protected-path`. Unset by default (no behavior change); invalid entries are skipped with a stderr warning and never block. `evaluate_command` takes an optional `protected=` argument and `run_pretooluse` an optional `env=`.
+
 - `benchmarks/calibrate_generate.py` builds the held-out guard set (`prompt`, `ingest`, `agentlog`, `approve`, `task`, `build`): a generator prompt that never mentions the rules, validation and dedupe of generated commands, real agent commands kept only when every word is generic vocabulary (an allow list) and only after explicit approval, a blind task for the first labeler, and a frozen dataset file whose rules fingerprint dates from the first candidate. The dataset schema gained `split: heldout` with a `freeze` fingerprint of the rules code, `command_source`/`generated_by`, and the `blind_labeler` label source; `calibrate_analyze.py` refuses to recommend parameters when the rules changed after the set was frozen. First step of the held-out set (see `docs/GUARD_CALIBRATION.md`, "Next step").
 
 ## [0.6.0] - 2026-10-06
