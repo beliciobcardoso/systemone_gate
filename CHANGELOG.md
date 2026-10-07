@@ -7,6 +7,8 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-10-07
+
 ### Changed
 
 - `systemone-gate diff` report: it now prints the block thresholds (`risk > 1.85 and breaking_change > 0.65 (both required)`, or the values set through `SYSTEMONE_DIFF_RISK_THRESHOLD`/`SYSTEMONE_DIFF_BREAKING_THRESHOLD`), and warns on stderr when exactly one of the two conditions holds (for example `breaking_change 0.76 > 0.65` with `risk 1.55 <= 1.85`), since the verdict is still `APPROVED` and the report alone looked contradictory. Exit codes and the decision itself are unchanged.
