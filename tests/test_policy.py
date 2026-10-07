@@ -12,6 +12,7 @@ from systemone_gate.policy import (
     decide_command,
     decide_diff,
     decide_on_error,
+    diff_near_miss,
     evaluate_command,
     evaluate_diff,
     is_low_confidence,
@@ -141,6 +142,37 @@ def test_parse_command_check_rejects_malformed(res):
 def test_invalid_response_names_field():
     with pytest.raises(InvalidResponse, match="danger_score"):
         parse_command_check(_mutate(cmd_res(), DS, "x"))
+
+
+# ---------------------------------------------------------------- diff_near_miss
+
+def _review(risk, breaking, confidence=None):
+    return DiffReview(risk, "breaking_change", {"breaking_change": breaking}, confidence)
+
+
+def test_near_miss_when_only_breaking_exceeds():
+    msg = diff_near_miss(_review(1.55, 0.76), CFG)
+    assert msg is not None
+    assert "breaking_change 0.76 > 0.65" in msg
+    assert "risk 1.55 <= 1.85" in msg
+
+
+def test_near_miss_when_only_risk_exceeds():
+    msg = diff_near_miss(_review(1.95, 0.4), CFG)
+    assert msg is not None
+    assert "risk 1.95 > 1.85" in msg
+    assert "breaking_change 0.40 <= 0.65" in msg
+
+
+@pytest.mark.parametrize("risk,breaking", [(1.0, 0.1), (1.85, 0.65), (1.95, 0.9)])
+def test_no_near_miss_when_none_or_both_exceed(risk, breaking):
+    assert diff_near_miss(_review(risk, breaking), CFG) is None
+
+
+def test_no_near_miss_when_confidence_too_low():
+    cfg = dataclasses.replace(CFG, min_confidence=0.5)
+    assert diff_near_miss(_review(1.55, 0.76, confidence=0.2), cfg) is None
+    assert diff_near_miss(_review(1.55, 0.76, confidence=0.9), cfg) is not None
 
 
 # ---------------------------------------------------------------- decide_diff

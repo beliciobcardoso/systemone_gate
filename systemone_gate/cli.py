@@ -24,6 +24,7 @@ from .policy import (
     DiffReview,
     InvalidResponse,
     PolicyConfig,
+    diff_near_miss,
     evaluate_command,
     evaluate_diff,
     is_low_confidence,
@@ -53,7 +54,7 @@ def _invalid_config(error: ValueError) -> int:
     print(f"❌ Invalid configuration: {error}", file=sys.stderr)
     return EXIT_CONFIG_ERROR
 
-def _print_diff_report(review: DiffReview, res: dict) -> None:
+def _print_diff_report(review: DiffReview, res: dict, cfg: PolicyConfig) -> None:
     risk_info = res["answers"]["risk_level"]
     print("\n------------------ Impact Report ------------------")
     print(f"📊 Technical Risk Level: {review.risk_score:.2f} / 2.0{_confidence_suffix(review.confidence)}")
@@ -67,6 +68,10 @@ def _print_diff_report(review: DiffReview, res: dict) -> None:
     print(f"\n⚠️  Breaking Change: {review.breaking_choice.upper()}")
     for opt, prob in review.breaking_probs.items():
         print(f"   • {opt}: {prob*100:.1f}%")
+    print(
+        f"\n   Block thresholds: risk > {cfg.diff_risk_threshold} and "
+        f"breaking_change > {cfg.diff_breaking_threshold} (both required)"
+    )
     print("----------------------------------------------------------\n")
 
 def handle_diff(client: SystemOneClient, model: str, max_lines: int = DEFAULT_MAX_LINES_PER_FILE,
@@ -103,7 +108,7 @@ def handle_diff(client: SystemOneClient, model: str, max_lines: int = DEFAULT_MA
 
     review = _try_parse(parse_diff_review, res)
     if review is not None:
-        _print_diff_report(review, res)
+        _print_diff_report(review, res, cfg)
 
     if decision.action == ACTION_BLOCK:
         if review is not None and not is_low_confidence(review.confidence, cfg):
@@ -111,6 +116,10 @@ def handle_diff(client: SystemOneClient, model: str, max_lines: int = DEFAULT_MA
         else:
             print(f"❌ [BLOCKED] {'; '.join(decision.reasons)}", file=sys.stderr)
         return 1
+
+    near_miss = diff_near_miss(review, cfg) if review is not None else None
+    if near_miss:
+        print(f"⚠️  [SystemOne Gate] Warning: {near_miss}", file=sys.stderr)
 
     if decision.warning:
         return 0  # Fail open (diff_on_error=allow): never block offline work when Ollama is down

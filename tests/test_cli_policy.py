@@ -112,6 +112,38 @@ def test_diff_allows(capsys):
     assert "APPROVED" in out.out and "1.00" in out.out
 
 
+def test_diff_report_shows_block_thresholds(capsys):
+    assert cli.handle_diff(StubClient(diff_res(1.0, 0.2)), "m") == 0
+    out = capsys.readouterr().out
+    assert "Block thresholds: risk > 1.85 and breaking_change > 0.65 (both required)" in out
+    assert out.index("Block thresholds") < out.index("APPROVED")
+
+
+def test_diff_report_shows_overridden_thresholds(monkeypatch, capsys):
+    monkeypatch.setenv("SYSTEMONE_DIFF_RISK_THRESHOLD", "1.2")
+    monkeypatch.setenv("SYSTEMONE_DIFF_BREAKING_THRESHOLD", "0.3")
+    assert cli.handle_diff(StubClient(diff_res(1.0, 0.2)), "m") == 0
+    assert "risk > 1.2 and breaking_change > 0.3" in capsys.readouterr().out
+
+
+def test_diff_near_miss_warns_but_still_approves(capsys):
+    assert cli.handle_diff(StubClient(diff_res(1.55, 0.76)), "m") == 0
+    out = capsys.readouterr()
+    assert "APPROVED" in out.out
+    assert "not blocked" in out.err
+    assert "breaking_change 0.76 > 0.65" in out.err
+
+
+def test_diff_clean_pass_has_no_near_miss_warning(capsys):
+    assert cli.handle_diff(StubClient(diff_res(1.0, 0.2)), "m") == 0
+    assert capsys.readouterr().err == ""
+
+
+def test_diff_block_has_no_near_miss_warning(capsys):
+    assert cli.handle_diff(StubClient(diff_res(1.95, 0.9)), "m") == 1
+    assert "not blocked" not in capsys.readouterr().err
+
+
 def test_diff_blocks(capsys):
     assert cli.handle_diff(StubClient(diff_res(1.95, 0.9)), "m") == 1
     assert "[BLOCKED]" in capsys.readouterr().err
