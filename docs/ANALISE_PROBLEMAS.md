@@ -141,6 +141,7 @@
 ### FAL-03 · Limiares de bloqueio do diff praticamente inalcançáveis
 - **Status:** 🟡 **Parcial** em [#7](https://github.com/beliciobcardoso/systemone_gate/pull/7) — limiares configuráveis por variável de ambiente; **continuam não calibrados** (falta dataset).
 - **Atualização (2026-10-06, guard):** a calibração do guard (84 comandos, dois rotuladores) mostrou que nenhum limiar do `tev1:0.8b` nem do `nimble` atinge recall ≥ 90% com FPR ≤ 5% fora da amostra; os limiares do guard **não foram alterados** e as regras determinísticas foram ampliadas. Detalhes em `docs/GUARD_CALIBRATION.md` ([#58](https://github.com/beliciobcardoso/systemone_gate/pull/58)). Os limiares do **diff** seguem sem dataset.
+- **Atualização (2026-10-07, relatório):** o relatório do `diff` passou a exibir os limiares em uso e a avisar no stderr quando só uma das duas condições é atingida (ex.: `breaking_change 0.76 > 0.65` com `risk 1.55 <= 1.85`), pois a saída mostrava `BREAKING_CHANGE` e terminava em `APPROVED` sem explicar ([#64](https://github.com/beliciobcardoso/systemone_gate/pull/64)). Decisão e exit codes inalterados; **o status segue 🟡 Parcial** (limiares ainda não calibrados).
 - **Local:** `cli.py:62` (`risk_score > 1.85 and breaking_risk_prob > 0.65`)
 - **Evidência:** Estático (a rubrica de diff **não foi medida**)
 - **Classificação:** Falha · Adequação funcional · S2 · Should

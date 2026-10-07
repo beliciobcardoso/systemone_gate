@@ -229,6 +229,28 @@ def decide_diff(review: DiffReview, cfg: PolicyConfig) -> Decision:
     return Decision(ACTION_ALLOW, ())
 
 
+def diff_near_miss(review: DiffReview, cfg: PolicyConfig) -> Optional[str]:
+    """Message when exactly one of the two block conditions holds (so the diff was NOT blocked).
+
+    A block needs risk AND breaking probability above their thresholds; a verdict that clears only
+    one of them is approved, which the report alone makes look contradictory.
+    """
+    if review.confidence is not None and is_low_confidence(review.confidence, cfg):
+        return None
+    breaking_prob = review.breaking_probs.get(CHOICE_BREAKING, 0.0)
+    risk_over = review.risk_score > cfg.diff_risk_threshold
+    breaking_over = breaking_prob > cfg.diff_breaking_threshold
+    if risk_over == breaking_over:
+        return None
+    risk_op = ">" if risk_over else "<="
+    breaking_op = ">" if breaking_over else "<="
+    return (
+        f"risk {review.risk_score:.2f} {risk_op} {cfg.diff_risk_threshold} and "
+        f"breaking_change {breaking_prob:.2f} {breaking_op} {cfg.diff_breaking_threshold}: "
+        "not blocked (a block needs both above their thresholds)"
+    )
+
+
 def decide_command(check: CommandCheck, cfg: PolicyConfig) -> Decision:
     if check.source == SOURCE_RULES:
         return Decision(ACTION_BLOCK, ("command matched a deterministic rule",))

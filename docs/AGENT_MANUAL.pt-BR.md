@@ -190,6 +190,22 @@ As regras cobrem apenas padrões catastróficos e inequívocos (texto entre aspa
 
 Fora disso, a decisão continua sendo humana. Não é um sandbox: variáveis expandidas em runtime, scripts e Makefiles não são analisados.
 
+### Caminhos protegidos
+
+As regras embutidas só conhecem catástrofes genéricas. Para tornar seus próprios diretórios intocáveis, defina `SYSTEMONE_PROTECTED_PATHS` com uma lista de caminhos absolutos separados por `:` (`~`, `$HOME` e `${HOME}` são expandidos):
+
+```json
+{ "env": { "SYSTEMONE_PROTECTED_PATHS": "~/Projetos:~/.ssh:/srv/dados" } }
+```
+
+Coloque no `env` do `settings.json` do Claude Code: a variável precisa chegar ao processo do `hook-guard` (um prefixo no comando do próprio agente não chega, então o agente não consegue desligá-la assim). `guard` e o servidor MCP leem do ambiente deles.
+
+* **Bloqueado:** `rm`, `mv` (a origem), `shred` e `chmod`/`chown`/`chgrp` recursivo no próprio caminho, no conteúdo (`<caminho>/*`) e, em operações recursivas e `mv`, em qualquer ancestral (`rm -rf /home/eu` destrói `~/Projetos`). Globs que podem casar com um caminho protegido (`rm -rf ~/Proj*`) também bloqueiam. O id da regra é `protected-path`.
+* **Livre:** qualquer coisa mais fundo (`rm -rf ~/Projetos/x/build`), nomes parecidos (`~/Projetos2`) e escrever dentro do caminho (`mv a ~/Projetos`, `cp`).
+* Alvos relativos resolvem contra o `cwd` do payload do hook (ou o diretório de trabalho do processo, em `guard`/MCP).
+* Entrada inválida (não absoluta, `$OUTRA`, `~usuario`) é ignorada com aviso no stderr; nunca bloqueia.
+* Limites, como nas demais regras: só análise de texto. Symlinks não são resolvidos, e variáveis, scripts, `find -delete` e redirecionamentos não são analisados.
+
 ---
 
 ## 4. Windsurf (Codeium Cascade)

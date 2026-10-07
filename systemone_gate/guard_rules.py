@@ -26,6 +26,7 @@ from .guard_common import (
     split_args,
 )
 from .guard_ops import check_ops
+from .guard_protected import ProtectedPaths, check_protected
 from .shell_parse import Segment, SimpleCommand, mask_quotes, normalize, scan, tokenize
 
 MAX_DEPTH = 4
@@ -188,16 +189,16 @@ def _check_pipe_download(seg: Segment, cmd: SimpleCommand, nxt: Optional[SimpleC
     return None
 
 
-def _check_nested(cmd: SimpleCommand, depth: int) -> Optional[RuleMatch]:
+def _check_nested(cmd: SimpleCommand, depth: int, protected: Optional[ProtectedPaths]) -> Optional[RuleMatch]:
     if cmd.name == "eval":
-        return _evaluate(" ".join(cmd.args), depth + 1)
+        return _evaluate(" ".join(cmd.args), depth + 1, protected)
     if cmd.name not in SHELLS:
         return None
     script = _script_of_shell(cmd.args)
     if script is not None:
         if _DOWNLOAD_SUBST.match(script):
             return _download_match()
-        return _evaluate(script, depth + 1)
+        return _evaluate(script, depth + 1, protected)
     return _check_shell_download(cmd)
 
 
@@ -216,19 +217,20 @@ def _check_command(cmd: SimpleCommand) -> Optional[RuleMatch]:
 
 
 def _check_segment(
-    seg: Segment, cmd: SimpleCommand, nxt: Optional[SimpleCommand], depth: int
+    seg: Segment, cmd: SimpleCommand, nxt: Optional[SimpleCommand], depth: int, protected: Optional[ProtectedPaths]
 ) -> Optional[RuleMatch]:
     if _REDIRECT_DEV.search(mask_quotes(seg.text)):
         return RuleMatch("redirect-block-device", "redirecting to a block device destroys the disk")
     return (
         _check_command(cmd)
+        or check_protected(cmd, protected)
         or _check_sql(seg, cmd, nxt)
         or _check_pipe_download(seg, cmd, nxt)
-        or _check_nested(cmd, depth)
+        or _check_nested(cmd, depth, protected)
     )
 
 
-def _evaluate(text: str, depth: int) -> Optional[RuleMatch]:
+def _evaluate(text: str, depth: int, protected: Optional[ProtectedPaths]) -> Optional[RuleMatch]:
     if depth > MAX_DEPTH:
         return None
     if _FORK_BOMB.search(mask_quotes(text)):
@@ -237,18 +239,21 @@ def _evaluate(text: str, depth: int) -> Optional[RuleMatch]:
     commands = [normalize(tokenize(seg.text)) for seg in segments]
     for idx, seg in enumerate(segments):
         nxt = commands[idx + 1] if idx + 1 < len(commands) else None
-        match = _check_segment(seg, commands[idx], nxt, depth)
+        match = _check_segment(seg, commands[idx], nxt, depth, protected)
         if match:
             return match
     for sub in subs:
-        match = _evaluate(sub, depth + 1)
+        match = _evaluate(sub, depth + 1, protected)
         if match:
             return match
     return None
 
 
-def evaluate_command(command: str) -> Optional[RuleMatch]:
-    """Return the first catastrophic-pattern match for `command`, else None."""
+def evaluate_command(command: str, *, protected: Optional[ProtectedPaths] = None) -> Optional[RuleMatch]:
+    """Return the first catastrophic-pattern match for `command`, else None.
+
+    `protected` adds the user's protected paths (see `guard_protected`) to the built-in rules.
+    """
     if not isinstance(command, str):
         return None
-    return _evaluate(command, 0)
+    return _evaluate(command, 0, protected)
