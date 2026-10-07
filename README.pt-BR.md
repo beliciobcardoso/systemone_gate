@@ -210,6 +210,8 @@ systemone-gate doctor
 
 **Confiança mínima (opt-in):** `SYSTEMONE_MIN_CONFIDENCE` (0 a 1) trata como indeterminado, e aplica a política `*_ON_ERROR`, o veredito cuja `confidence` seja menor que o mínimo; vem desligada (`0`) e sem valor sugerido porque não há calibração e as confianças observadas são baixas em todas as respostas (0,03 a 0,27), então qualquer mínimo alto bloquearia ou avisaria sempre.
 
+**Arquivo de ambiente:** [`.env.example`](.env.example) lista todas as variáveis `SYSTEMONE_*` com o padrão de cada uma. O SystemOne Gate não lê o `.env` sozinho; carregue-o no shell antes (`set -a; . ./.env; set +a`). O `.env` está no `.gitignore`; não ponha valores reais no `.env.example`.
+
 ---
 
 ### Perfis de rubrica (`diff` e `triage`)
@@ -224,7 +226,7 @@ As rubricas de risco de diff e de triagem de erro têm perfis, pois o texto orig
 
 Seleção: `systemone-gate diff --profile web-backend`, `systemone-gate triage --profile web-backend "erro"` ou a variável `SYSTEMONE_PROFILE` (o argumento tem precedência). Perfil inválido encerra com código 2. No MCP e na biblioteca vale a variável de ambiente, ou `profile=` em `review_diff`/`triage_error`. As rubricas `guard` e de roteamento não mudam.
 
-> **Atenção:** os perfis `generic` e `web-backend` ainda **não foram validados** contra dados rotulados; a qualidade da nova redação não foi medida. O `default` continua sendo o texto original, voltado a C/sistemas.
+> **Atenção:** os perfis `generic` e `web-backend` ainda **não foram validados** contra dados rotulados; a qualidade da nova redação não foi medida. O `default` continua sendo o texto original, voltado a C/sistemas. Uma comparação informal com 8 casos (não é calibração) está em [`docs/PROFILE_SMOKE_TEST.pt-BR.md`](docs/PROFILE_SMOKE_TEST.pt-BR.md).
 
 ### 2. Como Servidor MCP (Model Context Protocol)
 
