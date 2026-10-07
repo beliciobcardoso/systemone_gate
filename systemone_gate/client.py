@@ -16,6 +16,7 @@ import urllib.parse
 import urllib.request
 from typing import Any, Dict, Optional, Tuple, cast
 
+from .guard_protected import load_protected_paths
 from .guard_rules import evaluate_command
 from .redact import redact_secrets
 from .rubrics import (
@@ -276,7 +277,10 @@ class SystemOneClient:
         and short-circuit (no network); otherwise the fast model is consulted,
         whose verdict is a heuristic warning, not a security barrier.
         """
-        match = evaluate_command(command)
+        protected, warnings = load_protected_paths(cwd=os.getcwd())
+        for warning in warnings:
+            print(warning, file=sys.stderr)
+        match = evaluate_command(command, protected=protected)
         if match is not None:
             return {
                 "model": "rules",

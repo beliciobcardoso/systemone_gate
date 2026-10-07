@@ -190,6 +190,22 @@ The rules cover only catastrophic, unambiguous patterns (quoted text passed as a
 
 Beyond that, the decision remains human. It is not a sandbox: variables expanded at runtime, scripts and Makefiles are not analyzed.
 
+### Protected paths
+
+The built-in rules only know generic catastrophes. To make your own directories untouchable, set `SYSTEMONE_PROTECTED_PATHS` to a `:`-separated list of absolute paths (`~`, `$HOME` and `${HOME}` are expanded):
+
+```json
+{ "env": { "SYSTEMONE_PROTECTED_PATHS": "~/Projetos:~/.ssh:/srv/dados" } }
+```
+
+Put it in the `env` of Claude Code's `settings.json`: the variable must reach the `hook-guard` process (a prefix on the agent's own command does not, so the agent cannot switch it off that way). `guard` and the MCP server read it from their own environment.
+
+* **Blocked:** `rm`, `mv` (the source), `shred`, and recursive `chmod`/`chown`/`chgrp` on the path itself, on its contents (`<path>/*`) and, for recursive operations and `mv`, on any ancestor (`rm -rf /home/me` destroys `~/Projetos`). Globs that can match a protected path (`rm -rf ~/Proj*`) are blocked too. The rule id is `protected-path`.
+* **Free:** anything deeper (`rm -rf ~/Projetos/x/build`), look-alikes (`~/Projetos2`), and writing into the path (`mv a ~/Projetos`, `cp`).
+* Relative targets resolve against the `cwd` of the hook payload (or the process working directory for `guard`/MCP).
+* An invalid entry (not absolute, `$OTHER`, `~user`) is skipped with a warning on stderr; it never blocks.
+* Limits, like the other rules: text analysis only. Symlinks are not resolved, and variables, scripts and `find -delete`/redirections are not analyzed.
+
 ---
 
 ## 4. Windsurf (Codeium Cascade)
