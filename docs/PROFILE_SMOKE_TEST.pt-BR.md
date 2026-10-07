@@ -46,14 +46,30 @@ Uma primeira execução, com a mesma mudança em `a.py` mais uma senha hardcoded
 - **O caso 3 é limítrofe.** O `web-backend` passou do limite de `breaking_change` (66,0% > 65%), mas o risco (1,52)
   ficou longe de 1,85, então foi aprovado.
 
-## Ressalva: o modelo não viu a senha
+## Verificação: a redação de segredos explica o resultado?
 
-A redação de segredos vem ligada por padrão (`SYSTEMONE_REDACT`, ver o README). Nos casos 6 e 7 o texto enviado ao
-modelo foi `postgres://admin:[REDACTED:url_password]@prod/db`, e não a senha real. Logo, o risco alto do `web-backend`
-nesses casos é reação ao marcador `[REDACTED:...]` e a palavras como `DATABASE_URL` e `.env`, e não a avaliação de uma
-senha que o modelo leu. É um comportamento razoável (o marcador avisa que há algo secreto), mas significa que esses
-casos não testam se o perfil reconhece um segredo por conta própria. Uma execução com `SYSTEMONE_REDACT=0` testaria, e
-não foi feita.
+A redação de segredos vem ligada por padrão (`SYSTEMONE_REDACT`, ver o README); portanto, nos casos 6 e 7 o modelo
+recebeu `postgres://admin:[REDACTED:url_password]@prod/db` em vez da senha. Para ver se o marcador causava o risco alto
+do `web-backend`, os casos 6 a 8 foram refeitos com `SYSTEMONE_REDACT=0` (mesma sessão, mesmo repositório):
+
+| Caso | Perfil | risco, redação ligada → desligada | breaking, redação ligada → desligada | Decisão |
+|---|---|---|---|---|
+| 6 | `default` | 1,06 → 1,08 | 5,5% → 6,0% | aprovado |
+| 6 | `web-backend` | 1,98 → 1,97 | 18,0% → 17,4% | aprovado |
+| 7 | `default` | 0,62 → 0,85 | 5,2% → 5,8% | aprovado |
+| 7 | `web-backend` | 1,97 → 1,98 | 17,0% → 18,3% | aprovado |
+| 8 | `default` | 0,59 → 0,59 | 5,2% → 5,2% | aprovado |
+| 8 | `web-backend` | 1,88 → 1,88 | 15,1% → 15,1% | aprovado |
+
+- **A redação não explica o resultado.** Com a senha real visível, o risco do `web-backend` varia no máximo 0,01 e
+  nenhuma decisão muda. O modelo reage ao contexto (`DATABASE_URL`, credenciais, `.env`), não ao valor da senha. A
+  maior variação é a do `default` no caso 7 (0,62 → 0,85), ainda baixa e sem efeito na decisão.
+- **O caso 8 é idêntico nos dois modos porque o diff dele não contém senha.** O `.env` está ignorado, então só `b.py`
+  e `.gitignore` foram staged. É um controle, não um teste de redação.
+- A conclusão sobre segredos se mantém: elevam o risco, não bloqueiam, e o perfil não distingue um `.env` vazado de um
+  ignorado (1,97 e 1,98 contra 1,88).
+
+Continua sendo uma execução por célula, sem repetições.
 
 ## O que não foi coberto
 
