@@ -7,6 +7,10 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Fixed
+
+- `systemone-gate uninstall-hook` printed its success messages in Portuguese (`removido de`, `original restaurado em`), a leftover of the 0.5.0 English pass. They now read `Hook '<name>' removed from <path>` and `Hook '<name>' original restored at <path>`. Anything matching the Portuguese text must be updated.
+
 ## [0.6.1] - 2026-10-07
 
 ### Changed
