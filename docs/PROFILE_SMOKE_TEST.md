@@ -45,14 +45,30 @@ A first run with the same `a.py` change plus a hardcoded password and an `os.sys
 - **Case 3 is borderline.** `web-backend` crossed the `breaking_change` threshold (66.0% > 65%) but the risk (1.52)
   was far from 1.85, so it was approved.
 
-## Caveat: the model did not see the password
+## Check: does secret redaction explain the result?
 
-Secret redaction is on by default (`SYSTEMONE_REDACT`, see the README). In cases 6 and 7 the text sent to the model
-was `postgres://admin:[REDACTED:url_password]@prod/db`, not the real password. So the high `web-backend` risk in those
-cases is a reaction to the `[REDACTED:...]` marker and to words such as `DATABASE_URL` and `.env`, not an assessment
-of a password the model read. This is a reasonable behavior (the marker tells the model that something secret is
-present), but it means these cases do not test whether the profile recognizes a secret by itself. A run with
-`SYSTEMONE_REDACT=0` would, and was not done.
+Secret redaction is on by default (`SYSTEMONE_REDACT`, see the README), so in cases 6 and 7 the model received
+`postgres://admin:[REDACTED:url_password]@prod/db` instead of the password. To see whether the marker drove the high
+`web-backend` risk, cases 6 to 8 were re-run with `SYSTEMONE_REDACT=0` (same session, same repository):
+
+| Case | Profile | risk, redact on → off | breaking, redact on → off | Decision |
+|---|---|---|---|---|
+| 6 | `default` | 1.06 → 1.08 | 5.5% → 6.0% | approved |
+| 6 | `web-backend` | 1.98 → 1.97 | 18.0% → 17.4% | approved |
+| 7 | `default` | 0.62 → 0.85 | 5.2% → 5.8% | approved |
+| 7 | `web-backend` | 1.97 → 1.98 | 17.0% → 18.3% | approved |
+| 8 | `default` | 0.59 → 0.59 | 5.2% → 5.2% | approved |
+| 8 | `web-backend` | 1.88 → 1.88 | 15.1% → 15.1% | approved |
+
+- **Redaction does not explain the result.** With the real password visible, the `web-backend` risk moves by at most
+  0.01 and nothing changes decision. The model reacts to the context (`DATABASE_URL`, credentials, `.env`), not to the
+  password value. The largest change is `default` in case 7 (0.62 → 0.85), still low and without effect on the decision.
+- **Case 8 is identical in both modes because its diff contains no password.** The `.env` is ignored, so only `b.py`
+  and `.gitignore` are staged. It is a control, not a redaction test.
+- The conclusion about secrets stands: they raise the risk score, they do not block, and the profile cannot tell a
+  leaked `.env` from an ignored one (1.97 and 1.98 against 1.88).
+
+Still one run per cell, no repetitions.
 
 ## Not covered
 
