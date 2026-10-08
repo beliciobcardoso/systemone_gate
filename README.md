@@ -210,6 +210,8 @@ systemone-gate doctor
 
 **Minimum confidence (opt-in):** `SYSTEMONE_MIN_CONFIDENCE` (0 to 1) treats a verdict whose `confidence` is below the minimum as indeterminate and applies the `*_ON_ERROR` policy; it is off (`0`) and has no suggested value because there is no calibration and the observed confidences are low across all answers (0.03 to 0.27), so any high minimum would always block or warn.
 
+**Environment file:** [`.env.example`](.env.example) lists every `SYSTEMONE_*` variable with its default. SystemOne Gate does not read `.env` itself; load it into the shell first (`set -a; . ./.env; set +a`). `.env` is in `.gitignore`; keep real values out of `.env.example`.
+
 ---
 
 ### Rubric profiles (`diff` and `triage`)
@@ -224,7 +226,7 @@ The diff-risk and error-triage rubrics have profiles because the original text i
 
 Selection: `systemone-gate diff --profile web-backend`, `systemone-gate triage --profile web-backend "error"` or the `SYSTEMONE_PROFILE` variable (the argument takes precedence). An invalid profile exits with code 2. In MCP and the library the environment variable applies, or `profile=` in `review_diff`/`triage_error`. The `guard` and routing rubrics do not change.
 
-> **Warning:** the `generic` and `web-backend` profiles have **not yet been validated** against labeled data; the quality of the new wording has not been measured. `default` remains the original C/systems text.
+> **Warning:** the `generic` and `web-backend` profiles have **not yet been validated** against labeled data; the quality of the new wording has not been measured. `default` remains the original C/systems text. An informal 8-case comparison (not a calibration) is in [`docs/PROFILE_SMOKE_TEST.md`](docs/PROFILE_SMOKE_TEST.md).
 
 ### 2. As an MCP server (Model Context Protocol)
 

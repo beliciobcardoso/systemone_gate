@@ -154,8 +154,8 @@ def uninstall_git_hook(repo_path: Optional[str] = None, hook_name: str = "pre-co
     backup_path = f"{target_hook}.backup"
     if os.path.exists(backup_path):
         os.replace(backup_path, target_hook)
-        print(f"✅ Hook '{hook_name}' original restaurado em {target_hook}")
+        print(f"✅ Hook '{hook_name}' original restored at {target_hook}")
     else:
         os.remove(target_hook)
-        print(f"✅ Hook '{hook_name}' removido de {target_hook}")
+        print(f"✅ Hook '{hook_name}' removed from {target_hook}")
     return True

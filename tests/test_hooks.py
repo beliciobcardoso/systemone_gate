@@ -162,21 +162,25 @@ def test_install_outside_git_repo_returns_false(tmp_path, capsys):
     assert capsys.readouterr().err
 
 
-def test_uninstall_restores_backup_byte_for_byte_and_mode(repo):
+def test_uninstall_restores_backup_byte_for_byte_and_mode(repo, capsys):
     original = b"#!/bin/sh\necho \xc3\xa9 foreign\n"
     path = hook_path(repo)
     path.write_bytes(original)
     os.chmod(path, 0o750)
     hooks.install_git_hook(str(repo))
+    capsys.readouterr()
     assert hooks.uninstall_git_hook(str(repo)) is True
+    assert f"Hook 'pre-commit' original restored at {path}" in capsys.readouterr().out
     assert path.read_bytes() == original
     assert mode_of(path) == 0o750
     assert not hook_path(repo, "pre-commit.backup").exists()
 
 
-def test_uninstall_removes_ours_when_no_backup(repo):
+def test_uninstall_removes_ours_when_no_backup(repo, capsys):
     hooks.install_git_hook(str(repo))
+    capsys.readouterr()
     assert hooks.uninstall_git_hook(str(repo)) is True
+    assert f"Hook 'pre-commit' removed from {hook_path(repo)}" in capsys.readouterr().out
     assert not hook_path(repo).exists()
 
 

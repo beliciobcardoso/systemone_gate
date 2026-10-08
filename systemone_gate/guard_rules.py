@@ -26,7 +26,7 @@ from .guard_common import (
     split_args,
 )
 from .guard_ops import check_ops
-from .guard_protected import ProtectedPaths, check_protected
+from .guard_protected import ProtectedPaths, advance_cwd, check_protected
 from .shell_parse import Segment, SimpleCommand, mask_quotes, normalize, scan, tokenize
 
 MAX_DEPTH = 4
@@ -237,11 +237,13 @@ def _evaluate(text: str, depth: int, protected: Optional[ProtectedPaths]) -> Opt
         return RuleMatch("fork-bomb", "fork bomb exhausts the machine resources")
     segments, subs = scan(text)
     commands = [normalize(tokenize(seg.text)) for seg in segments]
+    current = protected
     for idx, seg in enumerate(segments):
         nxt = commands[idx + 1] if idx + 1 < len(commands) else None
-        match = _check_segment(seg, commands[idx], nxt, depth, protected)
+        match = _check_segment(seg, commands[idx], nxt, depth, current)
         if match:
             return match
+        current = advance_cwd(commands[idx], current)
     for sub in subs:
         match = _evaluate(sub, depth + 1, protected)
         if match:
