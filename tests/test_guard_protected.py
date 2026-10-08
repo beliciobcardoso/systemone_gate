@@ -121,6 +121,70 @@ def test_allows_outside_protected_path(command):
     assert _eval(command) is None, command
 
 
+CD_MUST_BLOCK = [
+    "cd ~/Projetos && rm -rf .",
+    "cd ~/Projetos && rm -rf ./*",
+    "cd ~/Projetos && rm -rf *",
+    "cd ~/Projetos; rm -rf .",
+    "cd ~/Projetos\nrm -rf .",
+    "pushd ~/Projetos && rm -rf *",
+    "cd $HOME/Projetos && rm -rf .",
+    "cd ~/Projetos/sub && rm -rf ../",
+    "cd ~/Projetos && mv . /tmp/old",
+    "cd ~/Projetos && shred -u .",
+    "cd ~/Projetos && chmod -R 000 .",
+    "cd ~/Projetos && cd .. && rm -rf Projetos",
+    "cd ~ && rm -rf Projetos",
+    "cd && rm -rf Projetos",
+    "cd /home/tester && rm -rf Projetos",
+    "cd -P ~/Projetos && rm -rf .",
+    "cd -- ~/Projetos && rm -rf .",
+    'bash -c "cd ~/Projetos && rm -rf ."',
+    "cd /tmp && cd ~/Projetos && rm -rf .",
+]
+
+CD_MUST_NOT_BLOCK = [
+    "cd ~/Projetos/x && rm -rf .",
+    "cd ~/Projetos/x && rm -rf build",
+    "cd ~/Projetos && ls",
+    "cd ~/Projetos && rm file.txt",
+    "cd ~/Projetos && rm -rf x/build",
+    "cd /tmp && rm -rf .",
+    "cd /tmp && rm -rf Projetos",
+    "cd ~/Projetos && cd /tmp && rm -rf .",
+    "cd ~/Projetos && cd x && rm -rf .",
+    # an unknown destination is not guessed
+    "cd $OTHER && rm -rf .",
+    "cd - && rm -rf .",
+    "cd ~/Projetos && popd && rm -rf .",
+]
+
+
+@pytest.mark.parametrize("command", CD_MUST_BLOCK)
+def test_blocks_after_cd_into_protected_path(command):
+    match = _eval(command)
+    assert match is not None, command
+    assert match.rule_id == "protected-path"
+
+
+@pytest.mark.parametrize("command", CD_MUST_NOT_BLOCK)
+def test_allows_after_cd_elsewhere(command):
+    assert _eval(command) is None, command
+
+
+def test_cd_into_a_protected_path_is_not_removal():
+    protected, _ = load_protected_paths({"HOME": HOME, ENV_VAR: "/srv/dados"}, "/tmp")
+    assert evaluate_command("cd /srv/dados && ls", protected=protected) is None
+    assert evaluate_command("cd /srv/dados && rm -rf .", protected=protected).rule_id == "protected-path"
+
+
+def test_hook_blocks_cd_then_remove_with_payload_cwd_elsewhere():
+    env = {"HOME": HOME, ENV_VAR: "/srv/dados"}
+    code, msg = run_pretooluse(_payload("cd /srv/dados && rm -rf .", cwd="/tmp"), env=env)
+    assert code == 2
+    assert "(rule protected-path)" in msg
+
+
 def test_relative_target_resolves_against_cwd():
     protected, _ = load_protected_paths({"HOME": HOME, ENV_VAR: "/home/tester/work/keep"}, CWD)
     assert evaluate_command("rm -rf keep", protected=protected).rule_id == "protected-path"

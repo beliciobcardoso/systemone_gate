@@ -202,7 +202,7 @@ Put it in the `env` of Claude Code's `settings.json`: the variable must reach th
 
 * **Blocked:** `rm`, `mv` (the source), `shred`, and recursive `chmod`/`chown`/`chgrp` on the path itself, on its contents (`<path>/*`) and, for recursive operations and `mv`, on any ancestor (`rm -rf /home/me` destroys `~/Projetos`). Globs that can match a protected path (`rm -rf ~/Proj*`) are blocked too. The rule id is `protected-path`.
 * **Free:** anything deeper (`rm -rf ~/Projetos/x/build`), look-alikes (`~/Projetos2`), and writing into the path (`mv a ~/Projetos`, `cp`).
-* Relative targets resolve against the `cwd` of the hook payload (or the process working directory for `guard`/MCP).
+* Relative targets resolve against the `cwd` of the hook payload (or the process working directory for `guard`/MCP), and `cd`/`pushd` inside the same command line are followed (`cd ~/Projetos && rm -rf .` is blocked). An unknown destination (`cd -`, `cd $VAR`, `popd`) clears the directory, so relative targets after it are not checked.
 * An invalid entry (not absolute, `$OTHER`, `~user`) is skipped with a warning on stderr; it never blocks.
 * Limits, like the other rules: text analysis only. Symlinks are not resolved, and variables, scripts and `find -delete`/redirections are not analyzed.
 

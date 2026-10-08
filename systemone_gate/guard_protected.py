@@ -13,7 +13,7 @@ and unresolved expansions (`$OTHER`, `~user`, backticks) are never guessed.
 
 import os
 import posixpath
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from fnmatch import fnmatchcase
 from typing import List, Mapping, Optional, Sequence, Tuple
 
@@ -25,6 +25,7 @@ RULE_ID = "protected-path"
 MAX_PATH_LEN = 4096
 
 _HOME_FORMS = ("~", "$HOME", "${HOME}")
+_CD_COMMANDS = frozenset({"cd", "pushd"})
 _GLOB_CHARS = frozenset("*?[")
 
 
@@ -109,7 +110,29 @@ def _hit(base: str, entry: str, recursive: bool) -> bool:
     return base == entry or (recursive and _is_ancestor(base, entry))
 
 
+def advance_cwd(cmd: SimpleCommand, protected: Optional[ProtectedPaths]) -> Optional[ProtectedPaths]:
+    """Track `cd`/`pushd` within one command line, so `cd ~/x && rm -rf .` sees the new directory.
+
+    An unknown destination (`cd -`, `cd $VAR`, `popd`, `pushd +1`) clears the cwd: relative targets are
+    then skipped rather than guessed. Directory changes inside conditionals are treated as taken.
+    """
+    if protected is None or (cmd.name not in _CD_COMMANDS and cmd.name != "popd"):
+        return protected
+    _, targets = split_args(cmd.args)
+    first = targets[0] if targets else None
+    destination: Optional[str]
+    if cmd.name == "popd" or first == "-" or (cmd.name == "pushd" and (first is None or first[0] in "+-")):
+        destination = None
+    elif first is None:
+        destination = protected.home
+    else:
+        destination = _absolute(first, protected.home, protected.cwd)
+    return replace(protected, cwd=destination)
+
+
 def _protected_entry(target: str, recursive: bool, protected: ProtectedPaths) -> Optional[str]:
+    if target == "*":
+        target = "."  # a bare glob in the cwd is the cwd's contents
     stripped = target[:-2] if target.endswith("/*") and len(target) > 2 else target
     base = _absolute(stripped, protected.home, protected.cwd)
     if base is None:

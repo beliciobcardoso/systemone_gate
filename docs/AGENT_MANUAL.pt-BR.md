@@ -202,7 +202,7 @@ Coloque no `env` do `settings.json` do Claude Code: a variável precisa chegar a
 
 * **Bloqueado:** `rm`, `mv` (a origem), `shred` e `chmod`/`chown`/`chgrp` recursivo no próprio caminho, no conteúdo (`<caminho>/*`) e, em operações recursivas e `mv`, em qualquer ancestral (`rm -rf /home/eu` destrói `~/Projetos`). Globs que podem casar com um caminho protegido (`rm -rf ~/Proj*`) também bloqueiam. O id da regra é `protected-path`.
 * **Livre:** qualquer coisa mais fundo (`rm -rf ~/Projetos/x/build`), nomes parecidos (`~/Projetos2`) e escrever dentro do caminho (`mv a ~/Projetos`, `cp`).
-* Alvos relativos resolvem contra o `cwd` do payload do hook (ou o diretório de trabalho do processo, em `guard`/MCP).
+* Alvos relativos resolvem contra o `cwd` do payload do hook (ou o diretório de trabalho do processo, em `guard`/MCP), e `cd`/`pushd` na mesma linha de comando são acompanhados (`cd ~/Projetos && rm -rf .` bloqueia). Um destino desconhecido (`cd -`, `cd $VAR`, `popd`) limpa o diretório, então alvos relativos depois dele não são checados.
 * Entrada inválida (não absoluta, `$OUTRA`, `~usuario`) é ignorada com aviso no stderr; nunca bloqueia.
 * Limites, como nas demais regras: só análise de texto. Symlinks não são resolvidos, e variáveis, scripts, `find -delete` e redirecionamentos não são analisados.
 
