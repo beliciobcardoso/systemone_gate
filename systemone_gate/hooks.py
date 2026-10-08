@@ -12,6 +12,7 @@ from typing import Optional
 HOOK_MARKER = "SystemOne Gate"
 PYTHON_PLACEHOLDER = "@@PYTHON@@"
 TIMEOUT_PLACEHOLDER = "@@TIMEOUT@@"
+PROFILE_PLACEHOLDER = "@@PROFILE_BLOCK@@"
 # The hook reviews diffs with nimble, whose first call after an idle period loads a 9.5 GB model
 # (measured 11.8 s, 46.5 s and 72.4 s). The CLI default of 30 s would skip the review in that case.
 HOOK_TIMEOUT_SECONDS = 120
@@ -51,7 +52,7 @@ fi
 # The first commit after a pause waits for the model to load; a value already set by the user wins.
 : "${SYSTEMONE_TIMEOUT:=@@TIMEOUT@@}"
 export SYSTEMONE_TIMEOUT
-
+@@PROFILE_BLOCK@@
 "$PY" -m systemone_gate.cli diff "$@"
 STATUS=$?
 
@@ -65,9 +66,19 @@ fi
 exit 0
 """
 
-def render_hook_script(python_executable: str) -> str:
+def render_hook_script(python_executable: str, profile: Optional[str] = None) -> str:
     script = PRE_COMMIT_TEMPLATE.replace(PYTHON_PLACEHOLDER, shlex.quote(python_executable))
-    return script.replace(TIMEOUT_PLACEHOLDER, str(HOOK_TIMEOUT_SECONDS))
+    script = script.replace(TIMEOUT_PLACEHOLDER, str(HOOK_TIMEOUT_SECONDS))
+    if profile:
+        # Baked in as a default: a SYSTEMONE_PROFILE already set in the environment still wins.
+        block = (
+            "\n# Rubric profile chosen at install time; a value already set by the user wins.\n"
+            f': "${{SYSTEMONE_PROFILE:={shlex.quote(profile)}}}"\n'
+            "export SYSTEMONE_PROFILE\n"
+        )
+    else:
+        block = ""
+    return script.replace(PROFILE_PLACEHOLDER + "\n", block)
 
 def _is_ours(hook_path: str) -> bool:
     with open(hook_path, "r", encoding="utf-8", errors="ignore") as f:
@@ -112,7 +123,8 @@ def _resolve_hooks_dir(repo_path: Optional[str] = None) -> Optional[str]:
         return None
     return os.path.normpath(os.path.join(base, output))
 
-def install_git_hook(repo_path: Optional[str] = None, hook_name: str = "pre-commit") -> bool:
+def install_git_hook(repo_path: Optional[str] = None, hook_name: str = "pre-commit",
+                     profile: Optional[str] = None) -> bool:
     hooks_dir = _resolve_hooks_dir(repo_path)
     if not hooks_dir:
         return False
@@ -133,7 +145,7 @@ def install_git_hook(repo_path: Optional[str] = None, hook_name: str = "pre-comm
         os.rename(target_hook, backup_path)
 
     with open(target_hook, "w", encoding="utf-8") as f:
-        f.write(render_hook_script(sys.executable))
+        f.write(render_hook_script(sys.executable, profile))
 
     os.chmod(target_hook, 0o755)
     print(f"✅ Hook '{hook_name}' installed successfully at: {target_hook}")
