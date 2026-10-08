@@ -7,6 +7,10 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Changed
+
+- `systemone-gate triage` with no profile chosen now prints a stderr hint that the `default` rubric is C/systems wording and points to `--profile web-backend`. Web errors (TypeError, Prisma, TS) were being labeled `memory_segfault_or_leak` with no explanation. The JSON on stdout and the default profile are unchanged.
+
 ### Added
 
 - `systemone-gate install-hook --profile NAME`: the pre-commit hook uses that rubric profile by default (an exported `SYSTEMONE_PROFILE` still wins). Before, the hook always used `default` (C/systems wording) unless the variable was exported in the committing shell.

@@ -13,7 +13,7 @@ from typing import List, Optional
 
 from . import __version__
 from .claude_hook import run_pretooluse
-from .client import SystemOneClient
+from .client import PROFILE_ENV_VAR, SystemOneClient
 from .diff_review import DEFAULT_MAX_LINES_PER_FILE, format_coverage, review_staged
 from .doctor import run_cli as run_doctor_cli
 from .hooks import install_git_hook, uninstall_git_hook
@@ -137,6 +137,11 @@ def handle_diff(client: SystemOneClient, model: str, max_lines: int = DEFAULT_MA
     print("✅ [APPROVED] Check completed successfully.")
     return 0
 
+DEFAULT_PROFILE_HINT = (
+    "ℹ️  Using the 'default' rubric profile (C/systems wording). For web/backend stacks "
+    "(Node, Prisma, Spring...) use --profile web-backend or set SYSTEMONE_PROFILE."
+)
+
 def handle_triage(client: SystemOneClient, error_text: str, model: str, profile: Optional[str] = None) -> int:
     print(f"🩺 [SystemOne Gate] Triaging error with model '{model}'...\n")
     try:
@@ -150,6 +155,8 @@ def handle_triage(client: SystemOneClient, error_text: str, model: str, profile:
 
     answers = res.get("answers", {})
     print(json.dumps(answers, indent=2, ensure_ascii=False))
+    if profile is None and not os.environ.get(PROFILE_ENV_VAR):
+        print(DEFAULT_PROFILE_HINT, file=sys.stderr)
     return 0
 
 def handle_guard(client: SystemOneClient, command_text: str, model: str) -> int:

@@ -78,3 +78,25 @@ def test_diff_outside_a_repo_says_so_without_git_usage(tmp_path, monkeypatch, ca
     err = capsys.readouterr().err
     assert "Not inside a Git repository" in err
     assert "--no-index" not in err
+
+
+class _StubClient:
+    def triage_error(self, text, model=None, profile=None):
+        return {"answers": {"root_cause": {"choice": "x"}}}
+
+
+def test_triage_hints_at_web_backend_when_profile_is_implicit(monkeypatch, capsys):
+    monkeypatch.delenv("SYSTEMONE_PROFILE", raising=False)
+    assert cli.handle_triage(_StubClient(), "boom", "nimble") == 0
+    captured = capsys.readouterr()
+    assert "--profile web-backend" in captured.err
+    assert "web-backend" not in captured.out
+
+
+@pytest.mark.parametrize("profile,env", [("generic", None), (None, "web-backend")])
+def test_triage_hint_is_silent_when_profile_is_explicit(monkeypatch, capsys, profile, env):
+    monkeypatch.delenv("SYSTEMONE_PROFILE", raising=False)
+    if env:
+        monkeypatch.setenv("SYSTEMONE_PROFILE", env)
+    assert cli.handle_triage(_StubClient(), "boom", "nimble", profile=profile) == 0
+    assert capsys.readouterr().err == ""
