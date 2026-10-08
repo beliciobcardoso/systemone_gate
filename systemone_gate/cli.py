@@ -74,8 +74,19 @@ def _print_diff_report(review: DiffReview, res: dict, cfg: PolicyConfig) -> None
     )
     print("----------------------------------------------------------\n")
 
+def _inside_git_repo() -> bool:
+    try:
+        proc = subprocess.run(["git", "rev-parse", "--git-dir"], capture_output=True,
+                              timeout=GIT_DIFF_TIMEOUT_SECONDS)
+    except (OSError, subprocess.SubprocessError):
+        return True  # let the diff call below report the real failure
+    return proc.returncode == 0
+
 def handle_diff(client: SystemOneClient, model: str, max_lines: int = DEFAULT_MAX_LINES_PER_FILE,
                 profile: Optional[str] = None) -> int:
+    if not _inside_git_repo():
+        print("❌ Not inside a Git repository: run this from a repository with staged changes.", file=sys.stderr)
+        return 1
     try:
         diff_output = subprocess.check_output(["git", "diff", "--cached"], text=True,
                                               timeout=GIT_DIFF_TIMEOUT_SECONDS)
@@ -200,6 +211,8 @@ def main(argv: Optional[List[str]] = None):
     # install-hook
     p_hook = subparsers.add_parser("install-hook", help="Install the pre-commit hook in the current Git repository")
     p_hook.add_argument("--repo", default=None, help="Path of the Git repository")
+    p_hook.add_argument("--profile", choices=PROFILES, default=None,
+                        help="Rubric profile the hook uses by default (an exported SYSTEMONE_PROFILE still wins)")
 
     # uninstall-hook
     p_unhook = subparsers.add_parser(
@@ -247,7 +260,7 @@ def _dispatch(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None
     # Commands that never talk to Ollama run before the client is built: an invalid SYSTEMONE_TIMEOUT or
     # OLLAMA_SYSTEMONE_URL must not make them fail (for hook-guard, exit 2 would block every Bash call).
     if args.command == "install-hook":
-        sys.exit(0 if install_git_hook(args.repo) else 1)
+        sys.exit(0 if install_git_hook(args.repo, profile=args.profile) else 1)
 
     elif args.command == "uninstall-hook":
         sys.exit(0 if uninstall_git_hook(args.repo) else 1)

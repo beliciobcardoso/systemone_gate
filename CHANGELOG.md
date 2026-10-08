@@ -7,6 +7,14 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Added
+
+- `systemone-gate install-hook --profile NAME`: the pre-commit hook uses that rubric profile by default (an exported `SYSTEMONE_PROFILE` still wins). Before, the hook always used `default` (C/systems wording) unless the variable was exported in the committing shell.
+
+### Fixed
+
+- `systemone-gate diff` outside a Git repository now prints "Not inside a Git repository" instead of dumping the `git diff --no-index` usage.
+
 ## [0.6.2] - 2026-10-08
 
 ### Added

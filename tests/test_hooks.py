@@ -429,3 +429,17 @@ def test_hook_keeps_a_timeout_defined_by_the_user(tmp_path):
 
 def test_rendered_hook_has_no_unresolved_placeholder():
     assert "@@" not in hooks.render_hook_script("/usr/bin/python3")
+
+
+def test_install_with_profile_bakes_default_that_env_can_override(repo):
+    assert hooks.install_git_hook(str(repo), profile="web-backend") is True
+    content = hook_path(repo).read_text(encoding="utf-8")
+    assert ': "${SYSTEMONE_PROFILE:=web-backend}"' in content
+    assert "export SYSTEMONE_PROFILE" in content
+
+
+def test_install_without_profile_leaves_hook_unchanged(repo):
+    hooks.install_git_hook(str(repo))
+    content = hook_path(repo).read_text(encoding="utf-8")
+    assert "SYSTEMONE_PROFILE" not in content
+    assert "@@" not in content

@@ -69,3 +69,12 @@ def test_default_caps_are_shared_named_constants():
     assert diff_review.DEFAULT_MAX_LINES_PER_FILE == 250
     assert diff_review.DEFAULT_MAX_FILES == 20
     assert cli.DEFAULT_MAX_LINES_PER_FILE is diff_review.DEFAULT_MAX_LINES_PER_FILE
+
+
+def test_diff_outside_a_repo_says_so_without_git_usage(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("GIT_CEILING_DIRECTORIES", str(tmp_path.parent))
+    assert _exit_code(["diff"]) == 1
+    err = capsys.readouterr().err
+    assert "Not inside a Git repository" in err
+    assert "--no-index" not in err

@@ -224,7 +224,7 @@ The diff-risk and error-triage rubrics have profiles because the original text i
 | `generic` | Neutral wording, without C/network jargon. |
 | `web-backend` | NestJS/Prisma/PostgreSQL/Java Spring services: destructive migrations, authentication/authorization, queries without a tenant filter, REST/GraphQL contracts, transactions, secrets. |
 
-Selection: `systemone-gate diff --profile web-backend`, `systemone-gate triage --profile web-backend "error"` or the `SYSTEMONE_PROFILE` variable (the argument takes precedence). An invalid profile exits with code 2. In MCP and the library the environment variable applies, or `profile=` in `review_diff`/`triage_error`. The `guard` and routing rubrics do not change.
+Selection: `systemone-gate diff --profile web-backend`, `systemone-gate install-hook --profile web-backend` (the pre-commit hook then uses that profile unless `SYSTEMONE_PROFILE` is already exported; reinstall to change it), `systemone-gate triage --profile web-backend "error"` or the `SYSTEMONE_PROFILE` variable (the argument takes precedence). An invalid profile exits with code 2. In MCP and the library the environment variable applies, or `profile=` in `review_diff`/`triage_error`. The `guard` and routing rubrics do not change.
 
 > **Warning:** the `generic` and `web-backend` profiles have **not yet been validated** against labeled data; the quality of the new wording has not been measured. `default` remains the original C/systems text. An informal 8-case comparison (not a calibration) is in [`docs/PROFILE_SMOKE_TEST.md`](docs/PROFILE_SMOKE_TEST.md).
 
