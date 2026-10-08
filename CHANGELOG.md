@@ -7,6 +7,13 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-10-08
+
+### Added
+
+- `.env.example`: every `SYSTEMONE_*` variable with its default, commented out (SystemOne Gate reads the process environment, not a `.env` file; the file says how to load it).
+- `docs/PROFILE_SMOKE_TEST.md` (and `.pt-BR.md`): an informal 8-case comparison of the `default` and `web-backend` diff profiles. It is not a calibration; the README caveat that `generic` and `web-backend` are not validated against labeled data stands.
+
 ### Fixed
 
 - `SYSTEMONE_PROTECTED_PATHS`: `cd ~/Projetos && rm -rf .` (and `./*`, `*`, `pushd`) was not blocked, because relative targets were resolved against the shell's starting directory only. `cd`/`pushd` within the same command line are now followed, and a bare `*` counts as the contents of the current directory. An unknown destination (`cd -`, `cd $VAR`, `popd`) clears the directory instead of guessing.
